@@ -165,6 +165,22 @@ contract Params {
         liquidationPaused = _liquidationPaused;
     }
 
+    function getMinDeposit() external view returns (uint256) {
+        return depositParams.minDepositAmount;
+    }
+
+    function getMaxDeposit() external view returns (uint256) {
+        return depositParams.maxDepositAmount;
+    }
+
+    function getMinLockupPeriod() external view returns (uint256) {
+        return depositParams.minLockupPeriod;
+    }
+    function getMaxLockupPeriod() external view returns (uint256) {
+        return depositParams.maxLockupPeriod;
+    }
+
+
     function setDepositParams(
         uint256 _minDepositAmount,
         uint256 _maxDepositAmount,
