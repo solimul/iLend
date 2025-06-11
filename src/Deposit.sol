@@ -7,12 +7,15 @@ import {DepositPool} from "./DepositPool.sol";
 
 contract Deposit is DepositPool {
 
-    event DepositDone(address indexed depositor, uint256 amount, uint256 timestamp);
-    struct Depositor {
+    struct DepositRecord {
         uint256 amount;
-        uint256 [] indexedAmount; // Assuming indexed_amount is an array to track deposits
-        uint256 [] indexedDepositTime; // Assuming indexed_deposit_time is an array to track deposit times
-        uint256 [] indexedLockupPeriod; // Assuming indexed_lockup_period is an array to track lockup periods
+        uint256 depositTime;
+        uint256 lockupPeriod;
+    }
+
+    struct Depositor {
+        uint256 totalAmount;
+        DepositRecord[] deposits;
         bool isActive;
     }
 
@@ -30,11 +33,7 @@ contract Deposit is DepositPool {
         _;
     }
 
-    function getDepositorInfo(address depositor) external view returns (Depositor memory) {
-        return depositors[depositor];
-    }
-
-    function deposit_funds (address depositor_address, uint256 amount, uint256 lockupPeriod) external {
+    modifier depositCheck (uint256 amount, uint256 lockupPeriod) {
         require(amount >= params.getMinDeposit (),string(
             abi.encodePacked(
             "Deposit must be >= ",
@@ -57,21 +56,29 @@ contract Deposit is DepositPool {
             "Lockup period must be <= ",
             Strings.toString(params.getMaxLockupPeriod())
             )));
+            _;
+    }
+
+    function getDepositorInfo(address depositor) external view returns (Depositor memory) {
+        return depositors[depositor];
+    }
+
+    function deposit_funds (address depositor_address, uint256 amount, uint256 lockupPeriod) 
+                external depositCheck (amount,lockupPeriod) {
+        bool success = deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
         
+        if (!success) 
+            revert("Deposit failed: USDC transfer unsuccessful in deposit_funds ()");
+
         Depositor storage depositor = depositors[depositor_address];
-
-
-        deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
-
-
-        depositor.amount += amount;
-        uint256 len = depositor.indexedAmount.length;
-        depositor.indexedAmount [len-1] = amount; // Assuming indexed_amount is an array to track deposits
-        depositor.indexedDepositTime [len-1] = block.timestamp;
-        depositor.indexedLockupPeriod [len - 1] = lockupPeriod;
+        depositor.totalAmount += amount;
+        depositor.deposits.push(DepositRecord({
+            amount: amount,
+            depositTime: block.timestamp,
+            lockupPeriod: lockupPeriod
+        }));
         depositor.isActive = true;
 
-        emit DepositDone(depositor_address, amount, block.timestamp);
     }
 
 }
