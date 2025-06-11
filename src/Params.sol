@@ -165,19 +165,27 @@ contract Params {
         liquidationPaused = _liquidationPaused;
     }
 
-    function getMinDeposit() external view returns (uint256) {
+    function getMinDeposit() public view returns (uint256) {
         return depositParams.minDepositAmount;
     }
 
-    function getMaxDeposit() external view returns (uint256) {
+    function getMaxDeposit() public view returns (uint256) {
         return depositParams.maxDepositAmount;
     }
 
-    function getMinLockupPeriod() external view returns (uint256) {
+    function getMinLockupPeriod() public view returns (uint256) {
         return depositParams.minLockupPeriod;
     }
-    function getMaxLockupPeriod() external view returns (uint256) {
+    function getMaxLockupPeriod() public view returns (uint256) {
         return depositParams.maxLockupPeriod;
+    }
+
+    function getBaseRate() public view returns (uint256) {
+        return borrowParams.interestRate.baseRate;
+    }
+
+    function getReserveFactor() public view returns (uint256) {
+        return borrowParams.interestRate.reserveFactor;
     }
 
 

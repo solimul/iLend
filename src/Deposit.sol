@@ -4,9 +4,29 @@ import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 import {Params} from "./Params.sol";
 import {DepositPool} from "./DepositPool.sol";
+import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract Deposit is DepositPool {
 
+    event DepositorPrincipalWithDrawalDone(
+        address indexed depositPool,
+        address indexed depositor,
+        uint256 totalWithdrawable,
+        uint256 amountWithdrawn,
+        uint256 remainingBalanceForDepositor,
+        uint256 poolBalance,
+        uint256 timestamp
+    );
+
+    event DepositorInterestWithDrawalDone(
+        address indexed depositPool,
+        address indexed depositor,
+        uint256 totalInterestIncome,
+        uint256 amountWithdrawn,
+        uint256 remainingBalanceForDepositor,
+        uint256 poolBalance,
+        uint256 timestamp
+    );
     struct DepositRecord {
         uint256 amount;
         uint256 depositTime;
@@ -28,8 +48,8 @@ contract Deposit is DepositPool {
         // Initialize the contract if needed
     }
     
-    modifier onlyDepositor() {
-        require (depositors[msg.sender].isActive, "Not a depositor");
+    modifier onlyDepositor(address depositor_address) {
+        require (depositors[depositor_address].isActive, "Not a depositor");
         _;
     }
 
@@ -65,6 +85,7 @@ contract Deposit is DepositPool {
 
     function deposit_funds (address depositor_address, uint256 amount, uint256 lockupPeriod) 
                 external depositCheck (amount,lockupPeriod) {
+        usdc_contract.approve(address(this), amount);
         bool success = deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
         
         if (!success) 
@@ -78,7 +99,63 @@ contract Deposit is DepositPool {
             lockupPeriod: lockupPeriod
         }));
         depositor.isActive = true;
-
     }
 
+    function get_usdc_contract () public view returns (IERC20) {
+        return usdc_contract;
+    }
+
+    function depositor_withdraw_principal (address depositor_address, uint256 amount) external onlyDepositor {
+        Depositor storage depositor = depositors[msg.sender];
+        require(depositor.totalAmount >= amount, "Insufficient balance");
+        require (usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
+
+        uint256 totalWithdrawable = 0;
+        for (uint256 i = 0; i < depositor.deposits.length; i++) {
+            DepositRecord storage record = depositor.deposits[i];
+            if (block.timestamp >= record.depositTime + record.lockupPeriod) {
+                totalWithdrawable += record.amount;
+            }
+        }
+
+        require(totalWithdrawable >= amount, "Cannot withdraw locked funds");
+
+        // Transfer USDC back to the depositor
+        bool success = usdc_contract.transfer(depositor_address, amount);
+        require(success, "USDC transfer failed");
+
+        // Update the depositor's total amount
+        depositor.totalAmount -= amount;
+        poolBalance -= amount;
+
+        emit DepositorPrincipalWithDrawalDone(address(this), depositor_address, totalWithdrawable, amount, depositor.totalAmount, poolBalance, block.timestamp);
+    }
+
+    function calculate_depositor_interest_income (address depositor_address) 
+                public view returns (uint256 totalInterestIncome) {
+        Depositor storage depositor = depositors[depositor_address];
+        require(depositor.isActive, "Depositor not active");
+
+        for (uint256 i = 0; i < depositor.deposits.length; i++) {
+            DepositRecord storage record = depositor.deposits[i];
+            if (block.timestamp >= record.depositTime + record.lockupPeriod) {
+                uint256 interest = (record.amount * params.getBaseRate() * (block.timestamp - record.depositTime)) / (365 days * 100);
+                totalInterestIncome += interest;
+            }
+        }
+        return totalInterestIncome;
+    }
+
+    function depositor_withdraw_interest (address depositor_address, uint256 amount) public onlyDepositor (depositor_address) {
+        Depositor storage depositor = depositors[msg.sender];
+        uint256 totalInterestIncome = calculate_depositor_interest_income (depositor_address);
+        require(totalInterestIncome >= amount, "Insufficient interest income");
+        require (usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
+        // Transfer USDC back to the depositor
+        bool success = usdc_contract.transfer(depositor_address, amount);
+        require(success, "USDC transfer failed");
+        poolBalance -= amount;
+
+        emit DepositorInterestWithDrawalDone (address(this), depositor_address, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
+    }
 }
