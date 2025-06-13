@@ -44,6 +44,6 @@ contract iLend {
 
     function withdraw_deposited_interest (uint256 amount) external {
         // Call the withdraw interest function in the Deposit contract
-        depositContract.depositor_withdraw_interest (msg.sender, amount);
+        depositContract.depositor_withdraw_interest(msg.sender, amount);
     }
 }

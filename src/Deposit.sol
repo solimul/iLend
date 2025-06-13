@@ -27,15 +27,30 @@ contract Deposit is DepositPool {
         uint256 poolBalance,
         uint256 timestamp
     );
+
+
+    struct PrincipalWithdrawalRecord {
+        uint256 amountWithdrawn;
+        uint256 withdrawTime;
+    }
+
+    struct InterestWithdrawalRecord {
+        uint256 amountWithdrawn;
+        uint256 withdrawTime;
+    }
+
     struct DepositRecord {
         uint256 amount;
         uint256 depositTime;
         uint256 lockupPeriod;
+        uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
     }
 
     struct Depositor {
         uint256 totalAmount;
         DepositRecord[] deposits;
+        InterestWithdrawalRecord [] interestWithdrawalRecords;
+        PrincipalWithdrawalRecord [] principalWithdrawalRecords;
         bool isActive;
     }
 
@@ -85,7 +100,6 @@ contract Deposit is DepositPool {
 
     function deposit_funds (address depositor_address, uint256 amount, uint256 lockupPeriod) 
                 external depositCheck (amount,lockupPeriod) {
-        usdc_contract.approve(address(this), amount);
         bool success = deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
         
         if (!success) 
@@ -93,10 +107,12 @@ contract Deposit is DepositPool {
 
         Depositor storage depositor = depositors[depositor_address];
         depositor.totalAmount += amount;
+        uint256 currentTime = block.timestamp;
         depositor.deposits.push(DepositRecord({
             amount: amount,
-            depositTime: block.timestamp,
-            lockupPeriod: lockupPeriod
+            depositTime: currentTime,
+            lockupPeriod: lockupPeriod,
+            lastInterestWithdrawTimeForRecord: currentTime
         }));
         depositor.isActive = true;
     }
@@ -105,7 +121,7 @@ contract Deposit is DepositPool {
         return usdc_contract;
     }
 
-    function depositor_withdraw_principal (address depositor_address, uint256 amount) external onlyDepositor {
+    function depositor_withdraw_principal (address depositor_address, uint256 amount) external onlyDepositor (depositor_address) {
         Depositor storage depositor = depositors[msg.sender];
         require(depositor.totalAmount >= amount, "Insufficient balance");
         require (usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
@@ -127,19 +143,43 @@ contract Deposit is DepositPool {
         // Update the depositor's total amount
         depositor.totalAmount -= amount;
         poolBalance -= amount;
-
+        // Record the withdrawal
+        depositor.principalWithdrawalRecords.push(PrincipalWithdrawalRecord({
+            amountWithdrawn: amount,
+            withdrawTime: block.timestamp
+        }));
         emit DepositorPrincipalWithDrawalDone(address(this), depositor_address, totalWithdrawable, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
 
     function calculate_depositor_interest_income (address depositor_address) 
-                public view returns (uint256 totalInterestIncome) {
+                public returns (uint256 totalInterestIncome) {
+        uint256 currentTime = block.timestamp;
         Depositor storage depositor = depositors[depositor_address];
         require(depositor.isActive, "Depositor not active");
 
         for (uint256 i = 0; i < depositor.deposits.length; i++) {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
-                uint256 interest = (record.amount * params.getBaseRate() * (block.timestamp - record.depositTime)) / (365 days * 100);
+                uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
+                uint256 interest = (record.amount * params.getBaseRate() * timeDelta) / (365 days * 100);
+                totalInterestIncome += interest;
+                record.lastInterestWithdrawTimeForRecord = currentTime;
+            }
+        }
+        return totalInterestIncome;
+    }
+
+        function preview_depositor_interest_income  (address depositor_address) 
+                public view returns (uint256 totalInterestIncome) {
+        uint256 currentTime = block.timestamp;
+        Depositor storage depositor = depositors[depositor_address];
+        require(depositor.isActive, "Depositor not active");
+
+        for (uint256 i = 0; i < depositor.deposits.length; i++) {
+            DepositRecord storage record = depositor.deposits[i];
+            if (block.timestamp >= record.depositTime + record.lockupPeriod) {
+                uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
+                uint256 interest = (record.amount * params.getBaseRate() * timeDelta) / (365 days * 100);
                 totalInterestIncome += interest;
             }
         }
@@ -155,7 +195,12 @@ contract Deposit is DepositPool {
         bool success = usdc_contract.transfer(depositor_address, amount);
         require(success, "USDC transfer failed");
         poolBalance -= amount;
-
+        // Record the interest withdrawal
+        uint256 currentTime = block.timestamp;
+        depositor.interestWithdrawalRecords.push(InterestWithdrawalRecord({
+            amountWithdrawn: amount,
+            withdrawTime: currentTime
+        }));
         emit DepositorInterestWithDrawalDone (address(this), depositor_address, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
 }
