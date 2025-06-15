@@ -98,7 +98,7 @@ contract Deposit is DepositPool {
         return depositors[depositor];
     }
 
-    function deposit_funds (address depositor_address, uint256 amount, uint256 lockupPeriod) 
+    function deposit_liquidity (address depositor_address, uint256 amount, uint256 lockupPeriod) 
                 external depositCheck (amount,lockupPeriod) {
         bool success = deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
         

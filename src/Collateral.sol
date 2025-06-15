@@ -3,6 +3,7 @@ pragma solidity ^0.8.29;
 
 import {CollateralPool} from "./CollateralPool.sol";
 import {Params} from "./Params.sol";
+import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract Collateral is CollateralPool {
 
@@ -12,7 +13,7 @@ contract Collateral is CollateralPool {
         uint256 depositTime,
         uint256 totalCollateral
     );
-    
+
     Params private params;
 
 
@@ -24,7 +25,6 @@ contract Collateral is CollateralPool {
     struct CollateralDepositRecord {
         uint256 amount;
         uint256 depositTime;
-        uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
     }
 
     struct CollateralDepositor {
@@ -37,15 +37,27 @@ contract Collateral is CollateralPool {
   
     mapping (address => CollateralDepositor) private CollateralDepositors;
 
-    constructor(address priceFeedManagerAddress, Params _params) CollateralPool (priceFeedManagerAddress)  {
+    constructor(Params _params) CollateralPool () {
         params = _params;
+    } 
+
+    modifier depositCheck (uint256 amount) {
+        require(amount >= params.getMinCollateralAmount (),string(
+            abi.encodePacked(
+            "Collateral deposit must be >= ",
+            Strings.toString(params.getMinCollateralAmount())
+            )));
+        require(amount <= params.getMaxCollateralAmount (),string(
+            abi.encodePacked(
+            "Collateral deposit must be <= ",
+            Strings.toString(params.getMaxCollateralAmount())
+            )));
+            _;
     }
 
-    function depositCollateral(uint256 amount, address depositor) external returns (bool) {
-        require(amount <= params.getMaxCollateralAmount (), "Amount must be less than or equal to the maximum collateral amount");
-        require(amount >= params.getMinCollateralAmount (), "Amount must be greater than or equal to the minimum collateral amount");
-        bool success = eth_contract.transferFrom(depositor, address(this), amount);
-        require(success, "Transfer failed");
+    function deposit_collateral (address depositor, uint256 amount) external depositCheck (amount) returns (bool)  {
+        require(deposit_eth(depositor, amount), "Transfer failed");
+
         CollateralDepositor storage collateralDepositor = CollateralDepositors[depositor];
         if (!collateralDepositor.isActive) {
             collateralDepositor.isActive = true;
@@ -53,8 +65,7 @@ contract Collateral is CollateralPool {
         collateralDepositor.totalAmount += amount;
         CollateralDepositRecord memory newDeposit = CollateralDepositRecord({
             amount: amount,
-            depositTime: block.timestamp,
-            lastInterestWithdrawTimeForRecord: block.timestamp
+            depositTime: block.timestamp
         });
         collateralDepositor.deposits.push(newDeposit);
         emit CollateralDeposited(depositor, amount, block.timestamp, collateralDepositor.totalAmount);

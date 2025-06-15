@@ -2,11 +2,13 @@
 pragma solidity ^0.8.29;
 import {Params} from "./Params.sol";
 import {Deposit} from "./Deposit.sol";
+import {Collateral} from "./Collateral.sol";
 
 contract iLend {
     Params public params;   
     address public owner;
     Deposit public depositContract;
+    Collateral public collateralContract;
 
     // Modifiers
     modifier onlyOwner() {
@@ -14,12 +16,19 @@ contract iLend {
         _;
     }
 
+    // modifier token_type_check (string memory token, string memory expectedToken) {
+    //     string memory message = keccak256(abi.encodePacked("Sent ", token, ", expected ", expectedToken));
+    //     require(keccak256(abi.encodePacked(token)) == keccak256(abi.encodePacked(expectedToken)), message);
+    //     _;
+    // }
+
     constructor () {
         owner = msg.sender;
         params = new Params(owner);
         params.initialize (false, false, false);
         setParams();
         depositContract = new Deposit(params);
+        collateralContract = new Collateral(params);
     }
 
     function setParams() internal {
@@ -31,10 +40,10 @@ contract iLend {
         params.setCollateralParams(address(this), 1000, 1000000, 75, true);
     }
 
-    function deposit (uint256 lockupPeriod) external payable{
+    function deposit_liquidity (uint256 lockupPeriod) external payable{
         // Call the deposit function in the Deposit contract
         depositContract.get_usdc_contract().approve(address (depositContract), msg.value);
-        depositContract.deposit_funds (msg.sender, msg.value, lockupPeriod);
+        depositContract.deposit_liquidity (msg.sender, msg.value, lockupPeriod);
     }
 
     function withdraw_deposited_principal (uint256 amount) external {
@@ -46,4 +55,13 @@ contract iLend {
         // Call the withdraw interest function in the Deposit contract
         depositContract.depositor_withdraw_interest(msg.sender, amount);
     }
+
+
+    function deposit_collateral () external payable {
+        // Call the deposit function in the Deposit contract
+        collateralContract.get_eth_contract ().approve(address (collateralContract), msg.value);
+        collateralContract.deposit_collateral (msg.sender, msg.value);
+    }
+
+
 }
