@@ -188,6 +188,16 @@ contract Params {
         return borrowParams.interestRate.reserveFactor;
     }
 
+    function getMaxCollateralAmount() public view returns (uint256) {
+        return collateralParams.maxCollateralAmount;
+    }
+    function getMinCollateralAmount() public view returns (uint256) {
+        return collateralParams.minCollateralAmount;
+    }
+    function getCollateralFactor() public view returns (uint256) {
+        return collateralParams.collateralFactor;
+    }
+
 
     function setDepositParams(
         uint256 _minDepositAmount,
