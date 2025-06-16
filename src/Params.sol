@@ -87,7 +87,7 @@ contract Params {
         address asset;
         uint256 minCollateralAmount;
         uint256 maxCollateralAmount;
-        uint256 collateralFactor; // % of value that can be borrowed (e.g., 75%)
+        uint256 l2b; // % of value that can be borrowed (e.g., 75%)
         bool isSupported;
     }
 
@@ -180,13 +180,6 @@ contract Params {
         return depositParams.maxLockupPeriod;
     }
 
-    function getBaseRate() public view returns (uint256) {
-        return borrowParams.interestRate.baseRate;
-    }
-
-    function getReserveFactor() public view returns (uint256) {
-        return borrowParams.interestRate.reserveFactor;
-    }
 
     function getMaxCollateralAmount() public view returns (uint256) {
         return collateralParams.maxCollateralAmount;
@@ -194,8 +187,39 @@ contract Params {
     function getMinCollateralAmount() public view returns (uint256) {
         return collateralParams.minCollateralAmount;
     }
-    function getCollateralFactor() public view returns (uint256) {
-        return collateralParams.collateralFactor;
+    function getL2B() public view returns (uint256) {
+        return collateralParams.l2b;
+    }
+
+    function getBaseInterestRate() public view returns (uint256) {
+        return borrowParams.interestRate.baseRate;
+    }
+    function getReserveFactor() public view returns (uint256) {
+        return borrowParams.interestRate.reserveFactor;
+    }
+    function getMaxInterestRate() public view returns (uint256) {
+        return borrowParams.interestRate.maxInterestRate;
+    }
+    function getMinInterestRate() public view returns (uint256) {
+        return borrowParams.interestRate.minInterestRate;
+    }
+    function getMinBorrowAmount() public view returns (uint256) {
+        return borrowParams.minBorrowAmount;
+    }
+    function getMaxBorrowAmount() public view returns (uint256) {
+        return borrowParams.maxBorrowAmount;
+    }
+    function getBorrowFee() public view returns (uint256) {
+        return borrowParams.borrowFee;
+    }
+    function getMinRepaymentPeriod() public view returns (uint256) {
+        return borrowParams.minRepaymentPeriod;
+    }
+    function getMaxRepaymentPeriod() public view returns (uint256) {
+        return borrowParams.maxRepaymentPeriod;
+    }
+    function getLiquidationThreshold() public view returns (uint256) {
+        return liquidationParams.liquidationThreshold;
     }
 
 
@@ -293,7 +317,7 @@ contract Params {
             asset: _asset,
             minCollateralAmount: _minCollateralAmount,
             maxCollateralAmount: _maxCollateralAmount,
-            collateralFactor: _collateralFactor,
+            l2b: _collateralFactor,
             isSupported: _isSupported
         });
         collateralParams = _collateral;

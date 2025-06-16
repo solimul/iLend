@@ -33,6 +33,7 @@ contract Collateral is CollateralPool {
         CollateralWithdrawalRecord [] collateralWithdrawalRecord;
         bool isActive;
     }
+    // Mapping to store collateral depositors
 
   
     mapping (address => CollateralDepositor) private CollateralDepositors;
@@ -71,5 +72,23 @@ contract Collateral is CollateralPool {
         emit CollateralDeposited(depositor, amount, block.timestamp, collateralDepositor.totalAmount);
 
         return true;
+    }
+
+    function withdraw_collateral(address depositor, uint256 amount) external {
+        CollateralDepositor storage collateralDepositor = CollateralDepositors [depositor];
+        require(collateralDepositor.isActive, "Not an active depositor");
+        require(collateralDepositor.totalAmount >= amount, "Insufficient collateral");
+
+        collateralDepositor.totalAmount -= amount;
+        CollateralWithdrawalRecord memory withdrawalRecord = CollateralWithdrawalRecord({
+            amountWithdrawn: amount,
+            withdrawTime: block.timestamp
+        });
+        collateralDepositor.collateralWithdrawalRecord.push(withdrawalRecord);
+
+        // Transfer the collateral back to the depositor
+        require(eth_contract.transfer(depositor, amount), "Transfer failed");
+
+        emit CollateralDeposited(depositor, amount, block.timestamp, collateralDepositor.totalAmount);
     }
 }

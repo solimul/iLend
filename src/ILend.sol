@@ -3,12 +3,15 @@ pragma solidity ^0.8.29;
 import {Params} from "./Params.sol";
 import {Deposit} from "./Deposit.sol";
 import {Collateral} from "./Collateral.sol";
+import {Borrower} from "./Borrower.sol";
 
 contract iLend {
     Params public params;   
     address public owner;
     Deposit public depositContract;
     Collateral public collateralContract;
+    Borrower public borrowerContract;
+    
 
     // Modifiers
     modifier onlyOwner() {
@@ -29,6 +32,7 @@ contract iLend {
         setParams();
         depositContract = new Deposit(params);
         collateralContract = new Collateral(params);
+        borrowerContract = new Borrower(params, collateralContract.getPriceFeed(), depositContract);
     }
 
     function setParams() internal {
@@ -57,10 +61,19 @@ contract iLend {
     }
 
 
-    function deposit_collateral () external payable {
+    function deposit_collateral_borrow () external payable {
         // Call the deposit function in the Deposit contract
         collateralContract.get_eth_contract ().approve(address (collateralContract), msg.value);
         collateralContract.deposit_collateral (msg.sender, msg.value);
+        if (!borrowerContract.borrowerExists (msg.sender))
+            borrowerContract.addNewBorrower (msg.sender, 0, 0, 0, 0);
+        borrowerContract.lend (msg.sender, msg.value);
+    }
+
+    function withdraw_collateral (uint256 amount) external {
+        collateralContract.withdraw_collateral(msg.sender, amount);
+        
+
     }
 
 

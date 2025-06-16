@@ -5,6 +5,12 @@ import {NetworkConfig} from "./NetworkConfig.sol";
 
 contract DepositPool {
     event DepositDone(address indexed depositor, address indexed depositedTo, uint256 amount, uint256 poolBalance, uint256 timestamp);
+    event WithdrawnToBorrower(
+        address indexed borrower,
+        uint256 amount,
+        uint256 poolBalance,
+        uint256 timestamp
+    );
     address public owner;
     IERC20 public immutable usdc_contract;
     uint256 public poolBalance;
@@ -21,6 +27,11 @@ contract DepositPool {
         poolBalance = 0;
     }
 
+    function getUSDCContract () external view returns (IERC20) {
+        return usdc_contract;
+    }
+
+
     function deposit_usdc (address depositor, uint256 amount) public returns (bool) {
         bool success = usdc_contract.transferFrom(depositor, address(this), amount);
         if (!success)
@@ -28,6 +39,15 @@ contract DepositPool {
         require (success, "Transfer failed");
         poolBalance += amount;
         emit DepositDone (depositor, address (this), amount, poolBalance,  block.timestamp);
+        return true;
+    }
+
+    function withdraw_usdc_to_borrower(address borrower_address, uint256 amount) external onlyOwner returns (bool) {
+        require(usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
+        bool success = usdc_contract.transfer(borrower_address, amount);
+        require(success, "USDC transfer failed");
+        poolBalance -= amount;
+        emit WithdrawnToBorrower (borrower_address, amount, poolBalance, block.timestamp);
         return true;
     }
 }

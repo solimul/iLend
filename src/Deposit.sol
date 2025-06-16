@@ -98,6 +98,7 @@ contract Deposit is DepositPool {
         return depositors[depositor];
     }
 
+
     function deposit_liquidity (address depositor_address, uint256 amount, uint256 lockupPeriod) 
                 external depositCheck (amount,lockupPeriod) {
         bool success = deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
@@ -120,6 +121,12 @@ contract Deposit is DepositPool {
     function get_usdc_contract () public view returns (IERC20) {
         return usdc_contract;
     }
+
+    function getPoolBalance () public view returns (uint256) {
+        return poolBalance;
+    }
+
+    
 
     function depositor_withdraw_principal (address depositor_address, uint256 amount) external onlyDepositor (depositor_address) {
         Depositor storage depositor = depositors[msg.sender];
@@ -161,7 +168,7 @@ contract Deposit is DepositPool {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
                 uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
-                uint256 interest = (record.amount * params.getBaseRate() * timeDelta) / (365 days * 100);
+                uint256 interest = (record.amount * params.getBaseInterestRate() * timeDelta) / (365 days * 100);
                 totalInterestIncome += interest;
                 record.lastInterestWithdrawTimeForRecord = currentTime;
             }
@@ -179,7 +186,7 @@ contract Deposit is DepositPool {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
                 uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
-                uint256 interest = (record.amount * params.getBaseRate() * timeDelta) / (365 days * 100);
+                uint256 interest = (record.amount * params.getBaseInterestRate() * timeDelta) / (365 days * 100);
                 totalInterestIncome += interest;
             }
         }
