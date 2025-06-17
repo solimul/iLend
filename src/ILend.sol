@@ -4,6 +4,9 @@ import {Params} from "./Params.sol";
 import {Deposit} from "./Deposit.sol";
 import {Collateral} from "./Collateral.sol";
 import {Borrower} from "./Borrower.sol";
+import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
+import {PriceConverter} from "../src/helper/PriceConverter.sol";
+import {PricefeedManager} from "./oracle/PricefeedManager.sol";
 
 contract iLend {
     Params public params;   
@@ -11,7 +14,7 @@ contract iLend {
     Deposit public depositContract;
     Collateral public collateralContract;
     Borrower public borrowerContract;
-    
+    AggregatorV3Interface public priceFeed;
 
     // Modifiers
     modifier onlyOwner() {
@@ -30,9 +33,11 @@ contract iLend {
         params = new Params(owner);
         params.initialize (false, false, false);
         setParams();
+        PricefeedManager priceFeedManager = new PricefeedManager();
+        priceFeed = AggregatorV3Interface(priceFeedManager.getPriceFeedAddress());
         depositContract = new Deposit(params);
-        collateralContract = new Collateral(params);
-        borrowerContract = new Borrower(params, collateralContract.getPriceFeed(), depositContract);
+        collateralContract = new Collateral(params, priceFeed);
+        borrowerContract = new Borrower(params, priceFeed, depositContract);
     }
 
     function setParams() internal {

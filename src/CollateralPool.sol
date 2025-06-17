@@ -30,9 +30,8 @@ contract CollateralPool {
 
 
 
-    constructor() {
-        priceFeedManager = new PricefeedManager ();
-        priceFeed = AggregatorV3Interface(priceFeedManager.getPriceFeedAddress());
+    constructor(AggregatorV3Interface _priceFeed) {
+        priceFeed = _priceFeed;
         config = new NetworkConfig();
         eth_contract = IERC20(config.getETHContract());
     }
@@ -61,7 +60,7 @@ contract CollateralPool {
         return priceFeed;
     }
 
-    
+
     function getNetworkConfigAddress() external view returns (address) {
         return address(config);
     }

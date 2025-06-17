@@ -4,6 +4,7 @@ pragma solidity ^0.8.29;
 import {CollateralPool} from "./CollateralPool.sol";
 import {Params} from "./Params.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 
 contract Collateral is CollateralPool {
 
@@ -38,7 +39,7 @@ contract Collateral is CollateralPool {
   
     mapping (address => CollateralDepositor) private CollateralDepositors;
 
-    constructor(Params _params) CollateralPool () {
+    constructor(Params _params, AggregatorV3Interface _priceFeed) CollateralPool (_priceFeed) {
         params = _params;
     } 
 
