@@ -70,7 +70,7 @@ contract Borrower {
         BorrowerRecord storage borrowerRecord = borrowers[_borrowerAddress];
         
         for (uint256 i = 0; i < borrowerRecord.borrowCount; i++) {
-            if (!collateralPool.notBorrowedAgainstCollateral(_borrowerAddress, i)){ 
+            if (!collateralPool.isCollateralAvailableForBorrow(_borrowerAddress, i)){ 
                 uint256 collateralL2B = collateralPool.getCollateralL2BByRecord(_borrowerAddress, i);
                 uint256 collateralETH = collateralPool.getCollateralETHByRecord (_borrowerAddress, i);
                 uint256 collateralETHToUSDC = collateralETH.ethToUSD(priceFeed);
@@ -125,7 +125,7 @@ contract Borrower {
         
         require (_liquidityToBorrow <= depositPool.getPoolBalance(), "Not enough liquidity in the pool");
         require (depositPool.withdraw_usdc_to_borrower(_borrowerAddress, _liquidityToBorrow), "USDC withdrawal to borrower failed");
-        require (collateralPool.notBorrowedAgainstCollateral(_borrowerAddress, _correspondingColletaralID), "Collateral already borrowed against");
+        require (collateralPool.isCollateralAvailableForBorrow (_borrowerAddress, _correspondingColletaralID), "Collateral already borrowed against");
         
         BorrowerRecord storage borrower = borrowers[_borrowerAddress];
         borrower.totalBorrowed += _liquidityToBorrow;

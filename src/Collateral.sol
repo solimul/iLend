@@ -161,7 +161,7 @@ contract Collateral is CollateralPool {
         collateralDepositor.collateralDepositRecords[recordIndex].hasBorrowedAgainst = hasBorrowedAgainst;
     }
 
-    function notBorrowedAgainstCollateral(
+    function isCollateralAvailableForBorrow(
         address depositor,
         uint256 recordIndex
     ) external view 
