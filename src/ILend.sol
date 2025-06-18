@@ -37,7 +37,7 @@ contract iLend {
         priceFeed = AggregatorV3Interface(priceFeedManager.getPriceFeedAddress());
         depositContract = new Deposit(params);
         collateralContract = new Collateral(params, priceFeed);
-        borrowerContract = new Borrower(params, priceFeed, depositContract);
+        borrowerContract = new Borrower(params, priceFeed, address (depositContract));
     }
 
     function setParams() internal {

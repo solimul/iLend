@@ -40,10 +40,10 @@ contract Borrower {
         require(borrowerExists(_borrowerAddress), "Borrower does not exist");
         _;
     }
-    constructor (Params _params, AggregatorV3Interface _priceFeed, Deposit _depositContract) {
+    constructor (Params _params, AggregatorV3Interface _priceFeed, address _depositContractAddress) {
         // Initialize any necessary parameters or state variables
         params = _params;
-        depositPool = _depositContract;
+        depositPool = Deposit (_depositContractAddress);
         priceFeed = _priceFeed;
         usdcContract = depositPool.getUSDCContract();
     }
