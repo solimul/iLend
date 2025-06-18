@@ -41,7 +41,7 @@ contract iLend {
         // contracts, allowing them to access the necessary parameters and price feed data.
         depositContract = new Deposit(params);
         collateralContract = new Collateral(params, address (priceFeed));
-        borrowerContract = new Borrower(params, address(priceFeed), address (depositContract));
+        borrowerContract = new Borrower(params, address(priceFeed), address (depositContract), address (collateralContract));
     }
 
     function setParams() internal {
@@ -76,13 +76,12 @@ contract iLend {
         collateralContract.deposit_collateral (msg.sender, msg.value);
         if (!borrowerContract.borrowerExists (msg.sender))
             borrowerContract.addNewBorrower (msg.sender, 0, 0, 0, 0);
-        borrowerContract.lend (msg.sender, msg.value);
+        borrowerContract.lendForCollateral (msg.sender, collateralContract.getCollateralDepositorsDepositCount(msg.sender)-1);
+        collateralContract.updateBorrowedAgainstCollateral (msg.sender, collateralContract.getCollateralDepositorsDepositCount(msg.sender)-1, true);
     }
 
     function withdraw_collateral (uint256 amount) external {
-        collateralContract.withdraw_collateral(msg.sender, amount);
-        
-
+        collateralContract.withdraw_collateral(msg.sender, amount);  
     }
 
 
