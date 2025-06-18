@@ -143,4 +143,52 @@ contract Borrower {
             block.timestamp
         );
     }
+
+    function getBorrowedAmount (address _borrowerAddress, uint256 _correspondingColletaralID) 
+        external 
+        view 
+        onlyExistingBorrower(_borrowerAddress)         
+        returns (uint256) 
+    {
+        return borrowers[_borrowerAddress].borrows[_correspondingColletaralID].amount;    
+    }
+
+    function getBorrowedInterestRate (address _borrowerAddress, uint256 _correspondingColletaralID) 
+        external 
+        view 
+        onlyExistingBorrower(_borrowerAddress)         
+        returns (uint256) 
+    {
+        return borrowers[_borrowerAddress].borrows[_correspondingColletaralID].interestRate;    
+    }
+
+    function calculateInterestPayable (
+        address _borrowerAddress,
+        uint256 _correspondingColletaralID
+    ) 
+        external 
+        view 
+        onlyExistingBorrower(_borrowerAddress)         
+        returns (uint256) 
+    {
+        BorrowRecord storage borrowRecord = borrowers[_borrowerAddress].borrows[_correspondingColletaralID];
+        uint256 timeElapsed = block.timestamp - borrowRecord.borrowTime;
+        uint256 interestPayable = (borrowRecord.amount * borrowRecord.interestRate * timeElapsed) / (365 days * 100);
+        return interestPayable;
+    }
+
+    function calculateProtocolRewardByReserveFactor (
+        address _borrowerAddress,
+        uint256 _correspondingColletaralID
+    ) 
+        external 
+        view 
+        onlyExistingBorrower(_borrowerAddress)         
+        returns (uint256) 
+    {
+        BorrowRecord storage borrowRecord = borrowers[_borrowerAddress].borrows[_correspondingColletaralID];
+        uint256 timeElapsed = block.timestamp - borrowRecord.borrowTime;
+        uint256 protocolReward = (borrowRecord.amount * params.getReserveFactor() * timeElapsed) / (365 days * 100);
+        return protocolReward;
+    }
 }

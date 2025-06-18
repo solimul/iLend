@@ -28,6 +28,8 @@ contract CollateralPool {
     IERC20 public immutable eth_contract;
     uint256 public poolBalance;
 
+    
+
 
 
     constructor(address _priceFeedAddress) {

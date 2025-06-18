@@ -7,6 +7,7 @@ import {Borrower} from "./Borrower.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "../src/helper/PriceConverter.sol";
 import {PricefeedManager} from "./oracle/PricefeedManager.sol";
+import {CollateralView} from "./shared/CollateralView.sol";
 
 contract iLend {
     Params public params;   
@@ -80,9 +81,15 @@ contract iLend {
         collateralContract.updateBorrowedAgainstCollateral (msg.sender, collateralContract.getCollateralDepositorsDepositCount(msg.sender)-1, true);
     }
 
-    function withdraw_collateral (uint256 amount) external {
-        collateralContract.withdraw_collateral(msg.sender, amount);  
+    function view_my_collateral_borrow_info () external returns (CollateralView [] memory) {
+        // Call the view function in the Collateral contract
+        collateralContract.setBorrowerContract(address (borrowerContract));
+        return collateralContract.getCollateralDepositorInfo(msg.sender);
     }
+
+    // function repay_loan () external payable{
+    //     borrowerContract.repay_loan (msg.sender, msg.value);      
+    // }
 
 
 }

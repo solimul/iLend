@@ -4,6 +4,8 @@ pragma solidity ^0.8.29;
 import {CollateralPool} from "./CollateralPool.sol";
 import {Params} from "./Params.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {Borrower} from "./Borrower.sol";
+import {CollateralView} from "./shared/CollateralView.sol";
 
 contract Collateral is CollateralPool {
 
@@ -16,7 +18,7 @@ contract Collateral is CollateralPool {
     );
 
     Params private params;
-
+    Borrower private borrowerContract;
 
     struct CollateralWithdrawalRecord {
         uint256 amountWithdrawn;
@@ -39,6 +41,22 @@ contract Collateral is CollateralPool {
         bool isActive;
         uint256 depositCounts; // To keep track of the number of deposits
     }
+
+    // struct CollateralView {
+    //     uint256 id;
+    //     uint256 depositAmount;
+    //     uint256 depositDate; 
+    //     bool hasBorrowedAgainst;
+    //     uint256 l2b;
+    //     uint256 totalUSDCBorrowed;
+    //     uint256 totalCollateralDepost;
+    //     uint256 baseInterestRate;
+    //     uint256 interstPayable;
+    //     uint256 protoclRewardByReserveFactor;
+    //     uint256 reserveFactor;
+    //     uint256 totalPayable;
+    // }
+
     // Mapping to store collateral depositors
 
   
@@ -46,6 +64,7 @@ contract Collateral is CollateralPool {
 
     constructor(Params _params, address _priceFeedAddress) CollateralPool (_priceFeedAddress) {
         params = _params;
+        //borrowerContract = Borrower(_borrowerContractAddress);
     } 
 
     modifier depositCheck (uint256 amount) {
@@ -92,23 +111,23 @@ contract Collateral is CollateralPool {
         return true;
     }
 
-    function withdraw_collateral(address depositor, uint256 amount) external {
-        CollateralDepositor storage collateralDepositor = collateralDepositors [depositor];
-        require(collateralDepositor.isActive, "Not an active depositor");
-        require(collateralDepositor.totalAmount >= amount, "Insufficient collateral");
+    // function withdraw_collateral(address depositor, uint256 amount) external {
+    //     CollateralDepositor storage collateralDepositor = collateralDepositors [depositor];
+    //     require(collateralDepositor.isActive, "Not an active depositor");
+    //     require(collateralDepositor.totalAmount >= amount, "Insufficient collateral");
 
-        collateralDepositor.totalAmount -= amount;
-        CollateralWithdrawalRecord memory withdrawalRecord = CollateralWithdrawalRecord({
-            amountWithdrawn: amount,
-            withdrawTime: block.timestamp
-        });
-        collateralDepositor.collateralWithdrawalRecord.push(withdrawalRecord);
+    //     collateralDepositor.totalAmount -= amount;
+    //     CollateralWithdrawalRecord memory withdrawalRecord = CollateralWithdrawalRecord({
+    //         amountWithdrawn: amount,
+    //         withdrawTime: block.timestamp
+    //     });
+    //     collateralDepositor.collateralWithdrawalRecord.push(withdrawalRecord);
 
-        // Transfer the collateral back to the depositor
-        require(eth_contract.transfer(depositor, amount), "Transfer failed");
+    //     // Transfer the collateral back to the depositor
+    //     require(eth_contract.transfer(depositor, amount), "Transfer failed");
 
-        //emit CollateralDeposited(depositor, amount, block.timestamp, collateralDepositor.totalAmount);
-    }
+    //     //emit CollateralDeposited(depositor, amount, block.timestamp, collateralDepositor.totalAmount);
+    // }
 
     function updateCollateralDepositor(
         address depositor,
@@ -171,4 +190,37 @@ contract Collateral is CollateralPool {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         return !collateralDepositor.collateralDepositRecords[recordIndex].hasBorrowedAgainst;
     }    
+
+    function getCollateralDepositorInfo (
+        address depositor
+    ) external view returns (CollateralView [] memory) {
+        CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
+        CollateralView [] memory collateralViews = new CollateralView[](collateralDepositor.depositCounts);
+        for (uint256 i = 0; i < collateralDepositor.depositCounts; i++) {
+            CollateralDepositRecord storage record = collateralDepositor.collateralDepositRecords[i];
+            uint256 iPayable = borrowerContract.calculateInterestPayable (depositor, i);
+            uint256 protocolReward = borrowerContract.calculateProtocolRewardByReserveFactor(depositor, i);
+
+            collateralViews[i] = CollateralView({
+                id: i,
+                depositAmount: record.amount,
+                depositDate: record.depositTime,
+                hasBorrowedAgainst: record.hasBorrowedAgainst,
+                l2b: record.l2b,
+                totalUSDCBorrowed: borrowerContract.getBorrowedAmount (depositor, i),
+                totalCollateralDepost: collateralDepositor.totalAmount,
+                baseInterestRate: borrowerContract.getBorrowedInterestRate (depositor, i),
+                interstPayable: iPayable, 
+                protoclRewardByReserveFactor: protocolReward, // Placeholder, needs to be calculated based on reserve factor logic
+                reserveFactor: params.getReserveFactor(),
+                totalPayable: iPayable + protocolReward // Placeholder, needs to be calculated based on total payable logic
+            });
+        }
+        return collateralViews;
+    }
+
+    function setBorrowerContract(address _borrowerContractAddress) external {
+        require(_borrowerContractAddress != address(0), "Invalid borrower contract address");
+        borrowerContract = Borrower(_borrowerContractAddress);
+    }
 }
