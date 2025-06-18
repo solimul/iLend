@@ -35,9 +35,13 @@ contract iLend {
         setParams();
         PricefeedManager priceFeedManager = new PricefeedManager();
         priceFeed = AggregatorV3Interface(priceFeedManager.getPriceFeedAddress());
+        // Dependency injection for contracts: Factory pattern
+        // This allows for easier testing and contract upgrades
+        // The Deposit, Collateral, and Borrower contracts are initialized with the Params and PriceFeed
+        // contracts, allowing them to access the necessary parameters and price feed data.
         depositContract = new Deposit(params);
-        collateralContract = new Collateral(params, priceFeed);
-        borrowerContract = new Borrower(params, priceFeed, address (depositContract));
+        collateralContract = new Collateral(params, address (priceFeed));
+        borrowerContract = new Borrower(params, address(priceFeed), address (depositContract));
     }
 
     function setParams() internal {
