@@ -91,7 +91,7 @@ contract iLend {
     }
 
     function repay_loan_interest_withdraw_collateral (uint256 _loanID) external payable{
-        //depositContract.receive_repayment (msg.sender, _loanID, msg.value);
+        borrowerContract.repay_loan_principal_interest_protocol_reward (msg.sender, _loanID, msg.value);
         //depositContract.receive_interest (msg.sender, msg.value);
         //protocolRewardContract.receive_protocol_reward (msg.sender, msg.value);
     }

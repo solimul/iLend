@@ -75,7 +75,7 @@ contract Deposit is DepositPool {
         // Initialize the contract if needed
     }
     
-    modifier onlyDepositor(address depositor_address) {
+    modifier existingDepositor (address depositor_address) {
         require (depositors[depositor_address].isActive, "Not a depositor");
         _;
     }
@@ -147,7 +147,7 @@ contract Deposit is DepositPool {
 
 
 
-    function depositor_withdraw_principal (address depositor_address, uint256 amount) external onlyDepositor (depositor_address) {
+    function depositor_withdraw_principal (address depositor_address, uint256 amount) external existingDepositor (depositor_address) {
         Depositor storage depositor = depositors[msg.sender];
         require(depositor.totalAmount >= amount, "Insufficient balance");
         require (usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
@@ -212,7 +212,7 @@ contract Deposit is DepositPool {
         return totalInterestIncome;
     }
 
-    function depositor_withdraw_interest (address depositor_address, uint256 amount) public onlyDepositor (depositor_address) {
+    function depositor_withdraw_interest (address depositor_address, uint256 amount) public existingDepositor (depositor_address) {
         Depositor storage depositor = depositors[msg.sender];
         uint256 totalInterestIncome = calculate_depositor_interest_income (depositor_address);
         require(totalInterestIncome >= amount, "Insufficient interest income");
@@ -311,4 +311,24 @@ contract Deposit is DepositPool {
         return  lenders;
     }
 
+    function get_deposit_record (address _depositorAddress, uint256 id) internal 
+            existingDepositor (_depositorAddress) view returns (DepositRecord storage) {
+        Depositor storage depositor = depositors [_depositorAddress];
+        DepositRecord storage record = depositor.deposits [id];   
+        return record;
+    }
+
+    function get_lentout_amount (address _depositorAddress, uint256 id) internal  view returns (uint256) {
+        DepositRecord storage record = get_deposit_record (_depositorAddress, id);
+        return record.amount - record.availableToLend;
+    }
+
+    function receive_repayment_lentout_principal (address _borrowerAddress, address _depositorAddress, uint256 id) public returns (uint256) {
+        uint256 lentOutAmount = get_lentout_amount (_depositorAddress, id);
+        require (usdc_contract.balanceOf(address(this)) >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
+        DepositRecord storage record = get_deposit_record(_depositorAddress, id);
+        require (usdc_contract.transferFrom (_borrowerAddress, address (this), lentOutAmount), "Cannot receive from the Borrower");
+        record.availableToLend += lentOutAmount;
+        return lentOutAmount;
+    }
 }
