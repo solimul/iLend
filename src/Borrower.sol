@@ -7,6 +7,7 @@ import {Deposit} from "./Deposit.sol";
 import {Collateral} from "./Collateral.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Lender} from "./shared/SharedStructures.sol";
 
 contract Borrower {
     using PriceConverter for uint256;
@@ -32,6 +33,7 @@ contract Borrower {
         uint256 borrowTime;
         uint256 interestRate;
         uint256 l2b; 
+        Lender [] lenders;
     }
 
 
@@ -56,6 +58,24 @@ contract Borrower {
         require(borrowerExists(_borrowerAddress), "Borrower does not exist");
         _;
     }
+
+    modifier onlyActiveLoan(address _borrowerAddress, uint256 _correspondingColletaralID) {
+        require(borrowers[_borrowerAddress].borrows[_correspondingColletaralID].amount > 0, "No active loan for this collateral");
+        _;
+    }
+
+    modifier enoughRepayment (address _borrowerAddress, uint256 _correspondingColletaralID, uint256 _repaymentAmount) {
+        require(_repaymentAmount > 0, "Repayment amount must be greater than zero");
+        uint256 borrowedAmount = borrowers[_borrowerAddress].borrows[_correspondingColletaralID].amount;
+        require(_repaymentAmount <= borrowedAmount, "Repayment amount exceeds borrowed amount");
+        uint256 interestRate = borrowers[_borrowerAddress].borrows[_correspondingColletaralID].interestRate;
+        uint256 interestPayable = (borrowedAmount * interestRate * (block.timestamp - borrowers[_borrowerAddress].borrows[_correspondingColletaralID].borrowTime)) / (365 days * 100);
+        require(_repaymentAmount >= interestPayable, "Repayment amount must cover interest payable");
+        uint256 protocolReward = (borrowedAmount * params.getReserveFactor() * (block.timestamp - borrowers[_borrowerAddress].borrows[_correspondingColletaralID].borrowTime)) / (365 days * 100);
+        require(_repaymentAmount >= interestPayable + protocolReward, "Repayment amount must cover interest and protocol reward");
+        _;
+    }
+
     constructor (Params _params, address _priceFeedAddress, address _depositContractAddress, address _collateralContractAddress) {
         // Initialize any necessary parameters or state variables
         params = _params;
@@ -124,17 +144,23 @@ contract Borrower {
         uint256 _liquidityToBorrow = calculateLiquidityToBorrowForCollateral (_borrowerAddress, _correspondingColletaralID); 
         
         require (_liquidityToBorrow <= depositPool.getPoolBalance(), "Not enough liquidity in the pool");
-        require (depositPool.withdraw_usdc_to_borrower(_borrowerAddress, _liquidityToBorrow), "USDC withdrawal to borrower failed");
         require (collateralPool.isCollateralAvailableForBorrow (_borrowerAddress, _correspondingColletaralID), "Collateral already borrowed against");
         
+        Lender [] memory _lenders =  depositPool.lendToBorrower (_borrowerAddress, _liquidityToBorrow);
         BorrowerRecord storage borrower = borrowers[_borrowerAddress];
         borrower.totalBorrowed += _liquidityToBorrow;
-        borrower.borrows [_correspondingColletaralID] = BorrowRecord({
-            amount: _liquidityToBorrow,
-            borrowTime: block.timestamp,
-            interestRate: params.getBaseInterestRate(),
-            l2b: collateralPool.getCollateralL2BByRecord(_borrowerAddress, _correspondingColletaralID)
-        }); 
+        // Create the borrow record without assigning `lenders` yet
+        BorrowRecord storage record = borrower.borrows[_correspondingColletaralID];
+        record.amount = _liquidityToBorrow;
+        record.borrowTime = block.timestamp;
+        record.interestRate = params.getBaseInterestRate();
+        record.l2b = collateralPool.getCollateralL2BByRecord(_borrowerAddress, _correspondingColletaralID);
+        
+        // Manually copy each Lender from _lenders (memory) to record.lenders (storage)
+        for (uint256 i = 0; i < _lenders.length; i++) 
+            record.lenders.push(_lenders[i]);
+        
+        
         emit LendingDone(
             _borrowerAddress,
             _correspondingColletaralID,
@@ -190,5 +216,18 @@ contract Borrower {
         uint256 timeElapsed = block.timestamp - borrowRecord.borrowTime;
         uint256 protocolReward = (borrowRecord.amount * params.getReserveFactor() * timeElapsed) / (365 days * 100);
         return protocolReward;
+    }
+
+    function repay_loan_interest_withdraw_collateral (
+        address _borrowerAddress,
+        uint256 _correspondingColletaralID,
+        uint256 _repaymentAmount
+    ) 
+        external 
+        onlyExistingBorrower(_borrowerAddress)
+        onlyActiveLoan(_borrowerAddress, _correspondingColletaralID) 
+        enoughRepayment (_borrowerAddress, _correspondingColletaralID, _repaymentAmount)
+    {
+        
     }
 }

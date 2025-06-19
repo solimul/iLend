@@ -2,7 +2,7 @@
 pragma solidity ^0.8.29;
 
 struct CollateralView {
-    uint256 id;
+    uint256 loanID;
     uint256 depositAmount;
     uint256 depositDate;
     bool hasBorrowedAgainst;
@@ -14,4 +14,9 @@ struct CollateralView {
     uint256 protoclRewardByReserveFactor;
     uint256 reserveFactor;
     uint256 totalPayable;
+}
+
+struct Lender {
+   address lender;
+   uint256 [] depositAccountIDs;
 }

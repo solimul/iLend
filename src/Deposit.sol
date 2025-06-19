@@ -5,6 +5,7 @@ import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Params} from "./Params.sol";
 import {DepositPool} from "./DepositPool.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Lender} from "./shared/SharedStructures.sol";
 
 contract Deposit is DepositPool {
 
@@ -44,22 +45,33 @@ contract Deposit is DepositPool {
         uint256 depositTime;
         uint256 lockupPeriod;
         uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
+        uint256 availableToLend;
     }
 
     struct Depositor {
         uint256 totalAmount;
-        DepositRecord[] deposits;
+        mapping (uint256 => DepositRecord) deposits; // Maps deposit index to DepositRecord
         InterestWithdrawalRecord [] interestWithdrawalRecords;
         PrincipalWithdrawalRecord [] principalWithdrawalRecords;
         bool isActive;
+        uint256 depositCounts; // To keep track of the number of deposits
     }
 
+ 
+
+ 
+
     Params public params;
+
     
     mapping (address => Depositor) private depositors;
+    address[] private depositorAddresses;
+    uint256 depositorCounts;
+
 
     constructor(Params _params) DepositPool(msg.sender) {
         params = _params;
+        depositorCounts = 0;
         // Initialize the contract if needed
     }
     
@@ -94,9 +106,9 @@ contract Deposit is DepositPool {
             _;
     }
 
-    function getDepositorInfo(address depositor) external view returns (Depositor memory) {
-        return depositors[depositor];
-    }
+    // function getDepositorInfo(address depositor) external view returns (Depositor memory) {
+    //     return depositors[depositor];
+    // }
 
 
     function deposit_liquidity (address depositor_address, uint256 amount, uint256 lockupPeriod) 
@@ -109,13 +121,20 @@ contract Deposit is DepositPool {
         Depositor storage depositor = depositors[depositor_address];
         depositor.totalAmount += amount;
         uint256 currentTime = block.timestamp;
-        depositor.deposits.push(DepositRecord({
+        depositor.deposits[depositor.depositCounts] = DepositRecord({
             amount: amount,
             depositTime: currentTime,
             lockupPeriod: lockupPeriod,
-            lastInterestWithdrawTimeForRecord: currentTime
-        }));
+            lastInterestWithdrawTimeForRecord: currentTime, // Initialize to current time
+            availableToLend: amount // Initially, the entire deposit is available to lend
+        });
         depositor.isActive = true;
+        if (depositor.depositCounts == 0) {
+            // If this is the first deposit, add the depositor to the list
+            depositorAddresses.push(depositor_address);
+            depositorCounts++;
+        }
+        depositor.depositCounts += 1;
     }
 
     function get_usdc_contract () public view returns (IERC20) {
@@ -126,7 +145,7 @@ contract Deposit is DepositPool {
         return poolBalance;
     }
 
-    
+
 
     function depositor_withdraw_principal (address depositor_address, uint256 amount) external onlyDepositor (depositor_address) {
         Depositor storage depositor = depositors[msg.sender];
@@ -134,7 +153,7 @@ contract Deposit is DepositPool {
         require (usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
 
         uint256 totalWithdrawable = 0;
-        for (uint256 i = 0; i < depositor.deposits.length; i++) {
+        for (uint256 i = 0; i < depositor.depositCounts; i++) {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
                 totalWithdrawable += record.amount;
@@ -164,7 +183,7 @@ contract Deposit is DepositPool {
         Depositor storage depositor = depositors[depositor_address];
         require(depositor.isActive, "Depositor not active");
 
-        for (uint256 i = 0; i < depositor.deposits.length; i++) {
+        for (uint256 i = 0; i < depositor.depositCounts; i++) {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
                 uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
@@ -182,7 +201,7 @@ contract Deposit is DepositPool {
         Depositor storage depositor = depositors[depositor_address];
         require(depositor.isActive, "Depositor not active");
 
-        for (uint256 i = 0; i < depositor.deposits.length; i++) {
+        for (uint256 i = 0; i < depositor.depositCounts; i++) {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
                 uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
@@ -210,4 +229,86 @@ contract Deposit is DepositPool {
         }));
         emit DepositorInterestWithDrawalDone (address(this), depositor_address, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
+
+   function find_and_update_matching_depositors(uint256 amount)
+    internal
+    returns (Lender[] memory) {
+        Lender[] memory tempLenders = new Lender[](depositorAddresses.length); 
+        Lender memory lender;
+
+        uint256 fund = 0;
+        bool completed = false;
+        uint256 matchedLendersCount = 0;
+
+        for (uint256 i = 0; i < depositorAddresses.length; i++) {
+            Depositor storage depositor = depositors[depositorAddresses[i]];
+            uint256 nDeposits = 0;
+            uint256[] memory tepmIDs = new uint256[](depositor.depositCounts);
+
+            for (uint256 j = 0; j < depositor.depositCounts; j++) {
+                DepositRecord storage dRecord = depositor.deposits[j];
+                uint256 remaining = amount - fund;
+
+                if (remaining == 0) {
+                    completed = true;
+                    break;
+                }
+
+                if (dRecord.availableToLend > 0) {
+                    tepmIDs[nDeposits++] = j;
+
+                    uint256 lentAmount = remaining > dRecord.availableToLend
+                        ? dRecord.availableToLend
+                        : remaining;
+
+                    fund += lentAmount;
+                    dRecord.availableToLend -= lentAmount;
+
+                    if (fund >= amount) {
+                        completed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (nDeposits > 0) {
+                uint256[] memory ids = new uint256[](nDeposits);
+                for (uint256 k = 0; k < nDeposits; k++) {
+                    ids[k] = tepmIDs[k];
+                }
+
+                lender = Lender({
+                    lender: depositorAddresses[i],
+                    depositAccountIDs: ids
+                });
+
+                tempLenders[matchedLendersCount++] = lender;
+            }
+
+            if (completed) {
+                break;
+            }
+        }
+
+        Lender[] memory lenders = new Lender[](matchedLendersCount);
+        for (uint256 i = 0; i < matchedLendersCount; i++) {
+            lenders[i] = tempLenders[i];
+        }
+
+        return lenders;
+    }
+
+
+
+    function lendToBorrower (address borrower_address, uint256 amount) external onlyOwner returns (Lender [] memory){
+        require(usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
+        Lender [] memory lenders;
+        lenders = find_and_update_matching_depositors (amount);
+        bool success = usdc_contract.transfer(borrower_address, amount);
+        require(success, "USDC transfer failed");
+        poolBalance -= amount;
+        emit WithdrawnToBorrower (borrower_address, amount, poolBalance, block.timestamp);
+        return  lenders;
+    }
+
 }

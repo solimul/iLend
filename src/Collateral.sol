@@ -5,7 +5,7 @@ import {CollateralPool} from "./CollateralPool.sol";
 import {Params} from "./Params.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Borrower} from "./Borrower.sol";
-import {CollateralView} from "./shared/CollateralView.sol";
+import {CollateralView} from "./shared/SharedStructures.sol";
 
 contract Collateral is CollateralPool {
 
@@ -202,7 +202,7 @@ contract Collateral is CollateralPool {
             uint256 protocolReward = borrowerContract.calculateProtocolRewardByReserveFactor(depositor, i);
 
             collateralViews[i] = CollateralView({
-                id: i,
+                loanID: i,
                 depositAmount: record.amount,
                 depositDate: record.depositTime,
                 hasBorrowedAgainst: record.hasBorrowedAgainst,

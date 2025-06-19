@@ -7,7 +7,8 @@ import {Borrower} from "./Borrower.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "../src/helper/PriceConverter.sol";
 import {PricefeedManager} from "./oracle/PricefeedManager.sol";
-import {CollateralView} from "./shared/CollateralView.sol";
+import {CollateralView} from "./shared/SharedStructures.sol";
+import {ProtocolReward} from "./ProtocolReward.sol";
 
 contract iLend {
     Params public params;   
@@ -15,6 +16,7 @@ contract iLend {
     Deposit public depositContract;
     Collateral public collateralContract;
     Borrower public borrowerContract;
+    ProtocolReward public protocolRewardContract;
     AggregatorV3Interface public priceFeed;
 
     // Modifiers
@@ -43,6 +45,7 @@ contract iLend {
         depositContract = new Deposit(params);
         collateralContract = new Collateral(params, address (priceFeed));
         borrowerContract = new Borrower(params, address(priceFeed), address (depositContract), address (collateralContract));
+        protocolRewardContract = new ProtocolReward(depositContract.get_usdc_contract(), owner);
     }
 
     function setParams() internal {
@@ -87,9 +90,11 @@ contract iLend {
         return collateralContract.getCollateralDepositorInfo(msg.sender);
     }
 
-    // function repay_loan () external payable{
-    //     borrowerContract.repay_loan (msg.sender, msg.value);      
-    // }
+    function repay_loan_interest_withdraw_collateral (uint256 _loanID) external payable{
+        //depositContract.receive_repayment (msg.sender, _loanID, msg.value);
+        //depositContract.receive_interest (msg.sender, msg.value);
+        //protocolRewardContract.receive_protocol_reward (msg.sender, msg.value);
+    }
 
 
 }
