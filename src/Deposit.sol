@@ -73,7 +73,7 @@ contract Deposit is DepositPool {
     uint256 depositorCounts;
 
 
-    constructor(Params _params) DepositPool(msg.sender) {
+    constructor(Params _params, IERC20 usdcContract) DepositPool(msg.sender, usdcContract) {
         params = _params;
         depositorCounts = 0;
         // Initialize the contract if needed
@@ -342,13 +342,21 @@ contract Deposit is DepositPool {
         return lentOutAmount;
     }
 
-    function receive_interest_for_lender_deposit_record (address _borrowerAddress, address _depositorAddress, uint256 depositID, uint256 totalInterest, uint256 totalLent ) public returns (uint256) {
+    function receive_interest_for_lender_deposit_record 
+    (address _borrowerAddress, 
+    uint256 _loanID, 
+    address _depositorAddress, 
+    uint256 depositID, 
+    uint256 totalInterest, 
+    uint256 totalLent ) 
+    public returns (uint256) {
         uint256 lentFromThisDepositAccount = get_lentout_amount (_depositorAddress, depositID);
         require (usdc_contract.balanceOf(address(_borrowerAddress)) >= lentFromThisDepositAccount, "Borrower does not have enough USDC for interest repayment.");        
         DepositRecord storage record = get_deposit_record(_depositorAddress, depositID);
         uint256 interestShare = (lentFromThisDepositAccount * totalInterest) / totalLent;
         record.interestEarned.push (InterestEarned({
             from: _borrowerAddress,
+            loanID: _loanID,
             interestReceived:  interestShare,
             dateReceived: block.timestamp
         }));

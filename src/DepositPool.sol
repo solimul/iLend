@@ -20,14 +20,13 @@ contract DepositPool {
         _;
     }
 
-    constructor(address _owner) {
+    constructor(address _owner, IERC20 _usdc_contract) {
         owner = _owner;
-        NetworkConfig config = new NetworkConfig();
-        usdc_contract = IERC20(config.getUSDCContract());
+        usdc_contract = _usdc_contract;
         poolBalance = 0;
     }
 
-    function getUSDCContract () external view returns (IERC20) {
+    function getUSDCContractAddress () external view returns (IERC20) {
         return usdc_contract;
     }
 
@@ -39,15 +38,6 @@ contract DepositPool {
         require (success, "Transfer failed");
         poolBalance += amount;
         emit DepositDone (depositor, address (this), amount, poolBalance,  block.timestamp);
-        return true;
-    }
-
-    function withdraw_usdc_to_borrower(address borrower_address, uint256 amount) external onlyOwner returns (bool) {
-        require(usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
-        bool success = usdc_contract.transfer(borrower_address, amount);
-        require(success, "USDC transfer failed");
-        poolBalance -= amount;
-        emit WithdrawnToBorrower (borrower_address, amount, poolBalance, block.timestamp);
         return true;
     }
 }

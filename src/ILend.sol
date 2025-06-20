@@ -8,7 +8,11 @@ import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface
 import {PriceConverter} from "../src/helper/PriceConverter.sol";
 import {PricefeedManager} from "./oracle/PricefeedManager.sol";
 import {CollateralView} from "./shared/SharedStructures.sol";
-import {ProtocolReward} from "./ProtocolReward.sol";
+import {Treasury} from "./Treasury.sol";
+import {NetworkConfig} from "./NetworkConfig.sol";
+
+import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+ 
 
 contract iLend {
     Params public params;   
@@ -16,9 +20,10 @@ contract iLend {
     Deposit public depositContract;
     Collateral public collateralContract;
     Borrower public borrowerContract;
-    ProtocolReward public protocolRewardContract;
+    Treasury public treasuryContract;
     AggregatorV3Interface public priceFeed;
-
+    IERC20 usdcContract;
+    
     // Modifiers
     modifier onlyOwner() {
         require(msg.sender == owner, "Not authorized");
@@ -38,14 +43,21 @@ contract iLend {
         setParams();
         PricefeedManager priceFeedManager = new PricefeedManager();
         priceFeed = AggregatorV3Interface(priceFeedManager.getPriceFeedAddress());
+        NetworkConfig config = new NetworkConfig();
+        usdcContract = IERC20(config.getUSDCContractAddress());
+        treasuryContract = new Treasury (msg.sender);
         // Dependency injection for contracts: Factory pattern
         // This allows for easier testing and contract upgrades
         // The Deposit, Collateral, and Borrower contracts are initialized with the Params and PriceFeed
         // contracts, allowing them to access the necessary parameters and price feed data.
-        depositContract = new Deposit(params);
+        depositContract = new Deposit(params, usdcContract);
         collateralContract = new Collateral(params, address (priceFeed));
-        borrowerContract = new Borrower(params, address(priceFeed), address (depositContract), address (collateralContract));
-        protocolRewardContract = new ProtocolReward(depositContract.get_usdc_contract(), owner);
+        borrowerContract = new Borrower(params, 
+                    address(priceFeed), 
+                    address (depositContract), 
+                    address (collateralContract), 
+                    address (treasuryContract), 
+                    usdcContract);
     }
 
     function setParams() internal {

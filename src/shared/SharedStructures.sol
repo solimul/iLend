@@ -23,7 +23,22 @@ struct Lender {
 }
 
 struct InterestEarned {
+    uint256 loanID;
     address from;
     uint256 interestReceived;
     uint256 dateReceived;
 }
+
+struct ProtocolRewardInfo {
+    uint256 amount;
+    address borrowerAddress;
+    uint256 loanID;
+    uint256 dateReceived;
+}
+
+struct MiscFundRecievedInfo {
+    uint256 amount;
+    string context;
+    uint256 dateReceived;
+}
+

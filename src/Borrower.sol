@@ -8,6 +8,8 @@ import {Collateral} from "./Collateral.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Lender, InterestEarned} from "./shared/SharedStructures.sol";
+import {ProtocolReward} from "./ProtocolReward.sol";
+import {Treasury} from "./Treasury.sol";
 
 contract Borrower {
     using PriceConverter for uint256;
@@ -59,6 +61,7 @@ contract Borrower {
     AggregatorV3Interface private priceFeed;
     Deposit private depositPool;
     Collateral private collateralPool;
+    Treasury treasury;
     
     IERC20 private usdcContract;
 
@@ -84,13 +87,20 @@ contract Borrower {
         _;
     }
 
-    constructor (Params _params, address _priceFeedAddress, address _depositContractAddress, address _collateralContractAddress) {
+    constructor (Params _params, 
+            address _priceFeedAddress, 
+            address _depositContractAddress, 
+            address _collateralContractAddress,
+            address _treasuryContractAddress,
+            IERC20 _usdcContract) {
         // Initialize any necessary parameters or state variables
         params = _params;
         depositPool = Deposit (_depositContractAddress);
         collateralPool = Collateral (_collateralContractAddress);
         priceFeed = AggregatorV3Interface (_priceFeedAddress);
-        usdcContract = depositPool.getUSDCContract();
+        usdcContract = _usdcContract;
+        //payable, because Treasury implements fallback
+        treasury = Treasury (payable (_treasuryContractAddress));
     }
 
     function calculateLiquidityToBorrow (address _borrowerAddress) public view onlyExistingBorrower (_borrowerAddress) returns (uint256)  {
@@ -265,13 +275,14 @@ contract Borrower {
 
     function pay_interest_deposit(
     address borrower,
+    uint256 loanID,
     address lender,
     uint256 depositID,
     uint256 interestAmount,
     uint256 principalAmount
     ) internal returns (uint256) {
         return depositPool.receive_interest_for_lender_deposit_record(
-            borrower, lender, depositID, interestAmount, principalAmount
+            borrower, loanID, lender, depositID, interestAmount, principalAmount
         );
     }
 
@@ -286,14 +297,26 @@ contract Borrower {
             Lender memory _lender = r.lenders [i]; 
             address lAddress = _lender.lender; 
             for (uint256 j=0; j < _lender.depositAccountIDs.length; j++){
-                uint256 id = _lender.depositAccountIDs [j];
+                uint256 depositID = _lender.depositAccountIDs [j];
                 interestToThisLender += pay_interest_deposit (
-                        _borrowersAddress, lAddress, id, interestAmount, principalAmount);
+                        _borrowersAddress, loanID, lAddress, depositID, interestAmount, principalAmount);
             }
             remaining -= interestToThisLender;
         }
         require (remaining == 0, "not all interest payment was successful");
 
+    }
+
+    function pay_protocol_reward (address _borrowersAddress, uint256 loanID, uint256 amount) 
+    internal {
+        treasury.reciveERC20Deposit (usdcContract, _borrowersAddress, amount);
+        treasury.updateProtocolRewardRecord (amount, _borrowersAddress, loanID);
+    }
+
+    function pay_remaining_to_treasury (address _borrowersAddress, uint256 amount, string memory context) 
+    internal {
+        treasury.reciveERC20Deposit (usdcContract, _borrowersAddress, amount);
+        treasury.updateMiscRecievedRecord (amount, context);
     }
 
     function repay_loan_principal_interest_protocol_reward (address _borrowersAddress, uint256 loanID, uint256 amount) 
@@ -307,14 +330,16 @@ contract Borrower {
         //pay interests
         pay_interest (_borrowersAddress, loanID, rep.iAmount, rep.pAmount);
         remaining -= rep.iAmount;
-    
+
+        //pay protocol reward
+        pay_protocol_reward (_borrowersAddress, loanID, rep.rAmount);
+        remaining -= rep.rAmount;
         //repay principal
         repay_loan_principal (_borrowersAddress, loanID, rep.pAmount);
         remaining -= rep.pAmount;
 
-      
-        //pay protocol reward
-
+        if (remaining > 0) 
+            pay_remaining_to_treasury (_borrowersAddress, amount, "");
 
     }
 
