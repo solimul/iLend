@@ -7,7 +7,7 @@ import {Deposit} from "./Deposit.sol";
 import {Collateral} from "./Collateral.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {Lender} from "./shared/SharedStructures.sol";
+import {Lender, InterestEarned} from "./shared/SharedStructures.sol";
 
 contract Borrower {
     using PriceConverter for uint256;
@@ -263,6 +263,39 @@ contract Borrower {
         require (remaining == 0, "not all pricipal repayment transferred");
     }
 
+    function pay_interest_deposit(
+    address borrower,
+    address lender,
+    uint256 depositID,
+    uint256 interestAmount,
+    uint256 principalAmount
+    ) internal returns (uint256) {
+        return depositPool.receive_interest_for_lender_deposit_record(
+            borrower, lender, depositID, interestAmount, principalAmount
+        );
+    }
+
+
+    function pay_interest  (address _borrowersAddress, uint256 loanID, uint256 interestAmount, uint256 principalAmount) internal  
+    onlyExistingBorrower(_borrowersAddress){ 
+        BorrowerRecord storage _bRecord = borrowers [_borrowersAddress];
+        BorrowRecord storage r = _bRecord.borrows [loanID];
+        uint256 remaining = interestAmount;
+        uint256 interestToThisLender = 0;
+        for (uint256 i=0;i< r.lenders.length; i++){
+            Lender memory _lender = r.lenders [i]; 
+            address lAddress = _lender.lender; 
+            for (uint256 j=0; j < _lender.depositAccountIDs.length; j++){
+                uint256 id = _lender.depositAccountIDs [j];
+                interestToThisLender += pay_interest_deposit (
+                        _borrowersAddress, lAddress, id, interestAmount, principalAmount);
+            }
+            remaining -= interestToThisLender;
+        }
+        require (remaining == 0, "not all interest payment was successful");
+
+    }
+
     function repay_loan_principal_interest_protocol_reward (address _borrowersAddress, uint256 loanID, uint256 amount) 
     external 
     onlyExistingBorrower(_borrowersAddress){
@@ -271,12 +304,15 @@ contract Borrower {
         uint256 remaining = amount;
         require(amount >= requiredAmount, "Amount is not Enough");
         
+        //pay interests
+        pay_interest (_borrowersAddress, loanID, rep.iAmount, rep.pAmount);
+        remaining -= rep.iAmount;
+    
         //repay principal
         repay_loan_principal (_borrowersAddress, loanID, rep.pAmount);
         remaining -= rep.pAmount;
 
-        //pay interests
-
+      
         //pay protocol reward
 
 

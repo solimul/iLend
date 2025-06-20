@@ -5,7 +5,8 @@ import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Params} from "./Params.sol";
 import {DepositPool} from "./DepositPool.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {Lender} from "./shared/SharedStructures.sol";
+import {Lender,InterestEarned} from "./shared/SharedStructures.sol";
+
 
 contract Deposit is DepositPool {
 
@@ -40,12 +41,15 @@ contract Deposit is DepositPool {
         uint256 withdrawTime;
     }
 
+  
+
     struct DepositRecord {
         uint256 amount;
         uint256 depositTime;
         uint256 lockupPeriod;
         uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
         uint256 availableToLend;
+        InterestEarned [] interestEarned;
     }
 
     struct Depositor {
@@ -121,13 +125,17 @@ contract Deposit is DepositPool {
         Depositor storage depositor = depositors[depositor_address];
         depositor.totalAmount += amount;
         uint256 currentTime = block.timestamp;
-        depositor.deposits[depositor.depositCounts] = DepositRecord({
-            amount: amount,
-            depositTime: currentTime,
-            lockupPeriod: lockupPeriod,
-            lastInterestWithdrawTimeForRecord: currentTime, // Initialize to current time
-            availableToLend: amount // Initially, the entire deposit is available to lend
-        });
+
+        DepositRecord storage record = depositor.deposits[depositor.depositCounts];
+        record.amount = amount;
+        record.depositTime = currentTime;
+        record.lockupPeriod = lockupPeriod;
+        record.lastInterestWithdrawTimeForRecord = currentTime; // Initialize to current time
+        record.availableToLend = amount;
+        depositor.deposits[depositor.depositCounts] = record;
+
+
+
         depositor.isActive = true;
         if (depositor.depositCounts == 0) {
             // If this is the first deposit, add the depositor to the list
@@ -244,7 +252,7 @@ contract Deposit is DepositPool {
             Depositor storage depositor = depositors[depositorAddresses[i]];
             uint256 nDeposits = 0;
             uint256[] memory tepmIDs = new uint256[](depositor.depositCounts);
-
+            uint256 totalLent = 0;
             for (uint256 j = 0; j < depositor.depositCounts; j++) {
                 DepositRecord storage dRecord = depositor.deposits[j];
                 uint256 remaining = amount - fund;
@@ -262,6 +270,7 @@ contract Deposit is DepositPool {
                         : remaining;
 
                     fund += lentAmount;
+                    totalLent += lentAmount;
                     dRecord.availableToLend -= lentAmount;
 
                     if (fund >= amount) {
@@ -279,7 +288,8 @@ contract Deposit is DepositPool {
 
                 lender = Lender({
                     lender: depositorAddresses[i],
-                    depositAccountIDs: ids
+                    depositAccountIDs: ids,
+                    totalLent:totalLent
                 });
 
                 tempLenders[matchedLendersCount++] = lender;
@@ -325,10 +335,24 @@ contract Deposit is DepositPool {
 
     function receive_repayment_lentout_principal (address _borrowerAddress, address _depositorAddress, uint256 id) public returns (uint256) {
         uint256 lentOutAmount = get_lentout_amount (_depositorAddress, id);
-        require (usdc_contract.balanceOf(address(this)) >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
+        require (usdc_contract.balanceOf(address(_borrowerAddress)) >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
         DepositRecord storage record = get_deposit_record(_depositorAddress, id);
         require (usdc_contract.transferFrom (_borrowerAddress, address (this), lentOutAmount), "Cannot receive from the Borrower");
         record.availableToLend += lentOutAmount;
         return lentOutAmount;
+    }
+
+    function receive_interest_for_lender_deposit_record (address _borrowerAddress, address _depositorAddress, uint256 depositID, uint256 totalInterest, uint256 totalLent ) public returns (uint256) {
+        uint256 lentFromThisDepositAccount = get_lentout_amount (_depositorAddress, depositID);
+        require (usdc_contract.balanceOf(address(_borrowerAddress)) >= lentFromThisDepositAccount, "Borrower does not have enough USDC for interest repayment.");        
+        DepositRecord storage record = get_deposit_record(_depositorAddress, depositID);
+        uint256 interestShare = (lentFromThisDepositAccount * totalInterest) / totalLent;
+        record.interestEarned.push (InterestEarned({
+            from: _borrowerAddress,
+            interestReceived:  interestShare,
+            dateReceived: block.timestamp
+        }));
+        require (usdc_contract.transferFrom (_borrowerAddress, address (this), lentFromThisDepositAccount), "Cannot receive Interest for this deposit record from the Borrower");
+        return interestShare;
     }
 }

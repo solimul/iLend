@@ -19,4 +19,11 @@ struct CollateralView {
 struct Lender {
    address lender;
    uint256 [] depositAccountIDs;
+   uint256 totalLent;
+}
+
+struct InterestEarned {
+    address from;
+    uint256 interestReceived;
+    uint256 dateReceived;
 }
