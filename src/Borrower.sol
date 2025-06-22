@@ -10,6 +10,7 @@ import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20
 import {Lender, InterestEarned} from "./shared/SharedStructures.sol";
 import {ProtocolReward} from "./ProtocolReward.sol";
 import {Treasury} from "./Treasury.sol";
+import {RepaymentComponent, BorrowRecord, BorrowerRecord} from "./shared/SharedStructures.sol";
 
 contract Borrower {
     using PriceConverter for uint256;
@@ -30,30 +31,6 @@ contract Borrower {
         uint256 totalBorrowed,
         uint256 timestamp
     );
-
-    struct RepaymentComponent {
-        uint256 pAmount;
-        uint256 iAmount;
-        uint256 rAmount;
-    }
-
-    struct BorrowRecord {
-        uint256 loanID;
-        uint256 amount;
-        uint256 borrowTime;
-        uint256 interestRate;
-        uint256 l2b; 
-        Lender [] lenders;
-    }
-
-
-
-    struct BorrowerRecord {
-        address borrowerAddress;
-        uint256 totalBorrowed;
-        mapping(uint256 => BorrowRecord) borrows; // Maps borrow index to BorrowRecord
-        uint256 borrowCount; // To keep track of the number of borrows
-    }
 
     mapping(address => BorrowerRecord) private borrowers;
 
@@ -287,8 +264,7 @@ contract Borrower {
     }
 
 
-    function pay_interest  (address _borrowersAddress, uint256 loanID, uint256 interestAmount, uint256 principalAmount) internal  
-    onlyExistingBorrower(_borrowersAddress){ 
+    function pay_interest  (address _borrowersAddress, uint256 loanID, uint256 interestAmount, uint256 principalAmount) internal  { 
         BorrowerRecord storage _bRecord = borrowers [_borrowersAddress];
         BorrowRecord storage r = _bRecord.borrows [loanID];
         uint256 remaining = interestAmount;
@@ -299,7 +275,7 @@ contract Borrower {
             for (uint256 j=0; j < _lender.depositAccountIDs.length; j++){
                 uint256 depositID = _lender.depositAccountIDs [j];
                 interestToThisLender += pay_interest_deposit (
-                        _borrowersAddress, loanID, lAddress, depositID, interestAmount, principalAmount);
+                    _borrowersAddress, loanID, lAddress, depositID, interestAmount, principalAmount);
             }
             remaining -= interestToThisLender;
         }

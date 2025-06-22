@@ -5,7 +5,13 @@ import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Params} from "./Params.sol";
 import {DepositPool} from "./DepositPool.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {Lender,InterestEarned} from "./shared/SharedStructures.sol";
+import {Lender, 
+        InterestEarned, 
+        PrincipalWithdrawalRecord,
+        InterestWithdrawalRecord, 
+        DepositRecord, 
+        Depositor} 
+        from "./shared/SharedStructures.sol";
 
 
 contract Deposit is DepositPool {
@@ -28,42 +34,7 @@ contract Deposit is DepositPool {
         uint256 remainingBalanceForDepositor,
         uint256 poolBalance,
         uint256 timestamp
-    );
-
-
-    struct PrincipalWithdrawalRecord {
-        uint256 amountWithdrawn;
-        uint256 withdrawTime;
-    }
-
-    struct InterestWithdrawalRecord {
-        uint256 amountWithdrawn;
-        uint256 withdrawTime;
-    }
-
-  
-
-    struct DepositRecord {
-        uint256 amount;
-        uint256 depositTime;
-        uint256 lockupPeriod;
-        uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
-        uint256 availableToLend;
-        InterestEarned [] interestEarned;
-    }
-
-    struct Depositor {
-        uint256 totalAmount;
-        mapping (uint256 => DepositRecord) deposits; // Maps deposit index to DepositRecord
-        InterestWithdrawalRecord [] interestWithdrawalRecords;
-        PrincipalWithdrawalRecord [] principalWithdrawalRecords;
-        bool isActive;
-        uint256 depositCounts; // To keep track of the number of deposits
-    }
-
- 
-
- 
+    ); 
 
     Params public params;
 

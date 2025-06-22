@@ -5,7 +5,7 @@ import {CollateralPool} from "./CollateralPool.sol";
 import {Params} from "./Params.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Borrower} from "./Borrower.sol";
-import {CollateralView} from "./shared/SharedStructures.sol";
+import {CollateralView, CollateralWithdrawalRecord, CollateralDepositRecord, CollateralDepositor} from "./shared/SharedStructures.sol";
 
 contract Collateral is CollateralPool {
 
@@ -19,28 +19,6 @@ contract Collateral is CollateralPool {
 
     Params private params;
     Borrower private borrowerContract;
-
-    struct CollateralWithdrawalRecord {
-        uint256 amountWithdrawn;
-        uint256 withdrawTime;
-    }
-
-    struct CollateralDepositRecord {
-        uint256 amount;
-        uint256 depositTime;
-        uint256 l2b; // Assuming l2b is a value associated with the deposit
-        bool hasBorrowedAgainst;
-    }
-
-    
-
-    struct CollateralDepositor {
-        uint256 totalAmount;
-        mapping (uint256 => CollateralDepositRecord) collateralDepositRecords;
-        CollateralWithdrawalRecord [] collateralWithdrawalRecord;
-        bool isActive;
-        uint256 depositCounts; // To keep track of the number of deposits
-    }
 
     // struct CollateralView {
     //     uint256 id;
