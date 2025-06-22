@@ -94,7 +94,7 @@ contract PricefeedManager is Script {
         return activeNetworkConfig;
     }
 
-    function getPriceFeedAddress () public view returns (address) {
+    function get_priceFeed_address () public view returns (address) {
         return activeNetworkConfig.priceFeedAddress;
     }
     function getPriceFeedDecimals () public pure returns (uint8) {

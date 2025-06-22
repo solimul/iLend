@@ -51,7 +51,7 @@ contract CollateralPool {
     function getColleteralPoolAddress () external view returns (address) {
         return address(this);
     }
-    function getPriceFeedAddress() external view returns (address) {
+    function get_priceFeed_address() external view returns (address) {
         return address(priceFeed);
     }
     function getPriceFeedManagerAddress() external view returns (address) {

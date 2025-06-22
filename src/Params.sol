@@ -191,7 +191,7 @@ contract Params {
         return collateralParams.l2b;
     }
 
-    function getBaseInterestRate() public view returns (uint256) {
+    function get_base_interest_rate() public view returns (uint256) {
         return borrowParams.interestRate.baseRate;
     }
     function getReserveFactor() public view returns (uint256) {
@@ -223,7 +223,7 @@ contract Params {
     }
 
 
-    function setDepositParams(
+    function set_deposit_params(
         uint256 _minDepositAmount,
         uint256 _maxDepositAmount,
         uint256 _depositFee,
@@ -240,7 +240,7 @@ contract Params {
         emit DepositParamsSetup(owner, _minDepositAmount, _maxDepositAmount, _depositFee, _minLockupPeriod, _maxLockupPeriod);
     }
 
-    function setBorrowParams(
+    function set_borrow_params(
         uint256 _minBorrowAmount,
         uint256 _maxBorrowAmount,
         uint256 _borrowFee,
@@ -270,7 +270,7 @@ contract Params {
         emit BorrowParamsSetup(owner, _minBorrowAmount, _maxBorrowAmount, _borrowFee, _minRepaymentPeriod, _maxRepaymentPeriod, _baseRate, _reserveFactor, _maxInterestRate, _minInterestRate);
     }
 
-    function setLiquidationParams(
+    function set_liquidation_params(
         uint256 _liquidationThreshold,
         uint256 _liquidationFee,
         uint256 _minLiquidationThreshold,
@@ -293,7 +293,7 @@ contract Params {
         emit LiquidationParamsSetup(owner, _liquidationThreshold, _liquidationFee, _minLiquidationThreshold, _maxLiquidationThreshold, _minLiquidationAmount, _maxLiquidationAmount, _liquidationBonusRate, _liquidationBonusType);
     }
 
-    function setOracleParams(
+    function set_oracle_params(
         address _oracleAddress,
         uint256 _heartbeat,
         uint256 _decimals
@@ -306,7 +306,7 @@ contract Params {
         emit OracleParamsSetup(owner, _oracleAddress, _heartbeat, _decimals);
     }
 
-    function setCollateralParams (
+    function set_collateral_params (
         address _asset,
         uint256 _minCollateralAmount,
         uint256 _maxCollateralAmount,

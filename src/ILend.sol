@@ -3,13 +3,14 @@ pragma solidity ^0.8.29;
 import {Params} from "./Params.sol";
 import {Deposit} from "./Deposit.sol";
 import {Collateral} from "./Collateral.sol";
-import {Borrower} from "./Borrower.sol";
+import {Borrow} from "./Borrow.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "../src/helper/PriceConverter.sol";
 import {PricefeedManager} from "./oracle/PricefeedManager.sol";
 import {CollateralView} from "./shared/SharedStructures.sol";
 import {Treasury} from "./Treasury.sol";
 import {NetworkConfig} from "./NetworkConfig.sol";
+import {Repayment} from "./Repayment.sol";
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
  
@@ -17,10 +18,11 @@ import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20
 contract iLend {
     Params public params;   
     address public owner;
-    Deposit public depositContract;
-    Collateral public collateralContract;
-    Borrower public borrowerContract;
-    Treasury public treasuryContract;
+    Deposit public deposit;
+    Collateral public collateral;
+    Borrow public borrow;
+    Treasury public treasury;
+    Repayment public repayment;
     AggregatorV3Interface public priceFeed;
     IERC20 usdcContract;
     
@@ -40,70 +42,70 @@ contract iLend {
         owner = msg.sender;
         params = new Params(owner);
         params.initialize (false, false, false);
-        setParams();
+        set_params();
         PricefeedManager priceFeedManager = new PricefeedManager();
-        priceFeed = AggregatorV3Interface(priceFeedManager.getPriceFeedAddress());
+        priceFeed = AggregatorV3Interface(priceFeedManager.get_priceFeed_address());
         NetworkConfig config = new NetworkConfig();
-        usdcContract = IERC20(config.getUSDCContractAddress());
-        treasuryContract = new Treasury (msg.sender);
+        usdcContract = IERC20(config.get_usdc_contract_address());
+        treasury = new Treasury (msg.sender);
         // Dependency injection for contracts: Factory pattern
         // This allows for easier testing and contract upgrades
         // The Deposit, Collateral, and Borrower contracts are initialized with the Params and PriceFeed
         // contracts, allowing them to access the necessary parameters and price feed data.
-        depositContract = new Deposit(params, usdcContract);
-        collateralContract = new Collateral(params, address (priceFeed));
-        borrowerContract = new Borrower(params, 
+        deposit = new Deposit(params, usdcContract);
+        collateral = new Collateral(params, address (priceFeed));
+        borrow = new Borrow(params, 
                     address(priceFeed), 
-                    address (depositContract), 
-                    address (collateralContract), 
-                    address (treasuryContract), 
+                    address (deposit), 
+                    address (collateral), 
                     usdcContract);
+        repayment = new Repayment (address (borrow), address (deposit), address (treasury), address (usdcContract));
     }
 
-    function setParams() internal {
+    function set_params() internal {
         // Set initial parameters
-        params.setDepositParams(1000, 1000000, 50, 1 days, 365 days);
-        params.setBorrowParams(1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
-        params.setLiquidationParams(150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
-        params.setOracleParams(address(this), 60 seconds, 18);
-        params.setCollateralParams(address(this), 1000, 1000000, 75, true);
+        params.set_deposit_params (1000, 1000000, 50, 1 days, 365 days);
+        params.set_borrow_params (1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
+        params.set_liquidation_params (150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
+        params.set_oracle_params (address(this), 60 seconds, 18);
+        params.set_collateral_params (address(this), 1000, 1000000, 75, true);
     }
 
     function deposit_liquidity (uint256 lockupPeriod) external payable{
         // Call the deposit function in the Deposit contract
-        depositContract.get_usdc_contract().approve(address (depositContract), msg.value);
-        depositContract.deposit_liquidity (msg.sender, msg.value, lockupPeriod);
+        deposit.get_usdc_contract().approve(address (deposit), msg.value);
+        deposit.deposit_liquidity (msg.sender, msg.value, lockupPeriod);
     }
 
     function withdraw_deposited_principal (uint256 amount) external {
         // Call the withdraw function in the Deposit contract
-        depositContract.depositor_withdraw_principal (msg.sender, amount);
+        deposit.depositor_withdraw_principal (msg.sender, amount);
     }
 
     function withdraw_deposited_interest (uint256 amount) external {
         // Call the withdraw interest function in the Deposit contract
-        depositContract.depositor_withdraw_interest(msg.sender, amount);
+        deposit.depositor_withdraw_interest(msg.sender, amount);
     }
 
 
     function deposit_collateral_borrow () external payable {
         // Call the deposit function in the Deposit contract
-        collateralContract.get_eth_contract ().approve(address (collateralContract), msg.value);
-        collateralContract.deposit_collateral (msg.sender, msg.value);
-        if (!borrowerContract.borrowerExists (msg.sender))
-            borrowerContract.addNewBorrower (msg.sender, 0, 0, 0, 0);
-        borrowerContract.lendForCollateral (msg.sender, collateralContract.getCollateralDepositorsDepositCount(msg.sender)-1);
-        collateralContract.updateBorrowedAgainstCollateral (msg.sender, collateralContract.getCollateralDepositorsDepositCount(msg.sender)-1, true);
+        collateral.get_eth_contract ().approve(address (collateral), msg.value);
+        collateral.deposit_collateral (msg.sender, msg.value);
+        if (!borrow.borrower_exists (msg.sender))
+            borrow.add_new_borrower (msg.sender, 0, 0, 0, 0);
+        borrow.lend_for_collateral (msg.sender, collateral.getCollateralDepositorsDepositCount(msg.sender)-1);
+        collateral.updateBorrowedAgainstCollateral (msg.sender, collateral.getCollateralDepositorsDepositCount(msg.sender)-1, true);
     }
 
     function view_my_collateral_borrow_info () external returns (CollateralView [] memory) {
         // Call the view function in the Collateral contract
-        collateralContract.setBorrowerContract(address (borrowerContract));
-        return collateralContract.getCollateralDepositorInfo(msg.sender);
+        collateral.setBorrowerContract(address (borrow));
+        return collateral.getCollateralDepositorInfo(msg.sender);
     }
 
     function repay_loan_interest_withdraw_collateral (uint256 _loanID) external payable{
-        borrowerContract.repay_loan_principal_interest_protocol_reward (msg.sender, _loanID, msg.value);
+        repayment.process_repayment (msg.sender, _loanID, msg.value);
         //depositContract.receive_interest (msg.sender, msg.value);
         //protocolRewardContract.receive_protocol_reward (msg.sender, msg.value);
     }

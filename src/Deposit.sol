@@ -120,7 +120,7 @@ contract Deposit is DepositPool {
         return usdc_contract;
     }
 
-    function getPoolBalance () public view returns (uint256) {
+    function get_pool_balance () public view returns (uint256) {
         return poolBalance;
     }
 
@@ -166,7 +166,7 @@ contract Deposit is DepositPool {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
                 uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
-                uint256 interest = (record.amount * params.getBaseInterestRate() * timeDelta) / (365 days * 100);
+                uint256 interest = (record.amount * params.get_base_interest_rate() * timeDelta) / (365 days * 100);
                 totalInterestIncome += interest;
                 record.lastInterestWithdrawTimeForRecord = currentTime;
             }
@@ -184,7 +184,7 @@ contract Deposit is DepositPool {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
                 uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
-                uint256 interest = (record.amount * params.getBaseInterestRate() * timeDelta) / (365 days * 100);
+                uint256 interest = (record.amount * params.get_base_interest_rate() * timeDelta) / (365 days * 100);
                 totalInterestIncome += interest;
             }
         }
@@ -281,7 +281,7 @@ contract Deposit is DepositPool {
 
 
 
-    function lendToBorrower (address borrower_address, uint256 amount) external onlyOwner returns (Lender [] memory){
+    function lend_to_borrower (address borrower_address, uint256 amount) external onlyOwner returns (Lender [] memory){
         require(usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
         Lender [] memory lenders;
         lenders = find_and_update_matching_depositors (amount);
@@ -304,7 +304,7 @@ contract Deposit is DepositPool {
         return record.amount - record.availableToLend;
     }
 
-    function receive_repayment_lentout_principal (address _borrowerAddress, address _depositorAddress, uint256 id) public returns (uint256) {
+    function add_repaid_principal (address _borrowerAddress, address _depositorAddress, uint256 id) public returns (uint256) {
         uint256 lentOutAmount = get_lentout_amount (_depositorAddress, id);
         require (usdc_contract.balanceOf(address(_borrowerAddress)) >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
         DepositRecord storage record = get_deposit_record(_depositorAddress, id);
@@ -313,7 +313,7 @@ contract Deposit is DepositPool {
         return lentOutAmount;
     }
 
-    function receive_interest_for_lender_deposit_record 
+    function add_interest_for_lender 
     (address _borrowerAddress, 
     uint256 _loanID, 
     address _depositorAddress, 

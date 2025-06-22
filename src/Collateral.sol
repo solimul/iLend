@@ -4,7 +4,7 @@ pragma solidity ^0.8.29;
 import {CollateralPool} from "./CollateralPool.sol";
 import {Params} from "./Params.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import {Borrower} from "./Borrower.sol";
+import {Borrow} from "./Borrow.sol";
 import {CollateralView, CollateralWithdrawalRecord, CollateralDepositRecord, CollateralDepositor} from "./shared/SharedStructures.sol";
 
 contract Collateral is CollateralPool {
@@ -18,7 +18,7 @@ contract Collateral is CollateralPool {
     );
 
     Params private params;
-    Borrower private borrowerContract;
+    Borrow private borrowerContract;
 
     // struct CollateralView {
     //     uint256 id;
@@ -136,7 +136,7 @@ contract Collateral is CollateralPool {
         return collateralDepositor.collateralDepositRecords[recordIndex].amount;
     }
 
-    function getCollateralL2BByRecord (
+    function get_collateralL2B_by_record (
         address depositor,
         uint256 recordIndex
     ) external view 
@@ -176,8 +176,8 @@ contract Collateral is CollateralPool {
         CollateralView [] memory collateralViews = new CollateralView[](collateralDepositor.depositCounts);
         for (uint256 i = 0; i < collateralDepositor.depositCounts; i++) {
             CollateralDepositRecord storage record = collateralDepositor.collateralDepositRecords[i];
-            uint256 iPayable = borrowerContract.calculateInterestPayable (depositor, i);
-            uint256 protocolReward = borrowerContract.calculateProtocolRewardByReserveFactor(depositor, i);
+            uint256 iPayable = borrowerContract.calculate_interest_payable (depositor, i);
+            uint256 protocolReward = borrowerContract.calculate_protocol_reward_by_reserve_factor(depositor, i);
 
             collateralViews[i] = CollateralView({
                 loanID: i,
@@ -185,9 +185,9 @@ contract Collateral is CollateralPool {
                 depositDate: record.depositTime,
                 hasBorrowedAgainst: record.hasBorrowedAgainst,
                 l2b: record.l2b,
-                totalUSDCBorrowed: borrowerContract.getBorrowedAmount (depositor, i),
+                totalUSDCBorrowed: borrowerContract.get_borrowed_amount (depositor, i),
                 totalCollateralDepost: collateralDepositor.totalAmount,
-                baseInterestRate: borrowerContract.getBorrowedInterestRate (depositor, i),
+                baseInterestRate: borrowerContract.get_borrowed_interest_rate (depositor, i),
                 interstPayable: iPayable, 
                 protoclRewardByReserveFactor: protocolReward, // Placeholder, needs to be calculated based on reserve factor logic
                 reserveFactor: params.getReserveFactor(),
@@ -199,6 +199,6 @@ contract Collateral is CollateralPool {
 
     function setBorrowerContract(address _borrowerContractAddress) external {
         require(_borrowerContractAddress != address(0), "Invalid borrower contract address");
-        borrowerContract = Borrower(_borrowerContractAddress);
+        borrowerContract = Borrow(_borrowerContractAddress);
     }
 }

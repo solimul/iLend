@@ -46,7 +46,7 @@ contract NetworkConfig {
         return i_owner;
     }
 
-    function getUSDCContractAddress () external view returns (address) {
+    function get_usdc_contract_address () external view returns (address) {
         return i_usdc;
     }
 

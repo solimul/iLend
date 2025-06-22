@@ -26,7 +26,7 @@ contract DepositPool {
         poolBalance = 0;
     }
 
-    function getUSDCContractAddress () external view returns (IERC20) {
+    function get_usdc_contract_address () external view returns (IERC20) {
         return usdc_contract;
     }
 
