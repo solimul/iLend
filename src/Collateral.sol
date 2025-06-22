@@ -6,6 +6,7 @@ import {Params} from "./Params.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Borrow} from "./Borrow.sol";
 import {CollateralView, CollateralWithdrawalRecord, CollateralDepositRecord, CollateralDepositor} from "./shared/SharedStructures.sol";
+import {Transaction} from "./Transcation.sol";
 
 contract Collateral is CollateralPool {
 
@@ -18,7 +19,8 @@ contract Collateral is CollateralPool {
     );
 
     Params private params;
-    Borrow private borrowerContract;
+    Borrow private borrow;
+    Transaction private transaction;
 
     // struct CollateralView {
     //     uint256 id;
@@ -40,9 +42,10 @@ contract Collateral is CollateralPool {
   
     mapping (address => CollateralDepositor) private collateralDepositors;
 
-    constructor(Params _params, address _priceFeedAddress) CollateralPool (_priceFeedAddress) {
+    constructor(Params _params, address _priceFeedAddress, address _tAddress) CollateralPool (_priceFeedAddress) {
         params = _params;
-        //borrowerContract = Borrower(_borrowerContractAddress);
+        transaction = Transaction (_tAddress);
+        //borrow = Borrower(_borrowerContractAddress);
     } 
 
     modifier deposit_check (uint256 amount) {
@@ -110,7 +113,7 @@ contract Collateral is CollateralPool {
     function get_collateral_ETH_by_record (
         address depositor,
         uint256 recordIndex
-    ) external view 
+    ) public view 
         only_active_depositor(depositor) 
         only_valid_deposit_Index(depositor, recordIndex)  
     returns (uint256) {
@@ -158,8 +161,8 @@ contract Collateral is CollateralPool {
         CollateralView [] memory collateralViews = new CollateralView[](collateralDepositor.depositCounts);
         for (uint256 i = 0; i < collateralDepositor.depositCounts; i++) {
             CollateralDepositRecord storage record = collateralDepositor.collateralDepositRecords[i];
-            uint256 iPayable = borrowerContract.get_interest_payable (depositor, i);
-            uint256 protocolReward = borrowerContract.get_protocol_reward(depositor, i);
+            uint256 iPayable = borrow.get_interest_payable (depositor, i);
+            uint256 protocolReward = borrow.get_protocol_reward(depositor, i);
 
             collateralViews[i] = CollateralView({
                 loanID: i,
@@ -167,9 +170,9 @@ contract Collateral is CollateralPool {
                 depositDate: record.depositTime,
                 hasBorrowedAgainst: record.hasBorrowedAgainst,
                 l2b: record.l2b,
-                totalUSDCBorrowed: borrowerContract.get_borrowed_amount (depositor, i),
+                totalUSDCBorrowed: borrow.get_borrowed_amount (depositor, i),
                 totalCollateralDepost: collateralDepositor.totalAmount,
-                baseInterestRate: borrowerContract.get_borrowed_interest_rate (depositor, i),
+                baseInterestRate: borrow.get_borrowed_interest_rate (depositor, i),
                 interstPayable: iPayable, 
                 protoclRewardByReserveFactor: protocolReward, // Placeholder, needs to be calculated based on reserve factor logic
                 reserveFactor: params.get_reserve_factor(),
@@ -181,6 +184,17 @@ contract Collateral is CollateralPool {
 
     function set_borrower_contract(address _borrowerContractAddress) external {
         require(_borrowerContractAddress != address(0), "Invalid borrower contract address");
-        borrowerContract = Borrow(_borrowerContractAddress);
+        borrow = Borrow(_borrowerContractAddress);
+    }
+
+    function deleteCollateralRecord (address depositor, uint256 _collateralID) internal {
+        CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
+        delete collateralDepositor.collateralDepositRecords[_collateralID];
+    }
+
+    function unlock_collateral (address _cDepositorAddress, uint256 _collateralID) public {
+        uint256 amount = get_collateral_ETH_by_record(_cDepositorAddress, _collateralID);
+        transaction.safe_transfer_from (eth_contract, address (this), _cDepositorAddress, amount);
+        deleteCollateralRecord (_cDepositorAddress, _collateralID);
     }
 }

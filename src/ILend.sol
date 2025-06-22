@@ -10,21 +10,23 @@ import {PricefeedManager} from "./oracle/PricefeedManager.sol";
 import {CollateralView} from "./shared/SharedStructures.sol";
 import {Treasury} from "./Treasury.sol";
 import {NetworkConfig} from "./NetworkConfig.sol";
-import {Repayment} from "./Repayment.sol";
+import {Payback} from "./Payback.sol";
+import {Transaction} from "./Transcation.sol";
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
  
 
 contract iLend {
-    Params public params;   
-    address public owner;
-    Deposit public deposit;
-    Collateral public collateral;
-    Borrow public borrow;
-    Treasury public treasury;
-    Repayment public repayment;
-    AggregatorV3Interface public priceFeed;
-    IERC20 usdcContract;
+    Params private params;   
+    address private owner;
+    Deposit private deposit;
+    Collateral private collateral;
+    Borrow private borrow;
+    Treasury private treasury;
+    Payback private payback;
+    Transaction private transaction;
+    AggregatorV3Interface private priceFeed;
+    IERC20 private usdcContract;
     
     // Modifiers
     modifier onlyOwner() {
@@ -41,25 +43,31 @@ contract iLend {
     constructor () {
         owner = msg.sender;
         params = new Params(owner);
+        transaction = new Transaction ();
         params.initialize (false, false, false);
         set_params();
         PricefeedManager priceFeedManager = new PricefeedManager();
         priceFeed = AggregatorV3Interface(priceFeedManager.get_priceFeed_address());
         NetworkConfig config = new NetworkConfig();
         usdcContract = IERC20(config.get_usdc_contract_address());
-        treasury = new Treasury (msg.sender);
+        treasury = new Treasury (msg.sender, address (transaction));
         // Dependency injection for contracts: Factory pattern
         // This allows for easier testing and contract upgrades
         // The Deposit, Collateral, and Borrower contracts are initialized with the Params and PriceFeed
         // contracts, allowing them to access the necessary parameters and price feed data.
-        deposit = new Deposit(params, usdcContract);
-        collateral = new Collateral(params, address (priceFeed));
+        deposit = new Deposit(params, usdcContract,  address (transaction));
+        collateral = new Collateral(params, address (priceFeed),  address (transaction));
         borrow = new Borrow(params, 
                     address(priceFeed), 
                     address (deposit), 
                     address (collateral), 
-                    usdcContract);
-        repayment = new Repayment (address (borrow), address (deposit), address (treasury), address (usdcContract));
+                    usdcContract, 
+                    address (transaction));
+        payback = new Payback (address (borrow), 
+                              address (deposit), 
+                              address (treasury), 
+                              address (usdcContract),
+                              address (transaction));
     }
 
     function set_params() internal {
@@ -98,17 +106,15 @@ contract iLend {
         collateral.update_borrowed_against_collateral (msg.sender, collateral.get_collateral_depositors_deposit_count(msg.sender)-1, true);
     }
 
-    function view_my_collateral_borrow_info () external returns (CollateralView [] memory) {
+    function get_my_collateral_info () external returns (CollateralView [] memory) {
         // Call the view function in the Collateral contract
         collateral.set_borrower_contract(address (borrow));
         return collateral.get_collateral_depositor_info(msg.sender);
     }
 
-    function repay_loan_interest_withdraw_collateral (uint256 _loanID) external payable{
-        repayment.process_repayment (msg.sender, _loanID, msg.value);
-        //depositContract.receive_interest (msg.sender, msg.value);
-        //protocolRewardContract.receive_protocol_reward (msg.sender, msg.value);
+    function close_loan (uint256 _loanID) external payable {
+        payback.process_repayment (msg.sender, _loanID, msg.value);
+        collateral.unlock_collateral (msg.sender, _loanID);
+
     }
-
-
 }

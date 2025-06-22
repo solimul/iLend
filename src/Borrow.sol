@@ -11,6 +11,7 @@ import {Lender, InterestEarned} from "./shared/SharedStructures.sol";
 import {ProtocolReward} from "./ProtocolReward.sol";
 import {Treasury} from "./Treasury.sol";
 import {RepaymentComponent, BorrowRecord, BorrowerRecord} from "./shared/SharedStructures.sol";
+import {Transaction} from "./Transcation.sol";
 
 contract Borrow {
     using PriceConverter for uint256;
@@ -38,7 +39,9 @@ contract Borrow {
     AggregatorV3Interface private priceFeed;
     Deposit private depositPool;
     Collateral private collateralPool;
-    Treasury treasury;
+    Treasury private treasury;
+    Transaction private transaction;
+
     
     IERC20 private usdcContract;
 
@@ -68,13 +71,16 @@ contract Borrow {
             address _priceFeedAddress, 
             address _depositContractAddress, 
             address _collateralContractAddress,
-            IERC20 _usdcContract) {
+            IERC20 _usdcContract,
+            address _tAddress) {
         // Initialize any necessary parameters or state variables
         params = _params;
         depositPool = Deposit (_depositContractAddress);
         collateralPool = Collateral (_collateralContractAddress);
         priceFeed = AggregatorV3Interface (_priceFeedAddress);
         usdcContract = _usdcContract;
+        transaction = Transaction (_tAddress);
+
         //payable, because Treasury implements fallback
     }
 

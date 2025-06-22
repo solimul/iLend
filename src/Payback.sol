@@ -3,23 +3,27 @@ pragma solidity ^0.8.29;
 import {Borrow} from "./Borrow.sol";
 import {Deposit} from "./Deposit.sol";
 import {Treasury} from "./Treasury.sol";
+import {Transaction} from "./Transcation.sol";
 
 import {RepaymentComponent, BorrowRecord, Lender} from "./shared/SharedStructures.sol";
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-contract Repayment {
+contract Payback {
+    
     Borrow private borrow;
     Deposit private deposit;
     Treasury private treasury;
+    Transaction private transaction;
     IERC20 private usdc;
 
 
-    constructor (address _bAddress, address _dAddress, address _tAddress, address _usdc) {
+    constructor (address _bAddress, address _dAddress, address _tAddress, address _usdc, address _tranAddress) {
         borrow = Borrow (_bAddress);
         deposit = Deposit (_dAddress);       
         treasury = Treasury (payable (_tAddress));
         usdc = IERC20 (_usdc);
+        transaction = Transaction (_tranAddress);
     }
 
     modifier only_existing_borrower(address _borrowerAddress) {
@@ -113,3 +117,4 @@ contract Repayment {
             pay_remaining_to_treasury (_borrowersAddress, amount, "");
     }
 }
+

@@ -12,6 +12,7 @@ import {Lender,
         DepositRecord, 
         Depositor} 
         from "./shared/SharedStructures.sol";
+import {Transaction} from "./Transcation.sol";
 
 
 contract Deposit is DepositPool {
@@ -36,7 +37,8 @@ contract Deposit is DepositPool {
         uint256 timestamp
     ); 
 
-    Params public params;
+    Params private params;
+    Transaction private transaction;
 
     
     mapping (address => Depositor) private depositors;
@@ -44,9 +46,10 @@ contract Deposit is DepositPool {
     uint256 depositorCounts;
 
 
-    constructor(Params _params, IERC20 usdcContract) DepositPool(msg.sender, usdcContract) {
+    constructor(Params _params, IERC20 usdcContract, address _tAddress) DepositPool(msg.sender, usdcContract) {
         params = _params;
         depositorCounts = 0;
+        transaction = Transaction (_tAddress);
         // Initialize the contract if needed
     }
     

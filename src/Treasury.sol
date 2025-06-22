@@ -3,6 +3,7 @@ pragma solidity ^0.8.29;
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ProtocolRewardInfo, MiscFundRecievedInfo} from "./shared/SharedStructures.sol";
+import {Transaction} from "./Transcation.sol";
 
 contract Treasury {
     event ReceivedETH(address indexed sender, uint256 amount);
@@ -10,6 +11,7 @@ contract Treasury {
     event ETHWithdrawn(address indexed to, uint256 amount);
     event ERC20Withdrawn(address indexed token, address indexed to, uint256 amount);
     address public immutable treasuryOwner;
+    Transaction private transaction;
     ProtocolRewardInfo [] protocolRewardRecords;
     MiscFundRecievedInfo [] miscFundReceivedRecords;
 
@@ -24,8 +26,9 @@ contract Treasury {
         _;
     }
 
-    constructor (address _owner)  {
+    constructor (address _owner, address _tAddress)  {
         treasuryOwner = _owner;
+        transaction = Transaction (_tAddress);
     }
 
     receive() external payable {
