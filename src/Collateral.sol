@@ -45,30 +45,30 @@ contract Collateral is CollateralPool {
         //borrowerContract = Borrower(_borrowerContractAddress);
     } 
 
-    modifier depositCheck (uint256 amount) {
-        require(amount >= params.getMinCollateralAmount (),string(
+    modifier deposit_check (uint256 amount) {
+        require(amount >= params.get_min_collateral_amount (),string(
             abi.encodePacked(
             "Collateral deposit must be >= ",
-            Strings.toString(params.getMinCollateralAmount())
+            Strings.toString(params.get_min_collateral_amount())
             )));
-        require(amount <= params.getMaxCollateralAmount (),string(
+        require(amount <= params.get_max_collateral_amount (),string(
             abi.encodePacked(
             "Collateral deposit must be <= ",
-            Strings.toString(params.getMaxCollateralAmount())
+            Strings.toString(params.get_max_collateral_amount())
             )));
             _;
     }
 
-    modifier onlyActiveDepositor(address depositor) {
+    modifier only_active_depositor(address depositor) {
         require(collateralDepositors[depositor].isActive, "Not an active depositor");
         _;
     }
-    modifier onlyValidDepositIndex(address depositor, uint256 depositIndex) {
+    modifier only_valid_deposit_Index(address depositor, uint256 depositIndex) {
         require(depositIndex < collateralDepositors[depositor].depositCounts, "Invalid deposit index");
         _;
     }
 
-    function deposit_collateral (address depositor, uint256 amount) external depositCheck (amount) returns (bool)  {
+    function deposit_collateral (address depositor, uint256 amount) external deposit_check (amount) returns (bool)  {
         require(deposit_eth(depositor, amount), "Transfer failed");
 
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
@@ -89,48 +89,30 @@ contract Collateral is CollateralPool {
         return true;
     }
 
-    // function withdraw_collateral(address depositor, uint256 amount) external {
-    //     CollateralDepositor storage collateralDepositor = collateralDepositors [depositor];
-    //     require(collateralDepositor.isActive, "Not an active depositor");
-    //     require(collateralDepositor.totalAmount >= amount, "Insufficient collateral");
-
-    //     collateralDepositor.totalAmount -= amount;
-    //     CollateralWithdrawalRecord memory withdrawalRecord = CollateralWithdrawalRecord({
-    //         amountWithdrawn: amount,
-    //         withdrawTime: block.timestamp
-    //     });
-    //     collateralDepositor.collateralWithdrawalRecord.push(withdrawalRecord);
-
-    //     // Transfer the collateral back to the depositor
-    //     require(eth_contract.transfer(depositor, amount), "Transfer failed");
-
-    //     //emit CollateralDeposited(depositor, amount, block.timestamp, collateralDepositor.totalAmount);
-    // }
-
-    function updateCollateralDepositor(
+    function update_collateral_depositor(
         address depositor,
         uint256 depositIndex,
         bool hasBorrowedAgainst
     ) external 
-            onlyActiveDepositor(depositor) 
-            onlyValidDepositIndex(depositor, depositIndex)  {
+            only_active_depositor(depositor) 
+            only_valid_deposit_Index(depositor, depositIndex)  {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         collateralDepositor.collateralDepositRecords[depositIndex].hasBorrowedAgainst = hasBorrowedAgainst;
     }
 
-    function getCollateralDepositorsDepositCount(address depositor) external view 
-        onlyActiveDepositor(depositor) 
+    function get_collateral_depositors_deposit_count(address depositor) external view 
+        only_active_depositor(depositor) 
     returns (uint256) {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         return collateralDepositor.depositCounts;
     }
 
-    function getCollateralETHByRecord (
+    function get_collateral_ETH_by_record (
         address depositor,
         uint256 recordIndex
     ) external view 
-        onlyActiveDepositor(depositor) 
-        onlyValidDepositIndex(depositor, recordIndex)  
+        only_active_depositor(depositor) 
+        only_valid_deposit_Index(depositor, recordIndex)  
     returns (uint256) {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         return collateralDepositor.collateralDepositRecords[recordIndex].amount;
@@ -140,44 +122,44 @@ contract Collateral is CollateralPool {
         address depositor,
         uint256 recordIndex
     ) external view 
-        onlyActiveDepositor(depositor) 
-        onlyValidDepositIndex(depositor, recordIndex)  
+        only_active_depositor(depositor) 
+        only_valid_deposit_Index(depositor, recordIndex)  
     returns (uint256) {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         return collateralDepositor.collateralDepositRecords[recordIndex].l2b;
     }
 
-    function updateBorrowedAgainstCollateral (
+    function update_borrowed_against_collateral (
         address depositor,
         uint256 recordIndex,
         bool hasBorrowedAgainst
     ) external 
-        onlyActiveDepositor(depositor) 
-        onlyValidDepositIndex(depositor, recordIndex)  {
+        only_active_depositor(depositor) 
+        only_valid_deposit_Index(depositor, recordIndex)  {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         collateralDepositor.collateralDepositRecords[recordIndex].hasBorrowedAgainst = hasBorrowedAgainst;
     }
 
-    function isCollateralAvailableForBorrow(
+    function is_collateral_available(
         address depositor,
         uint256 recordIndex
     ) external view 
-            onlyActiveDepositor(depositor) 
-            onlyValidDepositIndex(depositor, recordIndex)  
+            only_active_depositor(depositor) 
+            only_valid_deposit_Index(depositor, recordIndex)  
             returns (bool)  {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         return !collateralDepositor.collateralDepositRecords[recordIndex].hasBorrowedAgainst;
     }    
 
-    function getCollateralDepositorInfo (
+    function get_collateral_depositor_info (
         address depositor
     ) external view returns (CollateralView [] memory) {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         CollateralView [] memory collateralViews = new CollateralView[](collateralDepositor.depositCounts);
         for (uint256 i = 0; i < collateralDepositor.depositCounts; i++) {
             CollateralDepositRecord storage record = collateralDepositor.collateralDepositRecords[i];
-            uint256 iPayable = borrowerContract.calculate_interest_payable (depositor, i);
-            uint256 protocolReward = borrowerContract.calculate_protocol_reward_by_reserve_factor(depositor, i);
+            uint256 iPayable = borrowerContract.get_interest_payable (depositor, i);
+            uint256 protocolReward = borrowerContract.get_protocol_reward(depositor, i);
 
             collateralViews[i] = CollateralView({
                 loanID: i,
@@ -190,14 +172,14 @@ contract Collateral is CollateralPool {
                 baseInterestRate: borrowerContract.get_borrowed_interest_rate (depositor, i),
                 interstPayable: iPayable, 
                 protoclRewardByReserveFactor: protocolReward, // Placeholder, needs to be calculated based on reserve factor logic
-                reserveFactor: params.getReserveFactor(),
+                reserveFactor: params.get_reserve_factor(),
                 totalPayable: iPayable + protocolReward // Placeholder, needs to be calculated based on total payable logic
             });
         }
         return collateralViews;
     }
 
-    function setBorrowerContract(address _borrowerContractAddress) external {
+    function set_borrower_contract(address _borrowerContractAddress) external {
         require(_borrowerContractAddress != address(0), "Invalid borrower contract address");
         borrowerContract = Borrow(_borrowerContractAddress);
     }

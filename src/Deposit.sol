@@ -55,7 +55,7 @@ contract Deposit is DepositPool {
         _;
     }
 
-    modifier depositCheck (uint256 amount, uint256 lockupPeriod) {
+    modifier deposit_check (uint256 amount, uint256 lockupPeriod) {
         require(amount >= params.getMinDeposit (),string(
             abi.encodePacked(
             "Deposit must be >= ",
@@ -87,7 +87,7 @@ contract Deposit is DepositPool {
 
 
     function deposit_liquidity (address depositor_address, uint256 amount, uint256 lockupPeriod) 
-                external depositCheck (amount,lockupPeriod) {
+                external deposit_check (amount,lockupPeriod) {
         bool success = deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
         
         if (!success) 

@@ -181,10 +181,10 @@ contract Params {
     }
 
 
-    function getMaxCollateralAmount() public view returns (uint256) {
+    function get_max_collateral_amount() public view returns (uint256) {
         return collateralParams.maxCollateralAmount;
     }
-    function getMinCollateralAmount() public view returns (uint256) {
+    function get_min_collateral_amount() public view returns (uint256) {
         return collateralParams.minCollateralAmount;
     }
     function getL2B() public view returns (uint256) {
@@ -194,7 +194,7 @@ contract Params {
     function get_base_interest_rate() public view returns (uint256) {
         return borrowParams.interestRate.baseRate;
     }
-    function getReserveFactor() public view returns (uint256) {
+    function get_reserve_factor() public view returns (uint256) {
         return borrowParams.interestRate.reserveFactor;
     }
     function getMaxInterestRate() public view returns (uint256) {

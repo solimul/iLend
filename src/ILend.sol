@@ -94,14 +94,14 @@ contract iLend {
         collateral.deposit_collateral (msg.sender, msg.value);
         if (!borrow.borrower_exists (msg.sender))
             borrow.add_new_borrower (msg.sender, 0, 0, 0, 0);
-        borrow.lend_for_collateral (msg.sender, collateral.getCollateralDepositorsDepositCount(msg.sender)-1);
-        collateral.updateBorrowedAgainstCollateral (msg.sender, collateral.getCollateralDepositorsDepositCount(msg.sender)-1, true);
+        borrow.lend_for_collateral (msg.sender, collateral.get_collateral_depositors_deposit_count(msg.sender)-1);
+        collateral.update_borrowed_against_collateral (msg.sender, collateral.get_collateral_depositors_deposit_count(msg.sender)-1, true);
     }
 
     function view_my_collateral_borrow_info () external returns (CollateralView [] memory) {
         // Call the view function in the Collateral contract
-        collateral.setBorrowerContract(address (borrow));
-        return collateral.getCollateralDepositorInfo(msg.sender);
+        collateral.set_borrower_contract(address (borrow));
+        return collateral.get_collateral_depositor_info(msg.sender);
     }
 
     function repay_loan_interest_withdraw_collateral (uint256 _loanID) external payable{
