@@ -1,18 +1,18 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
-import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import "../../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
-import {Params} from "./Params.sol";
-import {DepositPool} from "./DepositPool.sol";
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Params} from "../misc/Params.sol";
+import {DepositPool} from "../deposit/DepositPool.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Lender, 
         InterestEarned, 
         PrincipalWithdrawalRecord,
         InterestWithdrawalRecord, 
         DepositRecord, 
         Depositor} 
-        from "./shared/SharedStructures.sol";
-import {Transaction} from "./Transcation.sol";
+        from "../shared/SharedStructures.sol";
+import {Transaction} from "../misc/Transcation.sol";
 
 
 contract Deposit is DepositPool {

@@ -1,17 +1,17 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
-import {Params} from "./Params.sol";
-import {Deposit} from "./Deposit.sol";
-import {Collateral} from "./Collateral.sol";
-import {Borrow} from "./Borrow.sol";
+import {Params} from "./misc/Params.sol";
+import {Deposit} from "./deposit/Deposit.sol";
+import {Collateral} from "./collateral/Collateral.sol";
+import {Borrow} from "./borrow/Borrow.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
-import {PriceConverter} from "../src/helper/PriceConverter.sol";
+import {PriceConverter} from "./helper/PriceConverter.sol";
 import {PricefeedManager} from "./oracle/PricefeedManager.sol";
 import {CollateralView} from "./shared/SharedStructures.sol";
-import {Treasury} from "./Treasury.sol";
-import {NetworkConfig} from "./NetworkConfig.sol";
-import {Payback} from "./Payback.sol";
-import {Transaction} from "./Transcation.sol";
+import {Treasury} from "./treasury/Treasury.sol";
+import {NetworkConfig} from "./misc/NetworkConfig.sol";
+import {Payback} from "./repayment/Payback.sol";
+import {Transaction} from "./misc/Transcation.sol";
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
  

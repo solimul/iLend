@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
 
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {ProtocolRewardInfo, MiscFundRecievedInfo} from "./shared/SharedStructures.sol";
-import {Transaction} from "./Transcation.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ProtocolRewardInfo, MiscFundRecievedInfo} from "../shared/SharedStructures.sol";
+import {Transaction} from "../misc/Transcation.sol";
 
 contract Treasury {
     event ReceivedETH(address indexed sender, uint256 amount);

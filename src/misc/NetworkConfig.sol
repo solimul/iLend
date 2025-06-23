@@ -7,15 +7,15 @@ pragma solidity ^0.8.29;
  * like transfer, approve, and allowance, but does not implement any logic.
  * Used to interact with any compliant ERC20 token.
  */
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @dev SafeERC20 wraps around IERC20 functions and ensures safe execution.
  * It prevents issues with non-standard ERC20 tokens that do not return a boolean.
  * Commonly used to safely perform token transfers, approvals, etc.
  */
-import {SafeERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {MockERC20} from "../mocks/MockERC20.sol";
+import {SafeERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {MockERC20} from "../../mocks/MockERC20.sol";
 
 contract NetworkConfig {
 

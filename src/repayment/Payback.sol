@@ -1,13 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
-import {Borrow} from "./Borrow.sol";
-import {Deposit} from "./Deposit.sol";
-import {Treasury} from "./Treasury.sol";
-import {Transaction} from "./Transcation.sol";
+import {Borrow} from "../borrow/Borrow.sol";
+import {Deposit} from "../deposit/Deposit.sol";
+import {Treasury} from "../treasury/Treasury.sol";
+import {Transaction} from "../misc/Transcation.sol";
 
-import {RepaymentComponent, BorrowRecord, Lender} from "./shared/SharedStructures.sol";
+import {RepaymentComponent, BorrowRecord, Lender} from "../shared/SharedStructures.sol";
 
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract Payback {
     

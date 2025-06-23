@@ -1,17 +1,17 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
 
-import {Params} from "./Params.sol";
-import {PriceConverter} from "../src/helper/PriceConverter.sol";
-import {Deposit} from "./Deposit.sol";
-import {Collateral} from "./Collateral.sol";
+import {Params} from "../misc/Params.sol";
+import {PriceConverter} from "../helper/PriceConverter.sol";
+import {Deposit} from "../deposit/Deposit.sol";
+import {Collateral} from "../collateral/Collateral.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {Lender, InterestEarned} from "./shared/SharedStructures.sol";
-import {ProtocolReward} from "./ProtocolReward.sol";
-import {Treasury} from "./Treasury.sol";
-import {RepaymentComponent, BorrowRecord, BorrowerRecord} from "./shared/SharedStructures.sol";
-import {Transaction} from "./Transcation.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Lender, InterestEarned} from "../shared/SharedStructures.sol";
+import {ProtocolReward} from "../misc/ProtocolReward.sol";
+import {Treasury} from "../treasury/Treasury.sol";
+import {RepaymentComponent, BorrowRecord, BorrowerRecord} from "../shared/SharedStructures.sol";
+import {Transaction} from "../misc/Transcation.sol";
 
 contract Borrow {
     using PriceConverter for uint256;

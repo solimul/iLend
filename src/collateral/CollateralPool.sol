@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
 
-import {PricefeedManager} from "./oracle/PricefeedManager.sol";
-import {PriceConverter} from "./helper/PriceConverter.sol";
-import {NetworkConfig} from "./NetworkConfig.sol";
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {PricefeedManager} from "../oracle/PricefeedManager.sol";
+import {PriceConverter} from "../helper/PriceConverter.sol";
+import {NetworkConfig} from "../misc/NetworkConfig.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {console} from "@forge-std/console.sol"; // For debugging purposes, remove in production

@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {NetworkConfig} from "./NetworkConfig.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {NetworkConfig} from "../misc/NetworkConfig.sol";
 
 contract DepositPool {
     event DepositDone(address indexed depositor, address indexed depositedTo, uint256 amount, uint256 poolBalance, uint256 timestamp);

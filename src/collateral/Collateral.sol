@@ -2,11 +2,11 @@
 pragma solidity ^0.8.29;
 
 import {CollateralPool} from "./CollateralPool.sol";
-import {Params} from "./Params.sol";
-import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import {Borrow} from "./Borrow.sol";
-import {CollateralView, CollateralWithdrawalRecord, CollateralDepositRecord, CollateralDepositor} from "./shared/SharedStructures.sol";
-import {Transaction} from "./Transcation.sol";
+import {Params} from "../misc/Params.sol";
+import {Strings} from "../../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {Borrow} from "../borrow/Borrow.sol";
+import {CollateralView, CollateralWithdrawalRecord, CollateralDepositRecord, CollateralDepositor} from "../shared/SharedStructures.sol";
+import {Transaction} from "../misc/Transcation.sol";
 
 contract Collateral is CollateralPool {
 
@@ -21,24 +21,6 @@ contract Collateral is CollateralPool {
     Params private params;
     Borrow private borrow;
     Transaction private transaction;
-
-    // struct CollateralView {
-    //     uint256 id;
-    //     uint256 depositAmount;
-    //     uint256 depositDate; 
-    //     bool hasBorrowedAgainst;
-    //     uint256 l2b;
-    //     uint256 totalUSDCBorrowed;
-    //     uint256 totalCollateralDepost;
-    //     uint256 baseInterestRate;
-    //     uint256 interstPayable;
-    //     uint256 protoclRewardByReserveFactor;
-    //     uint256 reserveFactor;
-    //     uint256 totalPayable;
-    // }
-
-    // Mapping to store collateral depositors
-
   
     mapping (address => CollateralDepositor) private collateralDepositors;
 
