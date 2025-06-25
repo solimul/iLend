@@ -5,12 +5,14 @@ import {KeeperCompatibleInterface} from "../../lib/chainlink-brownie-contracts/c
 import {PricefeedManager} from "../oracle/PricefeedManager.sol";
 import {PriceConverter} from "../helper/PriceConverter.sol";
 import {Collateral} from "../collateral/Collateral.sol";
-import {CollateralView} from "../shared/SharedStructures.sol";
+import {CollateralView, LiquidationReadyCollateral} from "../shared/SharedStructures.sol";
 import {Params} from "../misc/Params.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
+import {LiquidationQuery} from "../liquidation/LiquidationQuery.sol";
 
 contract Monitor is KeeperCompatibleInterface {
     /*  @param protocol                The iLend contract address
+        @param borrowerAddress         The ID of the borrower
         @param loanID                  The identifier of the loan to be liquidated
         @param depositAmount           Amount of collateral originally deposited (in ETH)
         @param debtAmount              Total USDC borrowed against this collateral
@@ -21,9 +23,11 @@ contract Monitor is KeeperCompatibleInterface {
         @param liquidatableETH         Amount of ETH a liquidator can claim (including bonus)
         @param postDiscountEthRate     Effective ETH rate (USDC/ETH) after applying discount
         @param currentETHPrice          Latest ETH price (USDC per ETH) from the oracle
+        @param eventDateTime            Time when the event was created.
     */
     event LiquidationOpportunity(
         address indexed protocol,
+        address indexed borrower,
         uint256 indexed loanID,
         uint256 depositAmount,
         uint256 debtAmount,
@@ -33,7 +37,8 @@ contract Monitor is KeeperCompatibleInterface {
         uint256 shortfallUSD,
         uint256 liquidatableETH,
         uint256 currentETHPrice,
-        uint256 postDiscountETHPrice
+        uint256 postDiscountETHPrice,
+        uint256 eventDateTime
     );
     using PriceConverter for AggregatorV3Interface;
     uint256 private constant PERCENTAGE_CHANGE_THRESHOLD = 5;
@@ -45,17 +50,22 @@ contract Monitor is KeeperCompatibleInterface {
     Collateral private collateral;
     address private iLendAddress;
     Params private params;
+    LiquidationQuery private liquidationQuery;
+
+    
 
     constructor (address _paramsAddress, 
                 address _priceFeedAddress, 
                 address _collateral, 
-                address _iLendAddress
+                address _iLendAddress,
+                address _liquidationQuryAddress
                 ) {
         priceFeed = AggregatorV3Interface (_priceFeedAddress);
         lastETHPrice = priceFeed.getPrice ();
         collateral = Collateral (_collateral);
         iLendAddress = _iLendAddress;
         params = Params (_paramsAddress);
+        liquidationQuery = LiquidationQuery (_liquidationQuryAddress);
     }
         
 
@@ -71,6 +81,8 @@ contract Monitor is KeeperCompatibleInterface {
             uint256 absPriceDiff = uint256 (priceDiff * (-1));
             uint256 percentageChange = (absPriceDiff / lastETHPrice) * 1000;
             upkeepNeeded = percentageChange > PERCENTAGE_CHANGE_THRESHOLD;
+        } else if (priceDiff > 0){
+            upkeepNeeded = false;
         }
     }
 
@@ -78,6 +90,7 @@ contract Monitor is KeeperCompatibleInterface {
     external override
     {
         address [] memory addresses = collateral.get_collateral_depositor_addresses ();
+        liquidationQuery.reset_liquidation_ready_collaterals ();
         for (uint i=0; i< addresses.length; i++) {
             address dAddress = addresses [i];
             CollateralView [] memory depletedCollaterals = collateral.get_depeleted_collaterals (dAddress);
@@ -96,18 +109,33 @@ contract Monitor is KeeperCompatibleInterface {
                 
                 uint256 liquidableETH = shortFallUSD / currentRate;
                 uint256 postDiscountETHPrice = (currentRate * (HUNDRED - discountRate))/HUNDRED; 
+                LiquidationReadyCollateral memory col = LiquidationReadyCollateral ({
+                    discountRate: discountRate,
+                    currentValueToBorrow: currentValueToBorrow,
+                    shortFallUSDC: shortFallUSD,
+                    liquidableETH: liquidableETH,
+                    currentRate: currentRate,
+                    postDiscountETHPrice: postDiscountETHPrice,
+                    cv: cv
+                });
+
+                liquidationQuery.add_collateral_as_liquidation_ready(dAddress, col);
+
                 emit LiquidationOpportunity 
-                    (iLendAddress,
-                    cv.loanID,
-                    cv.depositAmount,
-                    cv.totalUSDCBorrowed,
-                    cv.totalCollateralDepost,
-                    discountRate,
-                    currentValueToBorrow,
-                    shortFallUSD,
-                    liquidableETH,
-                    currentRate,
-                    postDiscountETHPrice
+                    (
+                        iLendAddress,
+                        dAddress,
+                        cv.loanID,
+                        cv.depositAmount,
+                        cv.totalUSDCBorrowed,
+                        cv.totalCollateralDepost,
+                        discountRate,
+                        currentValueToBorrow,
+                        shortFallUSD,
+                        liquidableETH,
+                        currentRate,
+                        postDiscountETHPrice,
+                        block.timestamp
                     );
             }
         }

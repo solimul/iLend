@@ -13,6 +13,8 @@ import {NetworkConfig} from "./misc/NetworkConfig.sol";
 import {Payback} from "./repayment/Payback.sol";
 import {Transaction} from "./misc/Transcation.sol";
 import {Monitor} from "./liquidation/Monitor.sol";
+import {LiquidationQuery} from "./liquidation/LiquidationQuery.sol";
+
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
  
@@ -28,6 +30,7 @@ contract iLend {
     Transaction private transaction;
     Monitor private monitor;
     AggregatorV3Interface private priceFeed;
+    LiquidationQuery private liquidationQuery;
     IERC20 private usdcContract;
     
     // Modifiers
@@ -70,10 +73,12 @@ contract iLend {
                               address (treasury), 
                               address (usdcContract),
                               address (transaction));
+        liquidationQuery = new LiquidationQuery ();
         monitor = new Monitor (address (params),
                         address (priceFeed),
                         address (collateral),
-                        address (this));
+                        address (this),
+                        address (liquidationQuery));
     }
 
     function set_params() internal {

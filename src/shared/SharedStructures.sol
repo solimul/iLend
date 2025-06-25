@@ -142,4 +142,16 @@ struct MiscFundRecievedInfo {
 }
 
 
+/** Liquidation */
+
+struct LiquidationReadyCollateral {
+    uint256 discountRate;
+    uint256 currentValueToBorrow;
+    uint256 shortFallUSDC;
+    uint256 liquidableETH;
+    uint256 currentRate;
+    uint256 postDiscountETHPrice;
+    CollateralView cv;
+}
+
 
