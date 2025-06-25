@@ -5,10 +5,18 @@ import {CollateralPool} from "./CollateralPool.sol";
 import {Params} from "../misc/Params.sol";
 import {Strings} from "../../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Borrow} from "../borrow/Borrow.sol";
-import {CollateralView, CollateralWithdrawalRecord, CollateralDepositRecord, CollateralDepositor} from "../shared/SharedStructures.sol";
+import {CollateralView, 
+        CollateralWithdrawalRecord, 
+        CollateralDepositRecord,
+        CollateralDepositor,
+        DepletedCollateral} from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
+import {PriceConverter} from "../helper/PriceConverter.sol";
+import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 
 contract Collateral is CollateralPool {
+
+    using PriceConverter for AggregatorV3Interface;
 
     event CollateralDeposited(
         address indexed depositor,
@@ -21,12 +29,17 @@ contract Collateral is CollateralPool {
     Params private params;
     Borrow private borrow;
     Transaction private transaction;
+    AggregatorV3Interface private pricefeed;
   
     mapping (address => CollateralDepositor) private collateralDepositors;
+    address [] private collateralDeposotorAddresses;
 
-    constructor(Params _params, address _priceFeedAddress, address _tAddress) CollateralPool (_priceFeedAddress) {
+    constructor(Params _params, 
+                address _priceFeedAddress, 
+                address _tAddress) CollateralPool (_priceFeedAddress) {
         params = _params;
         transaction = Transaction (_tAddress);
+        pricefeed = AggregatorV3Interface (_priceFeedAddress);
         //borrow = Borrower(_borrowerContractAddress);
     } 
 
@@ -57,8 +70,9 @@ contract Collateral is CollateralPool {
         require(deposit_eth(depositor, amount), "Transfer failed");
 
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
-        if (!collateralDepositor.isActive) {
+        if (!collateralDepositor.isActive) { // new
             collateralDepositor.isActive = true;
+            collateralDeposotorAddresses.push (depositor);
         }
         collateralDepositor.totalAmount += amount;
         CollateralDepositRecord memory newDeposit = CollateralDepositRecord({
@@ -138,30 +152,61 @@ contract Collateral is CollateralPool {
 
     function get_collateral_depositor_info (
         address depositor
-    ) external view returns (CollateralView [] memory) {
+    ) public view returns (CollateralView [] memory) {
         CollateralDepositor storage collateralDepositor = collateralDepositors[depositor];
         CollateralView [] memory collateralViews = new CollateralView[](collateralDepositor.depositCounts);
         for (uint256 i = 0; i < collateralDepositor.depositCounts; i++) {
             CollateralDepositRecord storage record = collateralDepositor.collateralDepositRecords[i];
-            uint256 iPayable = borrow.get_interest_payable (depositor, i);
-            uint256 protocolReward = borrow.get_protocol_reward(depositor, i);
+            if (record.depositTime != 0) // exclude the deleted records
+            {
+                uint256 iPayable = borrow.get_interest_payable (depositor, i);
+                uint256 protocolReward = borrow.get_protocol_reward(depositor, i);
 
-            collateralViews[i] = CollateralView({
-                loanID: i,
-                depositAmount: record.amount,
-                depositDate: record.depositTime,
-                hasBorrowedAgainst: record.hasBorrowedAgainst,
-                l2b: record.l2b,
-                totalUSDCBorrowed: borrow.get_borrowed_amount (depositor, i),
-                totalCollateralDepost: collateralDepositor.totalAmount,
-                baseInterestRate: borrow.get_borrowed_interest_rate (depositor, i),
-                interstPayable: iPayable, 
-                protoclRewardByReserveFactor: protocolReward, // Placeholder, needs to be calculated based on reserve factor logic
-                reserveFactor: params.get_reserve_factor(),
-                totalPayable: iPayable + protocolReward // Placeholder, needs to be calculated based on total payable logic
-            });
+                collateralViews[i] = CollateralView({
+                    loanID: i,
+                    depositAmount: record.amount,
+                    depositDate: record.depositTime,
+                    hasBorrowedAgainst: record.hasBorrowedAgainst,
+                    rate: pricefeed.getPrice (),
+                    l2b: record.l2b,
+                    totalUSDCBorrowed: borrow.get_borrowed_amount (depositor, i),
+                    totalCollateralDepost: collateralDepositor.totalAmount,
+                    baseInterestRate: borrow.get_borrowed_interest_rate (depositor, i),
+                    interstPayable: iPayable, 
+                    protoclRewardByReserveFactor: protocolReward, // Placeholder, needs to be calculated based on reserve factor logic
+                    reserveFactor: params.get_reserve_factor(),
+                    totalPayable: iPayable + protocolReward // Placeholder, needs to be calculated based on total payable logic
+                    });
+            }
         }
         return collateralViews;
+    }
+
+    function get_depeleted_collaterals (address _depositor)
+    external view returns (CollateralView [] memory depletedCollaterals){
+        CollateralDepositor storage depositor = collateralDepositors[_depositor];
+        uint256 n = depositor.depositCounts;
+        CollateralView [] memory cViews = get_collateral_depositor_info (_depositor);
+        uint256 cnt = 0;
+        uint256 currentRate = pricefeed.getPrice();
+        uint256 lqThreshold = params.getLiquidationThreshold ();
+
+        for (uint256 i=0; i < n; i++){
+            CollateralView memory record = cViews [i];
+            bool depleted = (currentRate * 100 / record.rate) < lqThreshold;
+            if (depleted)
+                cnt += 1;
+        }
+        depletedCollaterals = new CollateralView [] (cnt);
+        uint256 k = 0;
+
+        for (uint256 i=0; i < n; i++){
+            CollateralView memory record = cViews [i];
+            bool isDepleted = (currentRate * 100 / record.rate) < lqThreshold;
+            if (isDepleted)
+               depletedCollaterals [k++] = record;
+        }
+        return depletedCollaterals;
     }
 
     function set_borrower_contract(address _borrowerContractAddress) external {
@@ -178,5 +223,11 @@ contract Collateral is CollateralPool {
         uint256 amount = get_collateral_ETH_by_record(_cDepositorAddress, _collateralID);
         transaction.safe_transfer_from (eth_contract, address (this), _cDepositorAddress, amount);
         deleteCollateralRecord (_cDepositorAddress, _collateralID);
+    }
+
+    function get_collateral_depositor_addresses ()
+    public view 
+    returns(address [] memory) {
+        return collateralDeposotorAddresses;
     }
 }

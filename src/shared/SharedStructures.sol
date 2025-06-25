@@ -93,6 +93,7 @@ struct CollateralView {
     uint256 depositAmount;
     uint256 depositDate;
     bool hasBorrowedAgainst;
+    uint256 rate;
     uint256 l2b;
     uint256 totalUSDCBorrowed;
     uint256 totalCollateralDepost;
@@ -103,6 +104,13 @@ struct CollateralView {
     uint256 totalPayable;
 }
 
+struct DepletedCollateral {
+    address _depositor;
+    uint256 _collateralID;
+    uint256 currentL2B;
+    uint256 currentPrice;
+    uint256 availableCollateral;    
+}
 /** 
  * Lending and Interest Structres
  * **/

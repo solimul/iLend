@@ -27,7 +27,7 @@ contract Params {
                                   uint256 _maxLiquidationThreshold,
                                   uint256 _minLiquidationAmount,
                                   uint256 _maxLiquidationAmount,
-                                  uint256 _liquidationBonusRate,
+                                  uint256 _liquidationDiscountRate,
                                   string _liquidationBonusType);
     event OracleParamsSetup (address indexed user,
                              address _oracleAddress,
@@ -73,7 +73,7 @@ contract Params {
         uint256 maxLiquidationThreshold;
         uint256 minLiquidationAmount;
         uint256 maxLiquidationAmount;
-        uint256 liquidationBonusRate;
+        uint256 liquidationDiscountRate;
         string liqudationBonusType;
     }
 
@@ -218,7 +218,11 @@ contract Params {
     function getMaxRepaymentPeriod() public view returns (uint256) {
         return borrowParams.maxRepaymentPeriod;
     }
-    function getLiquidationThreshold() public view returns (uint256) {
+    function getLiquidationDiscountRate() public view returns (uint256) {
+        return liquidationParams.liquidationDiscountRate;
+    }
+
+       function getLiquidationThreshold() public view returns (uint256) {
         return liquidationParams.liquidationThreshold;
     }
 
@@ -277,7 +281,7 @@ contract Params {
         uint256 _maxLiquidationThreshold,
         uint256 _minLiquidationAmount,
         uint256 _maxLiquidationAmount,
-        uint256 _liquidationBonusRate,
+        uint256 _liquidationDiscountRate,
         string memory _liquidationBonusType
     ) external onlyOwner{
         liquidationParams = LiquidationParams({
@@ -287,10 +291,10 @@ contract Params {
             maxLiquidationThreshold: _maxLiquidationThreshold,
             minLiquidationAmount: _minLiquidationAmount,
             maxLiquidationAmount: _maxLiquidationAmount,
-            liquidationBonusRate: _liquidationBonusRate,
+            liquidationDiscountRate: _liquidationDiscountRate,
             liqudationBonusType: _liquidationBonusType
         });
-        emit LiquidationParamsSetup(owner, _liquidationThreshold, _liquidationFee, _minLiquidationThreshold, _maxLiquidationThreshold, _minLiquidationAmount, _maxLiquidationAmount, _liquidationBonusRate, _liquidationBonusType);
+        emit LiquidationParamsSetup(owner, _liquidationThreshold, _liquidationFee, _minLiquidationThreshold, _maxLiquidationThreshold, _minLiquidationAmount, _maxLiquidationAmount, _liquidationDiscountRate, _liquidationBonusType);
     }
 
     function set_oracle_params(

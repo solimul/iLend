@@ -12,6 +12,7 @@ import {Treasury} from "./treasury/Treasury.sol";
 import {NetworkConfig} from "./misc/NetworkConfig.sol";
 import {Payback} from "./repayment/Payback.sol";
 import {Transaction} from "./misc/Transcation.sol";
+import {Monitor} from "./liquidation/Monitor.sol";
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
  
@@ -25,6 +26,7 @@ contract iLend {
     Treasury private treasury;
     Payback private payback;
     Transaction private transaction;
+    Monitor private monitor;
     AggregatorV3Interface private priceFeed;
     IERC20 private usdcContract;
     
@@ -68,6 +70,10 @@ contract iLend {
                               address (treasury), 
                               address (usdcContract),
                               address (transaction));
+        monitor = new Monitor (address (params),
+                        address (priceFeed),
+                        address (collateral),
+                        address (this));
     }
 
     function set_params() internal {
@@ -115,6 +121,5 @@ contract iLend {
     function close_loan (uint256 _loanID) external payable {
         payback.process_repayment (msg.sender, _loanID, msg.value);
         collateral.unlock_collateral (msg.sender, _loanID);
-
     }
 }
