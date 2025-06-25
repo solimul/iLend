@@ -7,7 +7,7 @@ import {Borrow} from "./borrow/Borrow.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./helper/PriceConverter.sol";
 import {PricefeedManager} from "./oracle/PricefeedManager.sol";
-import {CollateralView} from "./shared/SharedStructures.sol";
+import {CollateralView, LiquidationReadyCollateral} from "./shared/SharedStructures.sol";
 import {Treasury} from "./treasury/Treasury.sol";
 import {NetworkConfig} from "./misc/NetworkConfig.sol";
 import {Payback} from "./repayment/Payback.sol";
@@ -127,4 +127,16 @@ contract iLend {
         payback.process_repayment (msg.sender, _loanID, msg.value);
         collateral.unlock_collateral (msg.sender, _loanID);
     }
+
+    function get_liquidation_ready_collaterals () 
+    external view returns (LiquidationReadyCollateral [] [] memory) {
+        address [] memory list = liquidationQuery.get_list_of_liqudation_ready_addresses (); 
+        uint256 n = list.length;
+        LiquidationReadyCollateral [][] memory _cols = new LiquidationReadyCollateral [][] (n);
+        for (uint256 i=0; i< n; i++){
+            _cols [i] = liquidationQuery.get_liquidation_ready_collateral_information_for_the_borrower (list [i]);
+        }
+        return _cols;
+    }
+
 }
