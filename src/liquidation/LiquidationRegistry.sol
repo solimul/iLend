@@ -1,11 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
-import {LiquidationReadyCollateral} from "../shared/SharedStructures.sol";
+import {LiquidationReadyCollateral, LiquidationReadyCollateralLoanIDMap} from "../shared/SharedStructures.sol";
 
 contract LiquidationRegistry {
     address[] private liquidationReadyList;
     mapping (address => uint256 []) private liquidationReadyBorrower2LoanIDs;
     mapping (address=>LiquidationReadyCollateral []) private liquidationReadyCollaterals;
+    mapping (address=> LiquidationReadyCollateralLoanIDMap) private addressToLoanIDToCollateral;
 
     modifier _borrowerExists (address _borrower) {
         require (liquidationReadyCollaterals [_borrower].length > 0, "The borrower does not have any liquidation ready collateral.");
@@ -21,14 +22,23 @@ contract LiquidationRegistry {
         liquidationReadyCollaterals [_borrower].push (_collateral);
         liquidationReadyList.push (_borrower);
         liquidationReadyBorrower2LoanIDs [_borrower].push (_collateral.cv.loanID);
+        LiquidationReadyCollateralLoanIDMap storage loanMap = addressToLoanIDToCollateral[_borrower];
+        loanMap.map[_collateral.cv.loanID] = _collateral;
     }
 
     function reset_liquidation_ready_collaterals () 
     public {
         for (uint256 i=0; i< liquidationReadyList.length; i++) {
             address cAddress = liquidationReadyList [i];
-            delete liquidationReadyCollaterals [cAddress];
-            delete liquidationReadyBorrower2LoanIDs [cAddress];
+            uint256[] storage loanIDs = liquidationReadyBorrower2LoanIDs[cAddress];
+        
+            for (uint256 j = 0; j < loanIDs.length; j++) {
+                delete addressToLoanIDToCollateral[cAddress].map[loanIDs[j]];
+            }
+
+            delete liquidationReadyCollaterals[cAddress];
+            delete liquidationReadyBorrower2LoanIDs[cAddress];
+            delete addressToLoanIDToCollateral[cAddress];
         }
         delete liquidationReadyList;
     }
@@ -45,6 +55,17 @@ contract LiquidationRegistry {
     _borrowerExists (_borrower)
     returns (LiquidationReadyCollateral [] memory) {
         return liquidationReadyCollaterals [_borrower];
+    }
+
+    function get_liquidation_ready_collateral_information_for_the_borrower_and_loanID 
+    (
+        address _borrower,
+        uint256 _loanID
+    ) 
+    external view
+    _borrowerExists (_borrower) returns (LiquidationReadyCollateral memory){
+        LiquidationReadyCollateralLoanIDMap storage col = addressToLoanIDToCollateral [_borrower];
+        return col.map [_loanID];
     }
 
     function get_liquidation_ready_and_loanID_by_borrower 

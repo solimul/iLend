@@ -154,4 +154,8 @@ struct LiquidationReadyCollateral {
     CollateralView cv;
 }
 
+struct LiquidationReadyCollateralLoanIDMap {
+    mapping (uint256=>LiquidationReadyCollateral) map;
+}
+
 

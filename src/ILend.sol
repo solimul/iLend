@@ -30,7 +30,7 @@ contract iLend {
     Transaction private transaction;
     Monitor private monitor;
     AggregatorV3Interface private priceFeed;
-    LiquidationQuery private liquidationQuery;
+    LiquidationRegistry private liquidationRegistry;
     IERC20 private usdcContract;
     
     // Modifiers
@@ -73,12 +73,12 @@ contract iLend {
                               address (treasury), 
                               address (usdcContract),
                               address (transaction));
-        liquidationQuery = new LiquidationQuery ();
+        liquidationRegistry = new LiquidationRegistry ();
         monitor = new Monitor (address (params),
                         address (priceFeed),
                         address (collateral),
                         address (this),
-                        address (liquidationQuery));
+                        address (liquidationRegistry));
     }
 
     function set_params() internal {
@@ -130,11 +130,11 @@ contract iLend {
 
     function get_liquidation_ready_collaterals () 
     external view returns (LiquidationReadyCollateral [] [] memory) {
-        address [] memory list = liquidationQuery.get_list_of_liqudation_ready_addresses (); 
+        address [] memory list = liquidationRegistry.get_list_of_liqudation_ready_addresses (); 
         uint256 n = list.length;
         LiquidationReadyCollateral [][] memory _cols = new LiquidationReadyCollateral [][] (n);
         for (uint256 i=0; i< n; i++){
-            _cols [i] = liquidationQuery.get_liquidation_ready_collateral_information_for_the_borrower (list [i]);
+            _cols [i] = liquidationRegistry.get_liquidation_ready_collateral_information_for_the_borrower (list [i]);
         }
         return _cols;
     }

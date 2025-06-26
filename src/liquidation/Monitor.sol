@@ -50,7 +50,7 @@ contract Monitor is KeeperCompatibleInterface {
     Collateral private collateral;
     address private iLendAddress;
     Params private params;
-    LiquidationQuery private liquidationQuery;
+    LiquidationRegistry private liquidationRegistry;
 
     
 
@@ -65,7 +65,7 @@ contract Monitor is KeeperCompatibleInterface {
         collateral = Collateral (_collateral);
         iLendAddress = _iLendAddress;
         params = Params (_paramsAddress);
-        liquidationQuery = LiquidationQuery (_liquidationQuryAddress);
+        liquidationRegistry = LiquidationRegistry (_liquidationQuryAddress);
     }
         
 
@@ -90,7 +90,7 @@ contract Monitor is KeeperCompatibleInterface {
     external override
     {
         address [] memory addresses = collateral.get_collateral_depositor_addresses ();
-        liquidationQuery.reset_liquidation_ready_collaterals ();
+        liquidationRegistry.reset_liquidation_ready_collaterals ();
         for (uint i=0; i< addresses.length; i++) {
             address dAddress = addresses [i];
             CollateralView [] memory depletedCollaterals = collateral.get_depeleted_collaterals (dAddress);
@@ -119,7 +119,7 @@ contract Monitor is KeeperCompatibleInterface {
                     cv: cv
                 });
 
-                liquidationQuery.add_collateral_as_liquidation_ready(dAddress, col);
+                liquidationRegistry.add_collateral_as_liquidation_ready(dAddress, col);
 
                 emit LiquidationOpportunity 
                     (
