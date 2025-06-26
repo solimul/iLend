@@ -8,7 +8,7 @@ import {Collateral} from "../collateral/Collateral.sol";
 import {CollateralView, LiquidationReadyCollateral} from "../shared/SharedStructures.sol";
 import {Params} from "../misc/Params.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
-import {LiquidationQuery} from "../liquidation/LiquidationQuery.sol";
+import {LiquidationRegistry} from "../liquidation/LiquidationRegistry.sol";
 
 contract Monitor is KeeperCompatibleInterface {
     /*  @param protocol                The iLend contract address

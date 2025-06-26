@@ -13,7 +13,7 @@ import {NetworkConfig} from "./misc/NetworkConfig.sol";
 import {Payback} from "./repayment/Payback.sol";
 import {Transaction} from "./misc/Transcation.sol";
 import {Monitor} from "./liquidation/Monitor.sol";
-import {LiquidationQuery} from "./liquidation/LiquidationQuery.sol";
+import {LiquidationRegistry} from "./liquidation/LiquidationRegistry.sol";
 
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";

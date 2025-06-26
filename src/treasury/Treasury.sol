@@ -52,7 +52,7 @@ contract Treasury {
 
     function withdrawERC20(address token, address to, uint256 amount) external onlyOwner (to) {
         require(IERC20(token).balanceOf(address(this)) >= amount, "Insufficient token balance");
-        IERC20(token).transfer(to, amount);
+        IERC20(token).transfer(to, amount); 
         emit ERC20Withdrawn(token, to, amount);
     }
 
