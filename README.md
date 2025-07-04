@@ -1,6 +1,6 @@
-# 🛡️ iLend Protocol — Liquidation System
+# 🛡️ iLend Protocol
 
-**iLend** is a decentralized lending protocol that enables users to deposit assets as collateral and borrow against them. This repository provisions a **Liquidation Engine**, a subsystem responsible for monitoring undercollateralized loans and enabling liquidators to stabilize the system.
+**iLend** is a decentralized lending protocol that enables users to deposit assets as collateral and borrow against them. This repository is provisioned with a **Liquidation Engine**, a subsystem responsible for monitoring undercollateralized loans and enabling liquidators to stabilize the system.
 
 ---
 
