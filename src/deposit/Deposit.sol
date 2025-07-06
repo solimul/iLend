@@ -128,6 +128,10 @@ contract Deposit is DepositPool {
         return poolBalance;
     }
 
+    function get_deposit_balance () public view returns (uint256) {
+        return (usdc_contract).balanceOf (address (this));
+    }
+
 
 
     function depositor_withdraw_principal (address depositor_address, uint256 amount) external existingDepositor (depositor_address) {
@@ -337,5 +341,13 @@ contract Deposit is DepositPool {
         }));
         require (usdc_contract.transferFrom (_borrowerAddress, address (this), lentFromThisDepositAccount), "Cannot receive Interest for this deposit record from the Borrower");
         return interestShare;
+    }
+
+    function receive_liquidation 
+    (
+        address _liquidator,
+        uint256 _usdcAmount
+    ) public {
+        transaction.safe_transfer_from("USDC", _liquidator, address (this), _usdcAmount);
     }
 }

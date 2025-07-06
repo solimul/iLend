@@ -221,7 +221,7 @@ contract Collateral is CollateralPool {
 
     function unlock_collateral (address _cDepositorAddress, uint256 _collateralID) public {
         uint256 amount = get_collateral_ETH_by_record(_cDepositorAddress, _collateralID);
-        transaction.safe_transfer_from (eth_contract, address (this), _cDepositorAddress, amount);
+        transaction.safe_transfer_from ("ETH", address (this), _cDepositorAddress, amount);
         deleteCollateralRecord (_cDepositorAddress, _collateralID);
     }
 
@@ -229,5 +229,9 @@ contract Collateral is CollateralPool {
     public view 
     returns(address [] memory) {
         return collateralDeposotorAddresses;
+    }
+
+    function send_to_liquidator (address _liquidator, uint256 _ethAmount) public {
+        transaction.safe_transfer_to ("ETH", address (this), _liquidator, _ethAmount);
     }
 }

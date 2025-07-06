@@ -158,4 +158,18 @@ struct LiquidationReadyCollateralLoanIDMap {
     mapping (uint256=>LiquidationReadyCollateral) map;
 }
 
+struct LiquidationRecord {
+    uint256 liquidationUSDCAmount;
+    uint256 discountedETHRecieved;
+    LiquidationReadyCollateral liquidatedCollateral;
+    uint256 liquidInjectionDateTime;
+}
+
+struct Liquidator {
+    address liquidator;
+    uint256 totalLiquidatProvided;
+    uint256 totalDiscountedAssetReceived;
+    LiquidationRecord [] liquidationRecords;
+}
+
 

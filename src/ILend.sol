@@ -14,6 +14,7 @@ import {Payback} from "./repayment/Payback.sol";
 import {Transaction} from "./misc/Transcation.sol";
 import {Monitor} from "./liquidation/Monitor.sol";
 import {LiquidationRegistry} from "./liquidation/LiquidationRegistry.sol";
+import {LiquidationEngine} from "./liquidation/LiquidationEngine.sol";
 
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -31,7 +32,10 @@ contract iLend {
     Monitor private monitor;
     AggregatorV3Interface private priceFeed;
     LiquidationRegistry private liquidationRegistry;
+    LiquidationEngine private liquidationEngine;
+
     IERC20 private usdcContract;
+    IERC20 private ethContract;
     
     // Modifiers
     modifier onlyOwner() {
@@ -48,13 +52,14 @@ contract iLend {
     constructor () {
         owner = msg.sender;
         params = new Params(owner);
-        transaction = new Transaction ();
         params.initialize (false, false, false);
         set_params();
         PricefeedManager priceFeedManager = new PricefeedManager();
         priceFeed = AggregatorV3Interface(priceFeedManager.get_priceFeed_address());
         NetworkConfig config = new NetworkConfig();
         usdcContract = IERC20(config.get_usdc_contract_address());
+        ethContract = IERC20 (config.getETHContract());
+        transaction = new Transaction (usdcContract, ethContract);
         treasury = new Treasury (msg.sender, address (transaction));
         // Dependency injection for contracts: Factory pattern
         // This allows for easier testing and contract upgrades
@@ -79,6 +84,10 @@ contract iLend {
                         address (collateral),
                         address (this),
                         address (liquidationRegistry));
+        liquidationEngine = new LiquidationEngine (address (liquidationRegistry),
+                        address (collateral),
+                        address (deposit), 
+                        address (transaction));
     }
 
     function set_params() internal {
@@ -139,4 +148,12 @@ contract iLend {
         return _cols;
     }
 
+    function inject_liquid_against_undercollateralized_borrow 
+    (
+        address _borrower,
+        uint256 _loanID,
+        uint256 _usdcAmount
+    ) external {
+        liquidationEngine.inject_liquid_send_discounted_collateral(msg.sender, _borrower, _loanID, _usdcAmount);
+    }
 }
