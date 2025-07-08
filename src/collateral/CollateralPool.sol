@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
 
-import {PricefeedManager} from "../oracle/PricefeedManager.sol";
 import {PriceConverter} from "../helper/PriceConverter.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
@@ -21,13 +20,9 @@ contract CollateralPool {
     // It can be extended by other contracts to implement specific collateral logic
     using PriceConverter for uint256; 
     AggregatorV3Interface private priceFeed;  
-    PricefeedManager priceFeedManager;
     address public owner;
     IERC20 public immutable eth_contract;
     uint256 public poolBalance;
-
-    
-
 
 
     constructor(address _priceFeedAddress, address _ethContractAddress) {
@@ -45,15 +40,6 @@ contract CollateralPool {
         return true;
     }
 
-    function getColleteralPoolAddress () external view returns (address) {
-        return address(this);
-    }
-    function get_priceFeed_address() external view returns (address) {
-        return address(priceFeed);
-    }
-    function getPriceFeedManagerAddress() external view returns (address) {
-        return address(priceFeedManager);
-    }
 
     function getPriceFeed () external view returns (AggregatorV3Interface) {
         return priceFeed;

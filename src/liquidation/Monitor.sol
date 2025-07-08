@@ -2,7 +2,6 @@
 pragma solidity ^0.8.29;
 
 import {KeeperCompatibleInterface} from "../../lib/chainlink-brownie-contracts/contracts/src/v0.8/automation/interfaces/KeeperCompatibleInterface.sol";
-import {PricefeedManager} from "../oracle/PricefeedManager.sol";
 import {PriceConverter} from "../helper/PriceConverter.sol";
 import {Collateral} from "../collateral/Collateral.sol";
 import {CollateralView, LiquidationReadyCollateral} from "../shared/SharedStructures.sol";

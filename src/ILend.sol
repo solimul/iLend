@@ -6,7 +6,7 @@ import {Collateral} from "./collateral/Collateral.sol";
 import {Borrow} from "./borrow/Borrow.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./helper/PriceConverter.sol";
-import {PricefeedManager} from "./oracle/PricefeedManager.sol";
+import {PricefeedManagerLib} from "./lib/PricefeedManagerLib.sol";
 import {CollateralView, LiquidationReadyCollateral} from "./shared/SharedStructures.sol";
 import {Treasury} from "./treasury/Treasury.sol";
 import {NetworkConfigLib} from "./lib/NetworkConfigLib.sol";
@@ -54,8 +54,7 @@ contract iLend {
         params = new Params(owner);
         params.initialize (false, false, false);
         set_params();
-        PricefeedManager priceFeedManager = new PricefeedManager();
-        priceFeed = AggregatorV3Interface(priceFeedManager.get_priceFeed_address());
+        priceFeed = AggregatorV3Interface(PricefeedManagerLib.get_price_feed_address());
         usdcContract = IERC20(NetworkConfigLib.get_usdc_contract_address());
         ethContract = IERC20 (NetworkConfigLib.get_usdc_contract_address());
         transaction = new Transaction (usdcContract, ethContract);
