@@ -36,7 +36,8 @@ contract Collateral is CollateralPool {
 
     constructor(Params _params, 
                 address _priceFeedAddress, 
-                address _tAddress) CollateralPool (_priceFeedAddress) {
+                address _tAddress,
+                address _ethContractAddress) CollateralPool (_priceFeedAddress, _ethContractAddress) {
         params = _params;
         transaction = Transaction (_tAddress);
         pricefeed = AggregatorV3Interface (_priceFeedAddress);

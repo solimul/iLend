@@ -3,7 +3,6 @@ pragma solidity ^0.8.29;
 
 import {PricefeedManager} from "../oracle/PricefeedManager.sol";
 import {PriceConverter} from "../helper/PriceConverter.sol";
-import {NetworkConfig} from "../misc/NetworkConfig.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
@@ -23,7 +22,6 @@ contract CollateralPool {
     using PriceConverter for uint256; 
     AggregatorV3Interface private priceFeed;  
     PricefeedManager priceFeedManager;
-    NetworkConfig config;
     address public owner;
     IERC20 public immutable eth_contract;
     uint256 public poolBalance;
@@ -32,10 +30,9 @@ contract CollateralPool {
 
 
 
-    constructor(address _priceFeedAddress) {
+    constructor(address _priceFeedAddress, address _ethContractAddress) {
         priceFeed = AggregatorV3Interface(_priceFeedAddress);
-        config = new NetworkConfig();
-        eth_contract = IERC20(config.getETHContract());
+        eth_contract = IERC20(_ethContractAddress);
     }
 
     function deposit_eth (address depositor, uint256 amount) public returns (bool) {
@@ -62,10 +59,6 @@ contract CollateralPool {
         return priceFeed;
     }
 
-
-    function getNetworkConfigAddress() external view returns (address) {
-        return address(config);
-    }
     function get_eth_contract () external view returns (IERC20) {
         return eth_contract;
     }

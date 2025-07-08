@@ -9,7 +9,7 @@ import {PriceConverter} from "./helper/PriceConverter.sol";
 import {PricefeedManager} from "./oracle/PricefeedManager.sol";
 import {CollateralView, LiquidationReadyCollateral} from "./shared/SharedStructures.sol";
 import {Treasury} from "./treasury/Treasury.sol";
-import {NetworkConfig} from "./misc/NetworkConfig.sol";
+import {NetworkConfigLib} from "./lib/NetworkConfigLib.sol";
 import {Payback} from "./repayment/Payback.sol";
 import {Transaction} from "./misc/Transcation.sol";
 import {Monitor} from "./liquidation/Monitor.sol";
@@ -56,17 +56,17 @@ contract iLend {
         set_params();
         PricefeedManager priceFeedManager = new PricefeedManager();
         priceFeed = AggregatorV3Interface(priceFeedManager.get_priceFeed_address());
-        NetworkConfig config = new NetworkConfig();
-        usdcContract = IERC20(config.get_usdc_contract_address());
-        ethContract = IERC20 (config.getETHContract());
+        usdcContract = IERC20(NetworkConfigLib.get_usdc_contract_address());
+        ethContract = IERC20 (NetworkConfigLib.get_usdc_contract_address());
         transaction = new Transaction (usdcContract, ethContract);
         treasury = new Treasury (msg.sender, address (transaction));
+
         // Dependency injection for contracts: Factory pattern
         // This allows for easier testing and contract upgrades
         // The Deposit, Collateral, and Borrower contracts are initialized with the Params and PriceFeed
         // contracts, allowing them to access the necessary parameters and price feed data.
         deposit = new Deposit(params, usdcContract,  address (transaction));
-        collateral = new Collateral(params, address (priceFeed),  address (transaction));
+        collateral = new Collateral(params, address (priceFeed),  address (transaction), address (ethContract));
         borrow = new Borrow(params, 
                     address(priceFeed), 
                     address (deposit), 
