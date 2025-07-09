@@ -57,11 +57,8 @@ contract LiquidationRegistry {
         return liquidationReadyCollaterals [_borrower];
     }
 
-    function get_liquidation_ready_collateral_information_for_the_borrower_and_loanID 
-    (
-        address _borrower,
-        uint256 _loanID
-    ) 
+    function get_liquidation_ready_collateral_information_for_the_borrower_and_loanID ( address _borrower,
+        uint256 _loanID) 
     external view
     _borrowerExists (_borrower) returns (LiquidationReadyCollateral memory){
         LiquidationReadyCollateralLoanIDMap storage col = addressToLoanIDToCollateral [_borrower];

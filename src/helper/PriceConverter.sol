@@ -18,7 +18,10 @@ library PriceConverter {
     }
 
    function ethToUSD(uint256 ethAmount,
-                    AggregatorV3Interface priceFeed) public view returns (uint256) {
+            AggregatorV3Interface priceFeed) 
+    public 
+    view 
+    returns (uint256) {
       uint256 ethPrice = getPrice(priceFeed); // ETH price in USD with 18 decimal places
       uint256 ethAmountInUSD = (ethPrice * ethAmount) / 1e18;
       return ethAmountInUSD;

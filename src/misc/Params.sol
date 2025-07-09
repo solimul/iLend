@@ -105,64 +105,22 @@ contract Params {
         require(msg.sender == owner, "Not authorized");
         _;
     }
-    constructor(address _owner) {
+    constructor(address _owner, 
+            bool _depositPaused, 
+            bool _borrowingPaused, 
+            bool _liquidationPaused) {
         owner = _owner;
-        // depositsPaused = false;
-        // borrowingPaused = false;
-        // liquidationPaused = false;
-
-        // depositParams = DepositParams({
-        //     minDepositAmount: 0,
-        //     maxDepositAmount: type(uint256).max,
-        //     depositFee: 0,
-        //     minLockupPeriod: 0,
-        //     maxLockupPeriod: type(uint256).max
-        // });
-
-        // borrowParams = BorrowParams({
-        //     minBorrowAmount: 0,
-        //     maxBorrowAmount: type(uint256).max,
-        //     borrowFee: 0,
-        //     minRepaymentPeriod: 0,
-        //     maxRepaymentPeriod: type(uint256).max,
-        //     interestRate: InterestRateParams({
-        //         baseRate: 0,
-        //         reserveFactor: 0,
-        //         maxInterestRate: type(uint256).max,
-        //         minInterestRate: 0
-        //     })
-        // });
-
-        // liquidationParams = LiquidationParams({
-        //     liquidationThreshold: 0,
-        //     liquidationFee: 0,
-        //     minLiqudationThreshold: 0,
-        //     maxLiquidationThreshold: type(uint256).max,
-        //     minLiquidationAmount: 0,
-        //     maxLiquidationAmount: type(uint256).max,
-        //     liquidationBonusRate: 0,
-        //     liqudationBonusType: ""
-        // });
-
-        // oracleParams = OracleParams({
-        //     oracleAddress: address(0),
-        //     heartbeat: 3600, // default to 1 hour
-        //     decimals: 18 // default to 18 decimals
-        // });
-
-        // collateralParams = CollateralParams({
-        //     asset: address(0),
-        //     minCollateralAmount: 0,
-        //     maxCollateralAmount: type(uint256).max,
-        //     collateralFactor: 75, // default to 75%
-        //     isSupported: false
-        // });
-    }
-
-    function initialize (bool _depositPaused, bool _borrowingPaused, bool _liquidationPaused) external onlyOwner() {
         depositsPaused = _depositPaused;
         borrowingPaused = _borrowingPaused;
         liquidationPaused = _liquidationPaused;
+    }
+
+    function set_params() public {
+        set_deposit_params (1000, 1000000, 50, 1 days, 365 days);
+        set_borrow_params (1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
+        set_liquidation_params (150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
+        set_oracle_params (address(this), 60 seconds, 18);
+        set_collateral_params (address(this), 1000, 1000000, 75, true);
     }
 
     function getMinDeposit() public view returns (uint256) {
@@ -233,7 +191,7 @@ contract Params {
         uint256 _depositFee,
         uint256 _minLockupPeriod,
         uint256 _maxLockupPeriod
-    ) external onlyOwner {
+    ) internal onlyOwner {
         depositParams = DepositParams({
             minDepositAmount: _minDepositAmount,
             maxDepositAmount: _maxDepositAmount,
@@ -254,7 +212,7 @@ contract Params {
         uint256 _reserveFactor,
         uint256 _maxInterestRate,
         uint256 _minInterestRate
-    ) external onlyOwner{
+    ) internal onlyOwner{
         InterestRateParams memory _interestRate = InterestRateParams({
             baseRate: _baseRate, 
             reserveFactor: _reserveFactor, 
@@ -283,7 +241,7 @@ contract Params {
         uint256 _maxLiquidationAmount,
         uint256 _liquidationDiscountRate,
         string memory _liquidationBonusType
-    ) external onlyOwner{
+    ) internal onlyOwner{
         liquidationParams = LiquidationParams({
             liquidationThreshold: _liquidationThreshold,
             liquidationFee: _liquidationFee,
@@ -301,7 +259,7 @@ contract Params {
         address _oracleAddress,
         uint256 _heartbeat,
         uint256 _decimals
-    ) external onlyOwner{
+    ) internal onlyOwner{
         oracleParams = OracleParams({
             oracleAddress: _oracleAddress,
             heartbeat: _heartbeat,
@@ -316,7 +274,7 @@ contract Params {
         uint256 _maxCollateralAmount,
         uint256 _collateralFactor,
         bool _isSupported
-    ) external onlyOwner{
+    ) internal onlyOwner{
         CollateralParams memory _collateral = CollateralParams({
             asset: _asset,
             minCollateralAmount: _minCollateralAmount,

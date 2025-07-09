@@ -25,12 +25,16 @@ contract CollateralPool {
     uint256 public poolBalance;
 
 
-    constructor(address _priceFeedAddress, address _ethContractAddress) {
+    constructor(address _priceFeedAddress, 
+            address _ethContractAddress) {
         priceFeed = AggregatorV3Interface(_priceFeedAddress);
         eth_contract = IERC20(_ethContractAddress);
     }
 
-    function deposit_eth (address depositor, uint256 amount) public returns (bool) {
+    function deposit_eth (address depositor, 
+            uint256 amount) 
+            public 
+            returns (bool) {
         bool success = eth_contract.transferFrom(depositor, address(this), amount);
         if (!success)
             return false;

@@ -33,9 +33,6 @@ contract iLend {
     AggregatorV3Interface private priceFeed;
     LiquidationRegistry private liquidationRegistry;
     LiquidationEngine private liquidationEngine;
-
-    IERC20 private usdcContract;
-    IERC20 private ethContract;
     
     // Modifiers
     modifier onlyOwner() {
@@ -50,52 +47,65 @@ contract iLend {
     // }
 
     constructor () {
-        owner = msg.sender;
-        params = new Params(owner);
-        params.initialize (false, false, false);
-        set_params();
+        params = new Params(msg.sender, false, false, false);
+        params.set_params ();
         priceFeed = AggregatorV3Interface(PricefeedManagerLib.get_price_feed_address());
-        usdcContract = IERC20(NetworkConfigLib.get_usdc_contract_address());
-        ethContract = IERC20 (NetworkConfigLib.get_usdc_contract_address());
-        transaction = new Transaction (usdcContract, ethContract);
-        treasury = new Treasury (msg.sender, address (transaction));
 
-        // Dependency injection for contracts: Factory pattern
-        // This allows for easier testing and contract upgrades
-        // The Deposit, Collateral, and Borrower contracts are initialized with the Params and PriceFeed
-        // contracts, allowing them to access the necessary parameters and price feed data.
-        deposit = new Deposit(params, usdcContract,  address (transaction));
-        collateral = new Collateral(params, address (priceFeed),  address (transaction), address (ethContract));
-        borrow = new Borrow(params, 
-                    address(priceFeed), 
-                    address (deposit), 
-                    address (collateral), 
-                    usdcContract, 
-                    address (transaction));
-        payback = new Payback (address (borrow), 
-                              address (deposit), 
-                              address (treasury), 
-                              address (usdcContract),
-                              address (transaction));
+        address pAddress = address (params);
+        address pfAddress = address (priceFeed);
+        address usdcContractAddress = NetworkConfigLib.get_usdc_contract_address();
+        address ethContractAddress = NetworkConfigLib.get_usdc_contract_address();
+
+        transaction = new Transaction (usdcContractAddress, ethContractAddress);
+
+        address txAddress = address (transaction);
+        
+        treasury = new Treasury (msg.sender, address (txAddress));
+        
+        address trAddress = address (treasury);
+        
+        deposit = new Deposit(pAddress, 
+                            usdcContractAddress,  
+                            txAddress);
+
+        address depositAddress = address (deposit);                    
+
+        collateral = new Collateral(pAddress, 
+                        pfAddress,  
+                        txAddress, 
+                        ethContractAddress);
+
+        address collateralAddress = address (collateral);
+
+        borrow = new Borrow(pAddress, 
+                    pfAddress, 
+                    depositAddress, 
+                    collateralAddress, 
+                    usdcContractAddress, 
+                    txAddress);
+
+        address borrowAddress = address (borrow);
+
+        payback = new Payback (borrowAddress, 
+                              depositAddress, 
+                              trAddress, 
+                              usdcContractAddress,
+                             txAddress);
+
         liquidationRegistry = new LiquidationRegistry ();
-        monitor = new Monitor (address (params),
-                        address (priceFeed),
-                        address (collateral),
-                        address (this),
-                        address (liquidationRegistry));
-        liquidationEngine = new LiquidationEngine (address (liquidationRegistry),
-                        address (collateral),
-                        address (deposit), 
-                        address (transaction));
-    }
 
-    function set_params() internal {
-        // Set initial parameters
-        params.set_deposit_params (1000, 1000000, 50, 1 days, 365 days);
-        params.set_borrow_params (1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
-        params.set_liquidation_params (150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
-        params.set_oracle_params (address(this), 60 seconds, 18);
-        params.set_collateral_params (address(this), 1000, 1000000, 75, true);
+        address liqRegAddress = address (liquidationRegistry);
+
+        monitor = new Monitor (pAddress,
+                        pfAddress,
+                        collateralAddress,
+                        address (this),
+                        liqRegAddress);
+
+        liquidationEngine = new LiquidationEngine (liqRegAddress,
+                        collateralAddress,
+                        depositAddress, 
+                        txAddress);
     }
 
     function deposit_liquidity (uint256 lockupPeriod) external payable{

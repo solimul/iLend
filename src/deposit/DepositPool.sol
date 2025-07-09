@@ -19,9 +19,10 @@ contract DepositPool {
         _;
     }
 
-    constructor(address _owner, IERC20 _usdc_contract) {
+    constructor(address _owner, 
+            address _usdcContractAddress) {
         owner = _owner;
-        usdc_contract = _usdc_contract;
+        usdc_contract = IERC20 (_usdcContractAddress);
         poolBalance = 0;
     }
 
@@ -30,7 +31,10 @@ contract DepositPool {
     }
 
 
-    function deposit_usdc (address depositor, uint256 amount) public returns (bool) {
+    function deposit_usdc (address depositor, 
+            uint256 amount) 
+            public 
+            returns (bool) {
         bool success = usdc_contract.transferFrom(depositor, address(this), amount);
         if (!success)
             return false;

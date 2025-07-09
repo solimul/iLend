@@ -12,7 +12,8 @@ contract ProtocolReward {
     address public immutable treasurOwnerAddress;
     IERC20 public immutable usdcContract;
 
-    constructor(IERC20 _usdcContract, address _treasurOwnerAddress) {
+    constructor(IERC20 _usdcContract, 
+            address _treasurOwnerAddress) {
         usdcContract = _usdcContract;
         treasurOwnerAddress = _treasurOwnerAddress;
     }
@@ -23,15 +24,18 @@ contract ProtocolReward {
         _;
     }
 
-    function receive_rewards_to_treasury (address from, uint256 amount) external returns (bool) {
+    function receive_rewards_to_treasury (address from, 
+            uint256 amount) external returns (bool) {
         require(msg.sender == treasurOwnerAddress, "Only treasury can call this function");
         require(usdcContract.transferFrom(from, treasurOwnerAddress, amount), "Transfer failed");
         return true;
     }
 
 
-    function withdraw_from_treasury(address to, uint256 amount) external 
-        onlyOwner (to)
+    function withdraw_from_treasury(address to, 
+            uint256 amount) 
+    external 
+    onlyOwner (to)
     returns (bool) {
         require(msg.sender == treasurOwnerAddress, "Only treasury can call this function");
         require(usdcContract.balanceOf(treasurOwnerAddress) >= amount, "Insufficient balance in treasury");

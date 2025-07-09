@@ -30,24 +30,18 @@ contract LiquidationEngine {
     address [] liquidatorsList;
     mapping (address => Liquidator) liquidatorsMap;
 
-    constructor 
-    (
-        address _liquidationRegistryAddress,
+    constructor (address _liquidationRegistryAddress,
         address _collateralAddress,
         address _depositAddress,
-        address _transactionAddress
-    ) {
+        address _transactionAddress) {
         liqReg = LiquidationRegistry (_liquidationRegistryAddress);
         collateral = Collateral (_collateralAddress);
         deposit = Deposit (_depositAddress);
         transaction = Transaction (_transactionAddress);
     }
 
-    function quote_liquidation 
-    (
-        address _borrower, 
-        uint256 _loanID
-    ) 
+    function quote_liquidation (address _borrower, 
+        uint256 _loanID) 
     public view returns 
     (
         uint256 shortFallUSDC, 
@@ -61,13 +55,11 @@ contract LiquidationEngine {
         require (col.liquidableETH >= ethToReceive, "Not enough ETH to liquidate.");
     }
 
-    function update_liquidation_records (
-        address _liquidator,
+    function update_liquidation_records ( address _liquidator,
         address _borrower,
         uint256 _loanID,
         uint256 _usdcAmount,
-        uint256 _ethRecieved
-    ) 
+        uint256 _ethRecieved) 
     internal {
         Liquidator storage liquidatorInfo = liquidatorsMap [_liquidator];
 
@@ -88,13 +80,10 @@ contract LiquidationEngine {
         emit LiquidationCompleted (_liquidator, _borrower, _loanID, _usdcAmount, _ethRecieved, block.timestamp);
     }
 
-    function inject_liquid_send_discounted_collateral 
-    (
-        address _liquidator,
+    function inject_liquid_send_discounted_collateral ( address _liquidator,
         address _borrower,
         uint256 _loanID,
-        uint256 _usdcAmount
-    ) 
+        uint256 _usdcAmount) 
     public
     {
         (uint256 shortFallUSDC, uint256 ethToTransfer) = quote_liquidation (_borrower, _loanID);

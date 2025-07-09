@@ -54,11 +54,10 @@ contract Monitor is KeeperCompatibleInterface {
     
 
     constructor (address _paramsAddress, 
-                address _priceFeedAddress, 
-                address _collateral, 
-                address _iLendAddress,
-                address _liquidationQuryAddress
-                ) {
+            address _priceFeedAddress, 
+            address _collateral, 
+            address _iLendAddress,
+            address _liquidationQuryAddress) {
         priceFeed = AggregatorV3Interface (_priceFeedAddress);
         lastETHPrice = priceFeed.getPrice ();
         collateral = Collateral (_collateral);

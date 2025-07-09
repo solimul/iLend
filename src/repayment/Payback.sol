@@ -18,7 +18,11 @@ contract Payback {
     IERC20 private usdc;
 
 
-    constructor (address _bAddress, address _dAddress, address _tAddress, address _usdc, address _tranAddress) {
+    constructor (address _bAddress, 
+            address _dAddress, 
+            address _tAddress, 
+            address _usdc, 
+            address _tranAddress) {
         borrow = Borrow (_bAddress);
         deposit = Deposit (_dAddress);       
         treasury = Treasury (payable (_tAddress));
@@ -31,10 +35,10 @@ contract Payback {
         _;
     }
 
-    function pay_loan_principal 
-    (address _borrowersAddress, 
-    uint256 _loanID, 
-    uint256 _principalAmount) internal {
+    function pay_loan_principal (address _borrowersAddress, 
+        uint256 _loanID, 
+        uint256 _principalAmount) 
+    internal {
         BorrowRecord memory bRecord = borrow.get_borrow_record (_borrowersAddress, _loanID);
         uint256 remaining = _principalAmount;
         for (uint256 i=0; i< bRecord.lenders.length; i++) {
@@ -50,20 +54,23 @@ contract Payback {
     }
 
 
-    function pay_interest_deposit(
-    address borrower,
-    uint256 loanID,
-    address lender,
-    uint256 depositID,
-    uint256 interestAmount,
-    uint256 principalAmount
-    ) internal returns (uint256) {
+    function pay_interest_deposit(address borrower,
+        uint256 loanID,
+        address lender,
+        uint256 depositID,
+        uint256 interestAmount,
+        uint256 principalAmount
+        ) 
+    internal returns (uint256) {
         return deposit.add_interest_for_lender (
             borrower, loanID, lender, depositID, interestAmount, principalAmount
         );
     }
 
-    function pay_interest  (address _borrowersAddress, uint256 _loanID, uint256 _interestAmount, uint256 _principalAmount) 
+    function pay_interest  (address _borrowersAddress, 
+                           uint256 _loanID, 
+                           uint256 _interestAmount, 
+                           uint256 _principalAmount) 
     internal  { 
         BorrowRecord memory bRecord = borrow.get_borrow_record (_borrowersAddress, _loanID);
         uint256 remaining = _interestAmount;
@@ -82,19 +89,25 @@ contract Payback {
 
     }
 
-    function pay_protocol_reward (address _borrowersAddress, uint256 loanID, uint256 amount) 
+    function pay_protocol_reward (address _borrowersAddress, 
+                                  uint256 loanID, 
+                                  uint256 amount) 
     internal {
         treasury.reciveERC20Deposit (usdc, _borrowersAddress, amount);
         treasury.updateProtocolRewardRecord (amount, _borrowersAddress, loanID);
     }
 
-    function pay_remaining_to_treasury (address _borrowersAddress, uint256 amount, string memory context) 
+    function pay_remaining_to_treasury (address _borrowersAddress, 
+                                        uint256 amount, 
+                                        string memory context) 
     internal {
         treasury.reciveERC20Deposit (usdc, _borrowersAddress, amount);
         treasury.updateMiscRecievedRecord (amount, context);
     }
 
-    function process_repayment (address _borrowersAddress, uint256 loanID, uint256 amount) 
+    function process_repayment (address _borrowersAddress, 
+                               uint256 loanID, 
+                               uint256 amount) 
     external 
     only_existing_borrower(_borrowersAddress){
         RepaymentComponent memory rep = borrow.calculate_repayment_components (_borrowersAddress, loanID);

@@ -67,18 +67,18 @@ contract Borrow {
         _;
     }
 
-    constructor (Params _params, 
+    constructor (address _paramsAddress, 
             address _priceFeedAddress, 
             address _depositContractAddress, 
             address _collateralContractAddress,
-            IERC20 _usdcContract,
+            address _usdcContractAddress,
             address _tAddress) {
         // Initialize any necessary parameters or state variables
-        params = _params;
+        params = Params (_paramsAddress);
         depositPool = Deposit (_depositContractAddress);
         collateralPool = Collateral (_collateralContractAddress);
         priceFeed = AggregatorV3Interface (_priceFeedAddress);
-        usdcContract = _usdcContract;
+        usdcContract = IERC20(_usdcContractAddress);
         transaction = Transaction (_tAddress);
 
         //payable, because Treasury implements fallback
@@ -137,27 +137,41 @@ contract Borrow {
         return protocolReward;
     }
 
-    function calculate_interest_amount (BorrowerRecord storage _bRecord, BorrowRecord storage r) internal view returns (uint256){
-        return (r.interestRate * (_bRecord.totalBorrowed * (block.timestamp -  r.borrowTime))  / (365 days * 100));
-
+    function calculate_interest_amount (BorrowerRecord storage _bRecord, 
+            BorrowRecord storage r) 
+        internal 
+        view 
+        returns (uint256){
+            return (r.interestRate * (_bRecord.totalBorrowed * (block.timestamp -  r.borrowTime))  / (365 days * 100));
     }
 
-    function calculate_protocol_reward  (BorrowerRecord storage _bRecord, BorrowRecord storage r) internal view returns (uint256) {
-        return (params.get_reserve_factor() *  (_bRecord.totalBorrowed * (block.timestamp -  r.borrowTime))  / (365 days * 100));
+    function calculate_protocol_reward  (BorrowerRecord storage _bRecord, 
+            BorrowRecord storage r) 
+        internal 
+        view 
+        returns (uint256) {
+            return (params.get_reserve_factor() *  (_bRecord.totalBorrowed * (block.timestamp -  r.borrowTime))  / (365 days * 100));
     }
 
-    function calculate_repayment_components (address _borrowersAddress, uint256 loanID) 
-    public view returns (RepaymentComponent memory){
+    function calculate_repayment_components (address _borrowersAddress, 
+            uint256 _loanID) 
+            public 
+            view 
+            returns (RepaymentComponent memory){
         RepaymentComponent memory rep;
         BorrowerRecord storage _bRecord = borrowers [_borrowersAddress];
-        BorrowRecord storage r = _bRecord.borrows [loanID];
+        BorrowRecord storage r = _bRecord.borrows [_loanID];
         rep.pAmount = r.amount;
         rep.iAmount = calculate_interest_amount( _bRecord, r);
         rep.rAmount = calculate_protocol_reward (_bRecord, r);
         return rep;
     }
 
-    function calculate_liquidity_to_borrow (address _borrowerAddress) public view only_existing_borrower (_borrowerAddress) returns (uint256)  {
+    function calculate_liquidity_to_borrow (address _borrowerAddress) 
+    public 
+    view 
+    only_existing_borrower (_borrowerAddress) 
+    returns (uint256)  {
         uint256 usdcValue = 0;
         BorrowerRecord storage borrowerRecord = borrowers[_borrowerAddress];
         
@@ -173,7 +187,12 @@ contract Borrow {
         return  usdcValue; // Adjust based on your L2B logic
     }
 
-    function calculate_liquidity_to_borrow_for_collateral (address _borrowerAddress, uint256 _correspondingColletaralID) public view only_existing_borrower (_borrowerAddress) returns (uint256) {
+    function calculate_liquidity_to_borrow_for_collateral (address _borrowerAddress, 
+        uint256 _correspondingColletaralID) 
+    public 
+    view 
+    only_existing_borrower (_borrowerAddress) 
+    returns (uint256) {
         uint256 collateralL2B = collateralPool.get_collateralL2B_by_record(_borrowerAddress, _correspondingColletaralID);
         uint256 collateralETH = collateralPool.get_collateral_ETH_by_record (_borrowerAddress, _correspondingColletaralID);
         uint256 collateralETHToUSDC = collateralETH.ethToUSD(priceFeed);
@@ -185,13 +204,12 @@ contract Borrow {
     }
 
 
-    function add_new_borrower (
-        address _borrowerAddress,
-        uint256 _totalCollateral,
-        uint256 _totalBorrowed,
-        uint256 _interestRate,
-        uint256 _l2b
-    ) external {
+    function add_new_borrower (address _borrowerAddress,
+    uint256 _totalCollateral,
+    uint256 _totalBorrowed,
+    uint256 _interestRate,
+    uint256 _l2b) 
+    external {
         require (borrower_exists(_borrowerAddress) == false, "Borrower already exists");
         
         BorrowerRecord storage b = borrowers[_borrowerAddress];
@@ -208,10 +226,10 @@ contract Borrow {
         );   
     }
 
-    function lend_for_collateral (
-        address _borrowerAddress,
-        uint256 _correspondingColletaralID
-    ) external only_existing_borrower (_borrowerAddress){
+    function lend_for_collateral (address _borrowerAddress,
+    uint256 _correspondingColletaralID) 
+    external 
+    only_existing_borrower (_borrowerAddress){
         // the deposit pull must have enough usdc to lend
         uint256 _liquidityToBorrow = calculate_liquidity_to_borrow_for_collateral (_borrowerAddress, _correspondingColletaralID); 
         
