@@ -33,6 +33,9 @@ contract iLend {
     AggregatorV3Interface private priceFeed;
     LiquidationRegistry private liquidationRegistry;
     LiquidationEngine private liquidationEngine;
+
+    address private usdcContractAddress;
+    address private ethContractAddress;
     
     // Modifiers
     modifier onlyOwner() {
@@ -53,8 +56,8 @@ contract iLend {
 
         address pAddress = address (params);
         address pfAddress = address (priceFeed);
-        address usdcContractAddress = NetworkConfigLib.get_usdc_contract_address();
-        address ethContractAddress = NetworkConfigLib.get_usdc_contract_address();
+        usdcContractAddress = NetworkConfigLib.get_usdc_contract_address();
+        ethContractAddress = NetworkConfigLib.get_usdc_contract_address();
 
         transaction = new Transaction (usdcContractAddress, ethContractAddress);
 
@@ -110,7 +113,7 @@ contract iLend {
 
     function deposit_liquidity (uint256 lockupPeriod) external payable{
         // Call the deposit function in the Deposit contract
-        deposit.get_usdc_contract().approve(address (deposit), msg.value);
+        (IERC20(usdcContractAddress)).approve(address (deposit), msg.value);
         deposit.deposit_liquidity (msg.sender, msg.value, lockupPeriod);
     }
 

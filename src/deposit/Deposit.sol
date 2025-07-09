@@ -14,6 +14,7 @@ import {Lender,
         Depositor} 
         from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
+import {InvariantsLib} from "../lib/InvariantsLib.sol";
 
 
 contract Deposit is DepositPool {
@@ -44,7 +45,9 @@ contract Deposit is DepositPool {
     
     mapping (address => Depositor) private depositors;
     address[] private depositorAddresses;
-    uint256 depositorCounts;
+    uint256 private depositorCounts;
+
+    uint256 private totalAvailableToLend;
 
 
     constructor(address _paramsAddress, 
@@ -99,11 +102,18 @@ contract Deposit is DepositPool {
             uint256 lockupPeriod) 
             external 
             deposit_check (amount,lockupPeriod) {
+        
+        uint256 balanceOld = IERC20(usdc_contract).balanceOf(address (this));
+        
         bool success = deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
         
         if (!success) 
             revert("Deposit failed: USDC transfer unsuccessful in deposit_funds ()");
 
+        bool inv = InvariantsLib.postDepositInvariantHolds(balanceOld, amount, IERC20(usdc_contract).balanceOf(address (this))); 
+        require (inv, "USDC Deposit fails.");
+        
+        // Update state
         Depositor storage depositor = depositors[depositor_address];
         depositor.totalAmount += amount;
         uint256 currentTime = block.timestamp;
@@ -125,6 +135,10 @@ contract Deposit is DepositPool {
             depositorCounts++;
         }
         depositor.depositCounts += 1;
+
+        totalAvailableToLend += amount;
+        inv = InvariantsLib.postStateUpdateInvariantEquality (totalAvailableToLend, IERC20(usdc_contract).balanceOf(address (this)));
+        require (inv, "total available to lend is less than the blance of the deposit pool.");
     }
 
     function get_usdc_contract () public view returns (IERC20) {
@@ -312,6 +326,7 @@ contract Deposit is DepositPool {
         bool success = usdc_contract.transfer(borrower_address, amount);
         require(success, "USDC transfer failed");
         poolBalance -= amount;
+        totalAvailableToLend -= amount;
         emit WithdrawnToBorrower (borrower_address, amount, poolBalance, block.timestamp);
         return  lenders;
     }
