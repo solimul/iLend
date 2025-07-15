@@ -62,7 +62,7 @@ contract Payback {
         uint256 principalAmount
         ) 
     internal returns (uint256) {
-        return deposit.add_interest_for_lender (
+        return deposit.add_interest (
             borrower, loanID, lender, depositID, interestAmount, principalAmount
         );
     }

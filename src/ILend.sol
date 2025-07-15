@@ -50,6 +50,7 @@ contract iLend {
     // }
 
     constructor () {
+        owner = msg.sender;
         params = new Params(msg.sender, false, false, false);
         params.set_params ();
         priceFeed = AggregatorV3Interface(PricefeedManagerLib.get_price_feed_address());
@@ -63,7 +64,7 @@ contract iLend {
 
         address txAddress = address (transaction);
         
-        treasury = new Treasury (msg.sender, address (txAddress));
+        treasury = new Treasury (owner, address (txAddress));
         
         address trAddress = address (treasury);
         

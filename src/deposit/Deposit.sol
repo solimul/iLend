@@ -39,6 +39,13 @@ contract Deposit is DepositPool {
         uint256 timestamp
     ); 
 
+    event LiquidationReceived(
+        address indexed liquidator,
+        uint256 usdcAmount,
+        uint256 poolBalance,
+        uint256 timestamp
+    );
+
     Params private params;
     Transaction private transaction;
 
@@ -96,51 +103,6 @@ contract Deposit is DepositPool {
     //     return depositors[depositor];
     // }
 
-
-    function deposit_liquidity (address depositor_address, 
-            uint256 amount, 
-            uint256 lockupPeriod) 
-            external 
-            deposit_check (amount,lockupPeriod) {
-        
-        uint256 balanceOld = IERC20(usdc_contract).balanceOf(address (this));
-        
-        bool success = deposit_usdc (depositor_address, amount); // Call to DepositPool to handle USDC transfe
-        
-        if (!success) 
-            revert("Deposit failed: USDC transfer unsuccessful in deposit_funds ()");
-
-        bool inv = InvariantsLib.postDepositInvariantHolds(balanceOld, amount, IERC20(usdc_contract).balanceOf(address (this))); 
-        require (inv, "USDC Deposit fails.");
-        
-        // Update state
-        Depositor storage depositor = depositors[depositor_address];
-        depositor.totalAmount += amount;
-        uint256 currentTime = block.timestamp;
-
-        DepositRecord storage record = depositor.deposits[depositor.depositCounts];
-        record.amount = amount;
-        record.depositTime = currentTime;
-        record.lockupPeriod = lockupPeriod;
-        record.lastInterestWithdrawTimeForRecord = currentTime; // Initialize to current time
-        record.availableToLend = amount;
-        depositor.deposits[depositor.depositCounts] = record;
-
-
-
-        depositor.isActive = true;
-        if (depositor.depositCounts == 0) {
-            // If this is the first deposit, add the depositor to the list
-            depositorAddresses.push(depositor_address);
-            depositorCounts++;
-        }
-        depositor.depositCounts += 1;
-
-        totalAvailableToLend += amount;
-        inv = InvariantsLib.postStateUpdateInvariantEquality (totalAvailableToLend, IERC20(usdc_contract).balanceOf(address (this)));
-        require (inv, "total available to lend is less than the blance of the deposit pool.");
-    }
-
     function get_usdc_contract () public view returns (IERC20) {
         return usdc_contract;
     }
@@ -153,6 +115,109 @@ contract Deposit is DepositPool {
         return (usdc_contract).balanceOf (address (this));
     }
 
+    function get_deposit_record (address _depositorAddress, uint256 id) internal 
+            existingDepositor (_depositorAddress) view returns (DepositRecord storage) {
+        Depositor storage depositor = depositors [_depositorAddress];
+        DepositRecord storage record = depositor.deposits [id];   
+        return record;
+    }
+
+    function get_lentout_amount (address _depositorAddress, uint256 id) internal  view returns (uint256) {
+        DepositRecord storage record = get_deposit_record (_depositorAddress, id);
+        return record.amount - record.availableToLend;
+    }
+
+    function get_usdc_balance () public view returns (uint256) {
+        return usdc_contract.balanceOf(address(this));
+    }
+
+
+    function post_deposit_state_update (address _depositorAddress, 
+            uint256 _amount, 
+            uint256 _lockupPeriod) 
+            private {
+        Depositor storage depositor = depositors[_depositorAddress];
+        depositor.totalAmount += _amount;
+        uint256 currentTime = block.timestamp;
+
+        DepositRecord storage record = depositor.deposits[depositor.depositCounts];
+        record.amount = _amount;
+        record.depositTime = currentTime;
+        record.lockupPeriod = _lockupPeriod;
+        record.lastInterestWithdrawTimeForRecord = currentTime; // Initialize to current time
+        record.availableToLend = _amount;
+        depositor.deposits[depositor.depositCounts] = record;
+
+
+
+        depositor.isActive = true;
+        if (depositor.depositCounts == 0) {
+            // If this is the first deposit, add the depositor to the list
+            depositorAddresses.push(_depositorAddress);
+            depositorCounts++;
+        }
+        depositor.depositCounts += 1;
+
+        totalAvailableToLend += _amount;
+    }
+
+    function pre_principal_withdrawal_state_update (address _depositorAddress, 
+            uint256 amount) 
+            private {
+        Depositor storage depositor = depositors[_depositorAddress];
+        depositor.totalAmount -= amount;
+        poolBalance -= amount;
+        // Record the withdrawal
+        depositor.principalWithdrawalRecords.push(PrincipalWithdrawalRecord({
+            amountWithdrawn: amount,
+            withdrawTime: block.timestamp
+        }));
+    }
+
+    function pre_interest_withdrawal_state_update (address _depositorAddress, 
+            uint256 amount) 
+            private {
+        Depositor storage depositor = depositors[_depositorAddress];
+        poolBalance -= amount;
+        totalAvailableToLend -= amount;
+        // Record the interest withdrawal
+        uint256 currentTime = block.timestamp;
+        depositor.interestWithdrawalRecords.push(InterestWithdrawalRecord({
+            amountWithdrawn: amount,
+            withdrawTime: currentTime
+        }));
+
+    }
+
+
+    function deposit_liquidity (address _depositor_address, 
+            uint256 _amount, 
+            uint256 _lockupPeriod) 
+            external 
+            deposit_check (_amount,_lockupPeriod) {
+        
+        uint256 old = get_usdc_balance();
+        
+        bool success = deposit_usdc (_depositor_address, _amount); // Call to DepositPool to handle USDC transfe
+        
+        if (!success) 
+            revert("Deposit failed: USDC transfer unsuccessful in deposit_funds ()");
+        
+        uint256 current = get_usdc_balance();
+
+        require (current - old == _amount, "Deposit amount mismatch");
+        
+        post_deposit_state_update(_depositor_address, _amount, _lockupPeriod);
+        emit DepositorPrincipalWithDrawalDone(
+            address(this), 
+            _depositor_address, 
+            _amount, 
+            _amount, 
+            depositors[_depositor_address].totalAmount, 
+            poolBalance, 
+            block.timestamp
+        );
+    }
 
 
     function depositor_withdraw_principal (address _depositorAddress, 
@@ -161,7 +226,8 @@ contract Deposit is DepositPool {
             existingDepositor (_depositorAddress) {
         Depositor storage depositor = depositors[msg.sender];
         require(depositor.totalAmount >= amount, "Insufficient balance");
-        require (usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
+        uint256 old = get_usdc_balance();
+        require (old >= amount, "Insufficient pool balance");
 
         uint256 totalWithdrawable = 0;
         for (uint256 i = 0; i < depositor.depositCounts; i++) {
@@ -173,18 +239,16 @@ contract Deposit is DepositPool {
 
         require(totalWithdrawable >= amount, "Cannot withdraw locked funds");
 
+        // Update the depositor's total amount
+        pre_principal_withdrawal_state_update (_depositorAddress, amount);
+
         // Transfer USDC back to the depositor
         bool success = usdc_contract.transfer(_depositorAddress, amount);
         require(success, "USDC transfer failed");
 
-        // Update the depositor's total amount
-        depositor.totalAmount -= amount;
-        poolBalance -= amount;
-        // Record the withdrawal
-        depositor.principalWithdrawalRecords.push(PrincipalWithdrawalRecord({
-            amountWithdrawn: amount,
-            withdrawTime: block.timestamp
-        }));
+        uint256 current = get_usdc_balance();
+        require (current == old - amount, "USDC transfer amount mismatch");
+
         emit DepositorPrincipalWithDrawalDone(address(this), _depositorAddress, totalWithdrawable, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
 
@@ -207,7 +271,7 @@ contract Deposit is DepositPool {
         return totalInterestIncome;
     }
 
-        function preview_depositor_interest_income  (address _depositorAddress) 
+    function preview_depositor_interest_income  (address _depositorAddress) 
             public 
             view 
             returns (uint256 totalInterestIncome) {
@@ -230,24 +294,25 @@ contract Deposit is DepositPool {
             uint256 amount) 
             public 
             existingDepositor (_depositorAddress) {
-        Depositor storage depositor = depositors[msg.sender];
         uint256 totalInterestIncome = calculate_depositor_interest_income (_depositorAddress);
+        
+        uint256 old = usdc_contract.balanceOf(address(this));
+        
         require(totalInterestIncome >= amount, "Insufficient interest income");
-        require (usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
+        require (old >= amount, "Insufficient pool balance");
+        
+        pre_interest_withdrawal_state_update(_depositorAddress, amount);
         // Transfer USDC back to the depositor
         bool success = usdc_contract.transfer(_depositorAddress, amount);
         require(success, "USDC transfer failed");
-        poolBalance -= amount;
-        // Record the interest withdrawal
-        uint256 currentTime = block.timestamp;
-        depositor.interestWithdrawalRecords.push(InterestWithdrawalRecord({
-            amountWithdrawn: amount,
-            withdrawTime: currentTime
-        }));
-        emit DepositorInterestWithDrawalDone (address(this), _depositorAddress, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
+
+        uint256 current = usdc_contract.balanceOf(address(this));
+        require (current == old - amount, "USDC transfer amount mismatch");
+        
+        //emit DepositorInterestWithDrawalDone (address(this), _depositorAddress, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
 
-   function find_and_update_matching_depositors(uint256 amount)
+   function find_and_update_matching_depositors(uint256 _amount)
     internal
     returns (Lender[] memory) {
         Lender[] memory tempLenders = new Lender[](depositorAddresses.length); 
@@ -264,7 +329,7 @@ contract Deposit is DepositPool {
             uint256 totalLent = 0;
             for (uint256 j = 0; j < depositor.depositCounts; j++) {
                 DepositRecord storage dRecord = depositor.deposits[j];
-                uint256 remaining = amount - fund;
+                uint256 remaining = _amount - fund;
 
                 if (remaining == 0) {
                     completed = true;
@@ -282,7 +347,7 @@ contract Deposit is DepositPool {
                     totalLent += lentAmount;
                     dRecord.availableToLend -= lentAmount;
 
-                    if (fund >= amount) {
+                    if (fund >= _amount) {
                         completed = true;
                         break;
                     }
@@ -318,41 +383,39 @@ contract Deposit is DepositPool {
     }
 
 
-
-    function lend_to_borrower (address borrower_address, uint256 amount) external onlyOwner returns (Lender [] memory){
-        require(usdc_contract.balanceOf(address(this)) >= amount, "Insufficient pool balance");
+    function lend_to_borrower (address _borrower_address, uint256 _amount) external returns (Lender [] memory){
+        uint256 old = get_usdc_balance();
+        require( old >= _amount, "Insufficient pool balance");
         Lender [] memory lenders;
-        lenders = find_and_update_matching_depositors (amount);
-        bool success = usdc_contract.transfer(borrower_address, amount);
-        require(success, "USDC transfer failed");
-        poolBalance -= amount;
-        totalAvailableToLend -= amount;
-        emit WithdrawnToBorrower (borrower_address, amount, poolBalance, block.timestamp);
+        lenders = find_and_update_matching_depositors (_amount);
+        
+        poolBalance -= _amount;
+        totalAvailableToLend -= _amount;
+        
+        require(transaction.safe_transfer("USDC", address (this), _borrower_address, _amount), 
+                    "USDC transfer failed");
+        
+        uint256 current = get_usdc_balance();
+        require (current == old - _amount, "USDC transfer amount mismatch");
+        
+        emit WithdrawnToBorrower (_borrower_address, _amount, poolBalance, block.timestamp);
         return  lenders;
-    }
-
-    function get_deposit_record (address _depositorAddress, uint256 id) internal 
-            existingDepositor (_depositorAddress) view returns (DepositRecord storage) {
-        Depositor storage depositor = depositors [_depositorAddress];
-        DepositRecord storage record = depositor.deposits [id];   
-        return record;
-    }
-
-    function get_lentout_amount (address _depositorAddress, uint256 id) internal  view returns (uint256) {
-        DepositRecord storage record = get_deposit_record (_depositorAddress, id);
-        return record.amount - record.availableToLend;
     }
 
     function add_repaid_principal (address _borrowerAddress, address _depositorAddress, uint256 id) public returns (uint256) {
         uint256 lentOutAmount = get_lentout_amount (_depositorAddress, id);
-        require (usdc_contract.balanceOf(address(_borrowerAddress)) >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
+        uint256 old = get_usdc_balance();
+        require (old >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
         DepositRecord storage record = get_deposit_record(_depositorAddress, id);
-        require (usdc_contract.transferFrom (_borrowerAddress, address (this), lentOutAmount), "Cannot receive from the Borrower");
         record.availableToLend += lentOutAmount;
+        require (transaction.approve_and_safe_transfer("USDC",_borrowerAddress, address (this), lentOutAmount), 
+                    "Cannot receive from the Borrower");
+        uint256 current = get_usdc_balance();
+        require (current == old + lentOutAmount, "USDC transfer amount mismatch");
         return lentOutAmount;
     }
 
-    function add_interest_for_lender (address _borrowerAddress, 
+    function add_interest (address _borrowerAddress, 
             uint256 _loanID, 
             address _depositorAddress, 
             uint256 depositID, 
@@ -361,7 +424,9 @@ contract Deposit is DepositPool {
             public 
             returns (uint256) {
         uint256 lentFromThisDepositAccount = get_lentout_amount (_depositorAddress, depositID);
-        require (usdc_contract.balanceOf(address(_borrowerAddress)) >= lentFromThisDepositAccount, "Borrower does not have enough USDC for interest repayment.");        
+        uint256 old = get_usdc_balance();
+        require (old >= lentFromThisDepositAccount, "Borrower does not have enough USDC for interest repayment.");        
+        
         DepositRecord storage record = get_deposit_record(_depositorAddress, depositID);
         uint256 interestShare = (lentFromThisDepositAccount * totalInterest) / totalLent;
         record.interestEarned.push (InterestEarned({
@@ -370,7 +435,12 @@ contract Deposit is DepositPool {
             interestReceived:  interestShare,
             dateReceived: block.timestamp
         }));
-        require (usdc_contract.transferFrom (_borrowerAddress, address (this), lentFromThisDepositAccount), "Cannot receive Interest for this deposit record from the Borrower");
+
+        require (transaction.approve_and_safe_transfer("USDC",_borrowerAddress, address (this), interestShare), 
+                    "Cannot receive Interest for this deposit record from the Borrower");
+        
+        uint256 current = get_usdc_balance();
+        require (current == old + interestShare, "USDC transfer amount mismatch");
         return interestShare;
     }
 
@@ -379,6 +449,11 @@ contract Deposit is DepositPool {
         address _liquidator,
         uint256 _usdcAmount
     ) public {
-        transaction.safe_transfer_from("USDC", _liquidator, address (this), _usdcAmount);
+        uint256 old = get_usdc_balance();
+        require (transaction.approve_and_safe_transfer("USDC", _liquidator, address (this), _usdcAmount), 
+                    "USDC transfer failed");
+        uint256 current = get_usdc_balance();
+        require (current == old + _usdcAmount, "USDC transfer amount mismatch");
+        emit LiquidationReceived(_liquidator, _usdcAmount, current, block.timestamp);
     }
 }
