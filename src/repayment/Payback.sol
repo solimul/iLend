@@ -5,7 +5,7 @@ import {Deposit} from "../deposit/Deposit.sol";
 import {Treasury} from "../treasury/Treasury.sol";
 import {Transaction} from "../misc/Transcation.sol";
 
-import {RepaymentComponent, BorrowRecord, Lender} from "../shared/SharedStructures.sol";
+import {RepaymentComponent, BorrowRecord, Lender, DepositRecord, InterestEarned} from "../shared/SharedStructures.sol";
 
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
@@ -35,6 +35,27 @@ contract Payback {
         _;
     }
 
+
+    function pay_principal_to_lender 
+        (
+            address _borrowerAddress, 
+            address _depositorAddress, 
+            uint256 _id
+        ) 
+        public 
+        returns (uint256) {
+        uint256 lentOutAmount = deposit.get_lentout_amount (_depositorAddress, _id);
+        uint256 old = deposit.get_usdc_balance();
+        require (old >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
+        deposit.update_principal_payback_record (
+             _depositorAddress, _id);
+        require (transaction.approve_and_safe_transfer("USDC",_borrowerAddress, address (deposit), lentOutAmount), 
+                    "Cannot receive from the Borrower");
+        uint256 current = deposit.get_usdc_balance();
+        require (current == old + lentOutAmount, "USDC transfer amount mismatch");
+        return lentOutAmount;
+    }
+
     function pay_loan_principal (address _borrowersAddress, 
         uint256 _loanID, 
         uint256 _principalAmount) 
@@ -46,7 +67,7 @@ contract Payback {
             uint256 borrowedFromThisLender = 0;
             for (uint256 j=0; j<bRecord.lenders [i].depositAccountIDs.length; j++){
                 uint256 id = bRecord.lenders [i].depositAccountIDs [j];
-                borrowedFromThisLender += deposit.add_repaid_principal (_borrowersAddress, lAddress, id);
+                borrowedFromThisLender += pay_principal_to_lender (_borrowersAddress, lAddress, id);
             }
             remaining -= borrowedFromThisLender;
         }
@@ -54,17 +75,32 @@ contract Payback {
     }
 
 
-    function pay_interest_deposit(address borrower,
-        uint256 loanID,
-        address lender,
-        uint256 depositID,
-        uint256 interestAmount,
-        uint256 principalAmount
+    function pay_interest_to_lender
+        (
+            address _borrower,
+            uint256 _loanID,
+            address _lender,
+            uint256 _depositID,
+            uint256 _interestAmount,
+            uint256 _principalAmount
         ) 
     internal returns (uint256) {
-        return deposit.add_interest (
-            borrower, loanID, lender, depositID, interestAmount, principalAmount
-        );
+        uint256 lentFromThisDepositAccount = deposit.get_lentout_amount (_lender, _depositID);
+        uint256 old = deposit.get_usdc_balance();
+        require (old >= lentFromThisDepositAccount, "Borrower does not have enough USDC for interest repayment.");        
+        
+        uint256 interestPaid = 
+                deposit.update_interest_payback_record (
+                    _borrower, _loanID, _lender, _depositID, 
+                    _interestAmount, _principalAmount, lentFromThisDepositAccount
+                );
+
+        require (transaction.approve_and_safe_transfer("USDC",_borrower, address (deposit), interestPaid), 
+                    "Cannot receive Interest for this deposit record from the Borrower");
+        
+        uint256 current = deposit.get_usdc_balance();
+        require (current == old + interestPaid, "USDC transfer amount mismatch");
+        return interestPaid;
     }
 
     function pay_interest  (address _borrowersAddress, 
@@ -80,7 +116,7 @@ contract Payback {
             address lAddress = _lender.lender; 
             for (uint256 j=0; j < _lender.depositAccountIDs.length; j++){
                 uint256 depositID = _lender.depositAccountIDs [j];
-                interestToThisLender += pay_interest_deposit (
+                interestToThisLender += pay_interest_to_lender (
                     _borrowersAddress, _loanID, lAddress, depositID, _interestAmount, _principalAmount);
             }
             remaining -= interestToThisLender;

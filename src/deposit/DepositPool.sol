@@ -4,12 +4,7 @@ import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IER
 
 contract DepositPool {
     event DepositDone(address indexed depositor, address indexed depositedTo, uint256 amount, uint256 poolBalance, uint256 timestamp);
-    event WithdrawnToBorrower(
-        address indexed borrower,
-        uint256 amount,
-        uint256 poolBalance,
-        uint256 timestamp
-    );
+  
     address public owner;
     IERC20 public immutable usdc_contract;
     uint256 public poolBalance;

@@ -16,6 +16,12 @@ import {Lender,
 import {Transaction} from "../misc/Transcation.sol";
 import {InvariantsLib} from "../lib/InvariantsLib.sol";
 
+/** 
+ * @title Deposit Contract - handle usdc depostsits 
+ * @author Md Solimul Chowdhury
+ * @notice This contract allows users to deposit USDC into the iLend protocol,
+ * @dev This is a core component of the iLend protocol
+**/
 
 contract Deposit is DepositPool {
 
@@ -57,6 +63,11 @@ contract Deposit is DepositPool {
     uint256 private totalAvailableToLend;
 
 
+    /**
+     * @notice Initializes the contract with default values
+     * @dev Constructor runs only once on deployment
+     */
+
     constructor(address _paramsAddress, 
             address _usdcContractAddress, 
             address _tAddress) 
@@ -66,11 +77,20 @@ contract Deposit is DepositPool {
         transaction = Transaction (_tAddress);
         // Initialize the contract if needed
     }
+
+     /**
+     * @notice this modifier checks if the depositor exists
+     */
     
     modifier existingDepositor (address depositor_address) {
         require (depositors[depositor_address].isActive, "Not a depositor");
         _;
     }
+
+      /**
+     * @notice this modifier checks if the deposit amount 
+     * and lockup period are within the allowed limits
+     */
 
     modifier deposit_check (uint256 amount, 
             uint256 lockupPeriod) {
@@ -99,22 +119,39 @@ contract Deposit is DepositPool {
             _;
     }
 
-    // function getDepositorInfo(address depositor) external view returns (Depositor memory) {
-    //     return depositors[depositor];
-    // }
+
+    /**
+     * @notice this function returns the USDC contract address
+     * @return IERC20 - the USDC contract address
+     */
 
     function get_usdc_contract () public view returns (IERC20) {
         return usdc_contract;
     }
 
+    /**
+     * @notice this function returns the total amount available to lend
+     * @return uint256 - the total amount available to lend
+     */
+
     function get_pool_balance () public view returns (uint256) {
         return poolBalance;
     }
 
+
+    /**
+     * @notice this function returns the balance of the deposit pool
+     * @return uint256 - returns usdc balance of this deposit pool
+     */
     function get_deposit_balance () public view returns (uint256) {
         return (usdc_contract).balanceOf (address (this));
     }
 
+
+    /**
+     * @notice this function get_deposit_record returns the deposit record of a depositor
+     * @return uint256 returns the deposit record of a depositor
+     */
     function get_deposit_record (address _depositorAddress, uint256 id) internal 
             existingDepositor (_depositorAddress) view returns (DepositRecord storage) {
         Depositor storage depositor = depositors [_depositorAddress];
@@ -122,10 +159,16 @@ contract Deposit is DepositPool {
         return record;
     }
 
-    function get_lentout_amount (address _depositorAddress, uint256 id) internal  view returns (uint256) {
+
+    /**
+     * @notice this function returns the total amount lent out by a depositor
+     * @return uint256 - the total amount lent out by the depositor
+     */
+    function get_lentout_amount (address _depositorAddress, uint256 id) public  view returns (uint256) {
         DepositRecord storage record = get_deposit_record (_depositorAddress, id);
         return record.amount - record.availableToLend;
     }
+
 
     function get_usdc_balance () public view returns (uint256) {
         return usdc_contract.balanceOf(address(this));
@@ -159,6 +202,47 @@ contract Deposit is DepositPool {
         depositor.depositCounts += 1;
 
         totalAvailableToLend += _amount;
+    }
+
+    function update_principal_payback_record 
+        ( 
+            address _depositorAddress, 
+            uint256 _depositID
+        ) 
+    public {    
+        DepositRecord storage record = get_deposit_record(_depositorAddress, _depositID);
+        record.availableToLend += get_lentout_amount (_depositorAddress, _depositID);
+
+    }
+
+    function update_interest_payback_record (address _borrowerAddress, 
+            uint256 _loanID, 
+            address _depositorAddress, 
+            uint256 _depositID, 
+            uint256 _totalInterest, 
+            uint256 _totalLent, 
+            uint256 lentFromThisDepositAccount) 
+            public 
+            returns (uint256) {
+        
+        DepositRecord storage record = get_deposit_record(_depositorAddress, _depositID);
+        uint256 interestShare = (lentFromThisDepositAccount * _totalInterest) / _totalLent;
+        record.interestEarned.push (InterestEarned({
+            from: _borrowerAddress,
+            loanID: _loanID,
+            interestReceived:  interestShare,
+            dateReceived: block.timestamp
+        }));
+        return interestShare;
+    }
+
+    function update_lentout_amount 
+    ( 
+        uint256 _amount
+    ) 
+    public {
+        poolBalance -= _amount;
+        totalAvailableToLend -= _amount;
     }
 
     function pre_principal_withdrawal_state_update (address _depositorAddress, 
@@ -312,8 +396,8 @@ contract Deposit is DepositPool {
         //emit DepositorInterestWithDrawalDone (address(this), _depositorAddress, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
 
-   function find_and_update_matching_depositors(uint256 _amount)
-    internal
+   function match_funders (uint256 _amount)
+    external
     returns (Lender[] memory) {
         Lender[] memory tempLenders = new Lender[](depositorAddresses.length); 
         Lender memory lender;
@@ -382,67 +466,6 @@ contract Deposit is DepositPool {
         return lenders;
     }
 
-
-    function lend_to_borrower (address _borrower_address, uint256 _amount) external returns (Lender [] memory){
-        uint256 old = get_usdc_balance();
-        require( old >= _amount, "Insufficient pool balance");
-        Lender [] memory lenders;
-        lenders = find_and_update_matching_depositors (_amount);
-        
-        poolBalance -= _amount;
-        totalAvailableToLend -= _amount;
-        
-        require(transaction.safe_transfer("USDC", address (this), _borrower_address, _amount), 
-                    "USDC transfer failed");
-        
-        uint256 current = get_usdc_balance();
-        require (current == old - _amount, "USDC transfer amount mismatch");
-        
-        emit WithdrawnToBorrower (_borrower_address, _amount, poolBalance, block.timestamp);
-        return  lenders;
-    }
-
-    function add_repaid_principal (address _borrowerAddress, address _depositorAddress, uint256 id) public returns (uint256) {
-        uint256 lentOutAmount = get_lentout_amount (_depositorAddress, id);
-        uint256 old = get_usdc_balance();
-        require (old >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
-        DepositRecord storage record = get_deposit_record(_depositorAddress, id);
-        record.availableToLend += lentOutAmount;
-        require (transaction.approve_and_safe_transfer("USDC",_borrowerAddress, address (this), lentOutAmount), 
-                    "Cannot receive from the Borrower");
-        uint256 current = get_usdc_balance();
-        require (current == old + lentOutAmount, "USDC transfer amount mismatch");
-        return lentOutAmount;
-    }
-
-    function add_interest (address _borrowerAddress, 
-            uint256 _loanID, 
-            address _depositorAddress, 
-            uint256 depositID, 
-            uint256 totalInterest, 
-            uint256 totalLent) 
-            public 
-            returns (uint256) {
-        uint256 lentFromThisDepositAccount = get_lentout_amount (_depositorAddress, depositID);
-        uint256 old = get_usdc_balance();
-        require (old >= lentFromThisDepositAccount, "Borrower does not have enough USDC for interest repayment.");        
-        
-        DepositRecord storage record = get_deposit_record(_depositorAddress, depositID);
-        uint256 interestShare = (lentFromThisDepositAccount * totalInterest) / totalLent;
-        record.interestEarned.push (InterestEarned({
-            from: _borrowerAddress,
-            loanID: _loanID,
-            interestReceived:  interestShare,
-            dateReceived: block.timestamp
-        }));
-
-        require (transaction.approve_and_safe_transfer("USDC",_borrowerAddress, address (this), interestShare), 
-                    "Cannot receive Interest for this deposit record from the Borrower");
-        
-        uint256 current = get_usdc_balance();
-        require (current == old + interestShare, "USDC transfer amount mismatch");
-        return interestShare;
-    }
 
     function receive_liquidation 
     (

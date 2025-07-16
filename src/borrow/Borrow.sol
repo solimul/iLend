@@ -33,6 +33,13 @@ contract Borrow {
         uint256 timestamp
     );
 
+      event WithdrawnToBorrower(
+        address indexed borrower,
+        uint256 amount,
+        uint256 poolBalance,
+        uint256 timestamp
+    );
+
     mapping(address => BorrowerRecord) private borrowers;
 
     Params private params;
@@ -226,6 +233,26 @@ contract Borrow {
         );   
     }
 
+    
+
+    function lend (address _borrower_address, uint256 _amount) internal returns (Lender [] memory){
+        uint256 old = depositPool.get_usdc_balance();
+        require( old >= _amount, "Insufficient pool balance");
+        Lender [] memory lenders;
+        lenders = depositPool.match_funders (_amount);
+        
+        depositPool.update_lentout_amount (_amount);
+        
+        require(transaction.safe_transfer("USDC", address (this), _borrower_address, _amount), 
+                    "USDC transfer failed");
+        
+        uint256 current = depositPool.get_usdc_balance();
+        require (current == old - _amount, "USDC transfer amount mismatch");
+        
+        emit WithdrawnToBorrower (_borrower_address, _amount, depositPool.get_usdc_balance(), block.timestamp);
+        return  lenders;
+    }
+
     function lend_for_collateral (address _borrowerAddress,
     uint256 _correspondingColletaralID) 
     external 
@@ -236,7 +263,7 @@ contract Borrow {
         require (_liquidityToBorrow <= depositPool.get_pool_balance(), "Not enough liquidity in the pool");
         require (collateralPool.is_collateral_available (_borrowerAddress, _correspondingColletaralID), "Collateral already borrowed against");
         
-        Lender [] memory _lenders =  depositPool.lend_to_borrower (_borrowerAddress, _liquidityToBorrow);
+        Lender [] memory _lenders =  lend (_borrowerAddress, _liquidityToBorrow);
         BorrowerRecord storage borrower = borrowers[_borrowerAddress];
         borrower.totalBorrowed += _liquidityToBorrow;
         // Create the borrow record without assigning `lenders` yet
