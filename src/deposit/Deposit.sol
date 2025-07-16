@@ -303,7 +303,7 @@ contract Deposit is DepositPool {
         
         pre_interest_withdrawal_state_update(_depositorAddress, amount);
         // Transfer USDC back to the depositor
-        bool success = usdc_contract.transfer(_depositorAddress, amount);
+        bool success = transaction.safe_transfer("USDC",address (this), _depositorAddress, amount);
         require(success, "USDC transfer failed");
 
         uint256 current = usdc_contract.balanceOf(address(this));
