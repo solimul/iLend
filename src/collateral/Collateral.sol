@@ -230,7 +230,7 @@ contract Collateral is CollateralPool {
             uint256 _collateralID) 
             public {
         uint256 amount = get_collateral_ETH_by_record(_cDepositorAddress, _collateralID);
-        transaction.approve_and_safe_transfer ("ETH", address (this), _cDepositorAddress, amount);
+        transaction.check_approval_and_safe_transfer ("ETH", address (this), _cDepositorAddress, amount);
         deleteCollateralRecord (_cDepositorAddress, _collateralID);
     }
 

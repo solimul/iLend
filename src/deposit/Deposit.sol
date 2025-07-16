@@ -45,13 +45,6 @@ contract Deposit is DepositPool {
         uint256 timestamp
     ); 
 
-    event LiquidationReceived(
-        address indexed liquidator,
-        uint256 usdcAmount,
-        uint256 poolBalance,
-        uint256 timestamp
-    );
-
     Params private params;
     Transaction private transaction;
 
@@ -175,7 +168,7 @@ contract Deposit is DepositPool {
     }
 
 
-    function post_deposit_state_update (address _depositorAddress, 
+    function update_post_deposit (address _depositorAddress, 
             uint256 _amount, 
             uint256 _lockupPeriod) 
             private {
@@ -212,7 +205,6 @@ contract Deposit is DepositPool {
     public {    
         DepositRecord storage record = get_deposit_record(_depositorAddress, _depositID);
         record.availableToLend += get_lentout_amount (_depositorAddress, _depositID);
-
     }
 
     function update_interest_payback_record (address _borrowerAddress, 
@@ -245,7 +237,7 @@ contract Deposit is DepositPool {
         totalAvailableToLend -= _amount;
     }
 
-    function pre_principal_withdrawal_state_update (address _depositorAddress, 
+    function update_principal_withdrawal (address _depositorAddress, 
             uint256 amount) 
             private {
         Depositor storage depositor = depositors[_depositorAddress];
@@ -258,7 +250,7 @@ contract Deposit is DepositPool {
         }));
     }
 
-    function pre_interest_withdrawal_state_update (address _depositorAddress, 
+    function update_interest_withdrawal (address _depositorAddress, 
             uint256 amount) 
             private {
         Depositor storage depositor = depositors[_depositorAddress];
@@ -270,11 +262,10 @@ contract Deposit is DepositPool {
             amountWithdrawn: amount,
             withdrawTime: currentTime
         }));
-
     }
 
 
-    function deposit_liquidity (address _depositor_address, 
+    function deposit_funds (address _depositor_address, 
             uint256 _amount, 
             uint256 _lockupPeriod) 
             external 
@@ -291,7 +282,7 @@ contract Deposit is DepositPool {
 
         require (current - old == _amount, "Deposit amount mismatch");
         
-        post_deposit_state_update(_depositor_address, _amount, _lockupPeriod);
+        update_post_deposit (_depositor_address, _amount, _lockupPeriod);
         emit DepositorPrincipalWithDrawalDone(
             address(this), 
             _depositor_address, 
@@ -304,7 +295,7 @@ contract Deposit is DepositPool {
     }
 
 
-    function depositor_withdraw_principal (address _depositorAddress, 
+    function withdraw_principal (address _depositorAddress, 
             uint256 amount) 
             external 
             existingDepositor (_depositorAddress) {
@@ -324,7 +315,7 @@ contract Deposit is DepositPool {
         require(totalWithdrawable >= amount, "Cannot withdraw locked funds");
 
         // Update the depositor's total amount
-        pre_principal_withdrawal_state_update (_depositorAddress, amount);
+        update_principal_withdrawal (_depositorAddress, amount);
 
         // Transfer USDC back to the depositor
         bool success = usdc_contract.transfer(_depositorAddress, amount);
@@ -336,7 +327,7 @@ contract Deposit is DepositPool {
         emit DepositorPrincipalWithDrawalDone(address(this), _depositorAddress, totalWithdrawable, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
 
-    function calculate_depositor_interest_income (address _depositorAddress) 
+    function calculate_depositor_interest (address _depositorAddress) 
             public 
             returns (uint256 totalInterestIncome) {
         uint256 currentTime = block.timestamp;
@@ -355,7 +346,7 @@ contract Deposit is DepositPool {
         return totalInterestIncome;
     }
 
-    function preview_depositor_interest_income  (address _depositorAddress) 
+    function preview_depositor_interest  (address _depositorAddress) 
             public 
             view 
             returns (uint256 totalInterestIncome) {
@@ -374,18 +365,18 @@ contract Deposit is DepositPool {
         return totalInterestIncome;
     }
 
-    function depositor_withdraw_interest (address _depositorAddress, 
+    function withdraw_interest (address _depositorAddress, 
             uint256 amount) 
             public 
             existingDepositor (_depositorAddress) {
-        uint256 totalInterestIncome = calculate_depositor_interest_income (_depositorAddress);
+        uint256 totalInterestIncome = calculate_depositor_interest (_depositorAddress);
         
         uint256 old = usdc_contract.balanceOf(address(this));
         
         require(totalInterestIncome >= amount, "Insufficient interest income");
         require (old >= amount, "Insufficient pool balance");
         
-        pre_interest_withdrawal_state_update(_depositorAddress, amount);
+        update_interest_withdrawal(_depositorAddress, amount);
         // Transfer USDC back to the depositor
         bool success = transaction.safe_transfer("USDC",address (this), _depositorAddress, amount);
         require(success, "USDC transfer failed");
@@ -464,19 +455,5 @@ contract Deposit is DepositPool {
         }
 
         return lenders;
-    }
-
-
-    function receive_liquidation 
-    (
-        address _liquidator,
-        uint256 _usdcAmount
-    ) public {
-        uint256 old = get_usdc_balance();
-        require (transaction.approve_and_safe_transfer("USDC", _liquidator, address (this), _usdcAmount), 
-                    "USDC transfer failed");
-        uint256 current = get_usdc_balance();
-        require (current == old + _usdcAmount, "USDC transfer amount mismatch");
-        emit LiquidationReceived(_liquidator, _usdcAmount, current, block.timestamp);
     }
 }

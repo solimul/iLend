@@ -29,18 +29,21 @@ contract Transaction {
         return tokenMapping [_tokenStr].balanceOf (_address);
     }
 
-    function approve_and_safe_transfer (string memory _tokenStr, 
+    function check_approval_and_safe_transfer (string memory _tokenStr, 
         address from, 
         address to, 
         uint256 amount) 
     public 
     has_enough_funds (tokenMapping [_tokenStr], from, amount)
     returns (bool) {
-        IERC20 token = tokenMapping [_tokenStr];
-        token.approve(to, amount);
-        bool success = token.transferFrom (from, to, amount);
-        require (success, "safe-transferFrom failed.");
-        return success;
+        IERC20 token = tokenMapping[_tokenStr];
+
+        require(
+            token.allowance(from, address(this)) >= amount,
+            "TOKEN: allowance too low"
+        );
+        require(token.transferFrom(from, to, amount), "TOKEN: transferFrom failed");
+        return true;
     }
 
     function safe_transfer (string memory _tokenStr, 

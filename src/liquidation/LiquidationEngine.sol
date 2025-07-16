@@ -20,6 +20,13 @@ contract LiquidationEngine {
         uint256 timeStamp
     );
 
+    event LiquidationReceived(
+        address indexed liquidator,
+        uint256 usdcAmount,
+        uint256 poolBalance,
+        uint256 timestamp
+    );
+
 
     LiquidationRegistry private liqReg;
     Collateral private collateral;
@@ -80,6 +87,19 @@ contract LiquidationEngine {
         emit LiquidationCompleted (_liquidator, _borrower, _loanID, _usdcAmount, _ethRecieved, block.timestamp);
     }
 
+    function update_deposit_pool 
+    (
+        address _liquidator,
+        uint256 _usdcAmount
+    ) public {
+        uint256 old = deposit.get_usdc_balance();
+        require (transaction.check_approval_and_safe_transfer("USDC", _liquidator, address (deposit), _usdcAmount), 
+                    "USDC transfer failed");
+        uint256 current = deposit.get_usdc_balance();
+        require (current == old + _usdcAmount, "USDC transfer amount mismatch");
+        emit LiquidationReceived(_liquidator, _usdcAmount, current, block.timestamp);
+    }
+
     function inject_liquid_send_discounted_collateral ( address _liquidator,
         address _borrower,
         uint256 _loanID,
@@ -90,7 +110,7 @@ contract LiquidationEngine {
         require (_usdcAmount >= shortFallUSDC, "sent USDC is less than the short fall.");
         require (_usdcAmount >= transaction.get_balance ("USDC",_liquidator), "Liquidator does not have enough balance");
         require (ethToTransfer < collateral.get_collateral_ETH_by_record (_borrower, _loanID), "Not enough ETH available for this collateral to be discounted");
-        deposit.receive_liquidation (_liquidator, _usdcAmount);
+        update_deposit_pool (_liquidator, _usdcAmount);
         collateral.send_to_liquidator (_liquidator, ethToTransfer);
         update_liquidation_records (_liquidator,_borrower,_loanID,_usdcAmount, ethToTransfer);
     }

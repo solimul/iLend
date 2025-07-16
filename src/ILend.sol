@@ -112,20 +112,20 @@ contract iLend {
                         txAddress);
     }
 
-    function deposit_liquidity (uint256 lockupPeriod) external payable{
+    function deposit_funds (uint256 lockupPeriod) external payable{
         // Call the deposit function in the Deposit contract
         (IERC20(usdcContractAddress)).approve(address (deposit), msg.value);
-        deposit.deposit_liquidity (msg.sender, msg.value, lockupPeriod);
+        deposit.deposit_funds (msg.sender, msg.value, lockupPeriod);
     }
 
     function withdraw_deposited_principal (uint256 amount) external {
         // Call the withdraw function in the Deposit contract
-        deposit.depositor_withdraw_principal (msg.sender, amount);
+        deposit.withdraw_principal (msg.sender, amount);
     }
 
     function withdraw_deposited_interest (uint256 amount) external {
         // Call the withdraw interest function in the Deposit contract
-        deposit.depositor_withdraw_interest(msg.sender, amount);
+        deposit.withdraw_interest(msg.sender, amount);
     }
 
 

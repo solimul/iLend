@@ -49,7 +49,7 @@ contract Payback {
         require (old >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
         deposit.update_principal_payback_record (
              _depositorAddress, _id);
-        require (transaction.approve_and_safe_transfer("USDC",_borrowerAddress, address (deposit), lentOutAmount), 
+        require (transaction.check_approval_and_safe_transfer("USDC",_borrowerAddress, address (deposit), lentOutAmount), 
                     "Cannot receive from the Borrower");
         uint256 current = deposit.get_usdc_balance();
         require (current == old + lentOutAmount, "USDC transfer amount mismatch");
@@ -95,7 +95,7 @@ contract Payback {
                     _interestAmount, _principalAmount, lentFromThisDepositAccount
                 );
 
-        require (transaction.approve_and_safe_transfer("USDC",_borrower, address (deposit), interestPaid), 
+        require (transaction.check_approval_and_safe_transfer("USDC",_borrower, address (deposit), interestPaid), 
                     "Cannot receive Interest for this deposit record from the Borrower");
         
         uint256 current = deposit.get_usdc_balance();
