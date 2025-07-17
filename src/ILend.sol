@@ -21,6 +21,24 @@ import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20
  
 
 contract iLend {
+    event LendingDone(
+        address indexed borrower,
+        uint256 amount,
+        uint256 timestamp
+    );
+    event CollateralDepositDone(
+        address indexed depositor,
+        address indexed depositedTo,
+        uint256 amount,
+        uint256 timestamp
+    );
+
+    event FundDepoistDone(
+        address indexed depositor,
+        uint256 amount,
+        uint256 timestamp
+    );
+
     Params private params;   
     address private owner;
     Deposit private deposit;
@@ -110,13 +128,34 @@ contract iLend {
                         collateralAddress,
                         depositAddress, 
                         txAddress);
-    }
+    } 
 
-    function deposit_funds (uint256 lockupPeriod) external payable{
+    function deposit_funds (uint256 _amount, uint256 _lockupPeriod) external {
         // Call the deposit function in the Deposit contract
-        (IERC20(usdcContractAddress)).approve(address (deposit), msg.value);
-        deposit.deposit_funds (msg.sender, msg.value, lockupPeriod);
-    }
+        IERC20 token = IERC20(usdcContractAddress); 
+        require (token.balanceOf (msg.sender) >= _amount, "Depositor does not have enough USDC");
+        require(
+            token.allowance(msg.sender, address(this)) >= _amount,
+            "TOKEN: allowance too low"
+        );
+        uint256 currentBalance = token.balanceOf(address(deposit));
+
+        require(
+            token.transferFrom(msg.sender, address (deposit), _amount),
+            "USDC transfer to the deposit pool failed"); 
+          
+        uint256 newBalance = token.balanceOf(address(deposit));
+
+        require (newBalance >= _amount + currentBalance, "Deposit amount mismatch after transfer of USDC to the deposit pool");
+       
+        deposit.update_post_deposit (msg.sender, _amount, _lockupPeriod);
+
+        emit FundDepoistDone (
+            msg.sender,
+            _amount,
+            block.timestamp
+        );
+    } 
 
     function withdraw_deposited_principal (uint256 amount) external {
         // Call the withdraw function in the Deposit contract
@@ -129,14 +168,51 @@ contract iLend {
     }
 
 
-    function deposit_collateral_borrow () external payable {
+   function deposit_collateral_borrow (uint256 amount) 
+    external {
         // Call the deposit function in the Deposit contract
-        collateral.get_eth_contract ().approve(address (collateral), msg.value);
-        collateral.deposit_collateral (msg.sender, msg.value);
+        IERC20 token = IERC20(ethContractAddress);
+        require (token.balanceOf (msg.sender) >= amount, "Borrower Does not have enough ETH collaterals");
+        require(
+            token.allowance(msg.sender, address(this)) >= amount,
+            "TOKEN: allowance too low"
+        );
+        collateral.update_collateral_records (msg.sender, amount);
+
+        uint256 currentBalance = token.balanceOf(address(collateral));
+        require(
+            token.transferFrom(msg.sender, address (collateral), amount), 
+            "TOKEN: transferFrom failed"
+        );
+        uint256 newBalance = token.balanceOf(address(collateral));
+        
+        require(newBalance == currentBalance + amount, "Collateral deposit (ETH) amount mismatch after transfer");
+
+        emit CollateralDepositDone(
+            msg.sender,
+            address(collateral),
+            amount,
+            block.timestamp
+        );
+        
+
         if (!borrow.borrower_exists (msg.sender))
             borrow.add_new_borrower (msg.sender, 0, 0, 0, 0);
-        borrow.lend_for_collateral (msg.sender, collateral.get_collateral_depositors_deposit_count(msg.sender)-1);
+            
+        uint256 borrowAmount = borrow.update_borrow_records (msg.sender, collateral.get_collateral_depositors_deposit_count(msg.sender)-1);
         collateral.update_borrowed_against_collateral (msg.sender, collateral.get_collateral_depositors_deposit_count(msg.sender)-1, true);
+        
+        token = IERC20 (usdcContractAddress);
+        currentBalance = token.balanceOf(address (deposit));
+        deposit.withdraw_to (token, msg.sender, borrowAmount);
+        newBalance = token.balanceOf(address(deposit));
+        require(newBalance == currentBalance - borrowAmount, "USDC borrow amount mismatch after transfer to borrower");
+
+        emit LendingDone(
+            msg.sender,
+            borrowAmount,
+            block.timestamp
+        );
     }
 
     function get_my_collateral_info () external returns (CollateralView [] memory) {

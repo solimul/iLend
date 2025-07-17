@@ -233,37 +233,23 @@ contract Borrow {
         );   
     }
 
-    
-
-    function lend (address _borrower_address, uint256 _amount) internal returns (Lender [] memory){
-        uint256 old = depositPool.get_usdc_balance();
-        require( old >= _amount, "Insufficient pool balance");
-        Lender [] memory lenders;
-        lenders = depositPool.match_funders (_amount);
-        
-        depositPool.update_lentout_amount (_amount);
-        
-        require(transaction.safe_transfer("USDC", address (this), _borrower_address, _amount), 
-                    "USDC transfer failed");
-        
-        uint256 current = depositPool.get_usdc_balance();
-        require (current == old - _amount, "USDC transfer amount mismatch");
-        
-        emit WithdrawnToBorrower (_borrower_address, _amount, depositPool.get_usdc_balance(), block.timestamp);
-        return  lenders;
-    }
-
-    function lend_for_collateral (address _borrowerAddress,
-    uint256 _correspondingColletaralID) 
+    function update_borrow_records 
+        (
+            address _borrowerAddress,
+            uint256 _correspondingColletaralID
+        ) 
     external 
-    only_existing_borrower (_borrowerAddress){
+    only_existing_borrower (_borrowerAddress)
+    returns (uint256) {
         // the deposit pull must have enough usdc to lend
         uint256 _liquidityToBorrow = calculate_liquidity_to_borrow_for_collateral (_borrowerAddress, _correspondingColletaralID); 
         
         require (_liquidityToBorrow <= depositPool.get_pool_balance(), "Not enough liquidity in the pool");
         require (collateralPool.is_collateral_available (_borrowerAddress, _correspondingColletaralID), "Collateral already borrowed against");
         
-        Lender [] memory _lenders =  lend (_borrowerAddress, _liquidityToBorrow);
+        Lender [] memory _lenders = depositPool.match_funders (_liquidityToBorrow);
+        depositPool.update_lentout_amount (_liquidityToBorrow);
+
         BorrowerRecord storage borrower = borrowers[_borrowerAddress];
         borrower.totalBorrowed += _liquidityToBorrow;
         // Create the borrow record without assigning `lenders` yet
@@ -286,5 +272,6 @@ contract Borrow {
             borrower.totalBorrowed,
             block.timestamp
         );
+        return _liquidityToBorrow;
     }
 }

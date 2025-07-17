@@ -171,7 +171,7 @@ contract Deposit is DepositPool {
     function update_post_deposit (address _depositorAddress, 
             uint256 _amount, 
             uint256 _lockupPeriod) 
-            private {
+            public {
         Depositor storage depositor = depositors[_depositorAddress];
         depositor.totalAmount += _amount;
         uint256 currentTime = block.timestamp;
@@ -265,34 +265,26 @@ contract Deposit is DepositPool {
     }
 
 
-    function deposit_funds (address _depositor_address, 
-            uint256 _amount, 
-            uint256 _lockupPeriod) 
-            external 
-            deposit_check (_amount,_lockupPeriod) {
+    // function deposit_funds (address _depositor_address, 
+    //         uint256 _amount, 
+    //         uint256 _lockupPeriod) 
+    //         external 
+    //         deposit_check (_amount,_lockupPeriod) {
         
-        uint256 old = get_usdc_balance();
+    //     //uint256 old = get_usdc_balance();
         
-        bool success = deposit_usdc (_depositor_address, _amount); // Call to DepositPool to handle USDC transfe
+    //     // bool success = deposit_usdc (_depositor_address, _amount); // Call to DepositPool to handle USDC transfe
         
-        if (!success) 
-            revert("Deposit failed: USDC transfer unsuccessful in deposit_funds ()");
+    //     // if (!success) 
+    //     //     revert("Deposit failed: USDC transfer unsuccessful in deposit_funds ()");
         
-        uint256 current = get_usdc_balance();
+    //     // uint256 current = get_usdc_balance();
 
-        require (current - old == _amount, "Deposit amount mismatch");
+    //     // require (current - old == _amount, "Deposit amount mismatch");
         
-        update_post_deposit (_depositor_address, _amount, _lockupPeriod);
-        emit DepositorPrincipalWithDrawalDone(
-            address(this), 
-            _depositor_address, 
-            _amount, 
-            _amount, 
-            depositors[_depositor_address].totalAmount, 
-            poolBalance, 
-            block.timestamp
-        );
-    }
+    //     update_post_deposit (_depositor_address, _amount, _lockupPeriod);
+  
+    // }
 
 
     function withdraw_principal (address _depositorAddress, 
@@ -455,5 +447,14 @@ contract Deposit is DepositPool {
         }
 
         return lenders;
+    }
+
+    function withdraw_to (
+        IERC20 _token, 
+        address _to, 
+        uint256 _amount
+    ) public returns (bool) { 
+        bool ok = _token.transfer(_to, _amount);
+        return ok;
     }
 }

@@ -66,8 +66,8 @@ contract Collateral is CollateralPool {
         _;
     }
 
-    function deposit_collateral (address _depositor, uint256 _amount) external deposit_check (_amount) returns (bool)  {
-        require(deposit_eth(_depositor, _amount), "Transfer failed");
+    function update_collateral_records (address _depositor, uint256 _amount) external deposit_check (_amount) returns (bool)  {
+        //require(deposit_eth(_depositor, _amount), "Transfer failed");
 
         CollateralDepositor storage collateralDepositor = collateralDepositors[_depositor];
         if (!collateralDepositor.isActive) { // new
