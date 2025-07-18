@@ -43,11 +43,11 @@ contract LiquidationRegistry {
         delete liquidationReadyList;
     }
 
-    function get_list_of_liqudation_ready_addresses () external view  returns (address [] memory){
+    function get_liqudation_ready_addresses () external view  returns (address [] memory){
         return liquidationReadyList;
     }
 
-    function get_liquidation_ready_collateral_information_for_the_borrower 
+    function get_liquidation_ready_collaterals_by_borrower 
     (
         address _borrower
     ) 
@@ -57,7 +57,7 @@ contract LiquidationRegistry {
         return liquidationReadyCollaterals [_borrower];
     }
 
-    function get_liquidation_ready_collateral_information_for_the_borrower_and_loanID ( address _borrower,
+    function get_liquidation_collateral ( address _borrower,
         uint256 _loanID) 
     external view
     _borrowerExists (_borrower) returns (LiquidationReadyCollateral memory){
@@ -65,7 +65,7 @@ contract LiquidationRegistry {
         return col.map [_loanID];
     }
 
-    function get_liquidation_ready_and_loanID_by_borrower 
+    function get_liquidation_ready_loanIDs 
     (address _borrower) 
     external view
     _borrowerExists (_borrower)

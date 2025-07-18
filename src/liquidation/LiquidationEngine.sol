@@ -5,7 +5,7 @@ import {LiquidationReadyCollateral} from "../shared/SharedStructures.sol";
 import {LiquidationRegistry} from "../liquidation/LiquidationRegistry.sol";
 import {Collateral} from "../collateral/Collateral.sol";
 import {Deposit} from "../deposit/Deposit.sol";
-import {Liquidator, LiquidationRecord} from "../shared/SharedStructures.sol";
+import {Liquidator, LiquidationRecord, LiquidationReadyCollateralLoanIDMap} from "../shared/SharedStructures.sol";
 
 import {Transaction} from "../misc/Transcation.sol";
 
@@ -54,7 +54,7 @@ contract LiquidationEngine {
         uint256 shortFallUSDC, 
         uint256 ethToReceive
     ) {
-        LiquidationReadyCollateral memory col = liqReg.get_liquidation_ready_collateral_information_for_the_borrower_and_loanID(_borrower, _loanID);
+        LiquidationReadyCollateral memory col = liqReg.get_liquidation_collateral(_borrower, _loanID);
         shortFallUSDC = col.shortFallUSDC;
         uint256 bonus = HUNDRED + col.discountRate;
         uint256 usdcWithBonus = col.shortFallUSDC * bonus;
@@ -79,7 +79,7 @@ contract LiquidationEngine {
         LiquidationRecord memory liqRecord = LiquidationRecord ({
             liquidationUSDCAmount: _usdcAmount,
             discountedETHRecieved: _ethRecieved,
-            liquidatedCollateral: liqReg.get_liquidation_ready_collateral_information_for_the_borrower_and_loanID(_borrower, _loanID),
+            liquidatedCollateral: liqReg.get_liquidation_collateral(_borrower, _loanID),
             liquidInjectionDateTime: block.timestamp
         });
         liquidatorInfo.liquidationRecords.push (liqRecord);
@@ -100,18 +100,55 @@ contract LiquidationEngine {
         emit LiquidationReceived(_liquidator, _usdcAmount, current, block.timestamp);
     }
 
-    function inject_liquid_send_discounted_collateral ( address _liquidator,
+    function update_on_liquidation_deposit ( address _liquidator,
         address _borrower,
         uint256 _loanID,
         uint256 _usdcAmount) 
     public
+    returns (uint256)
     {
         (uint256 shortFallUSDC, uint256 ethToTransfer) = quote_liquidation (_borrower, _loanID);
         require (_usdcAmount >= shortFallUSDC, "sent USDC is less than the short fall.");
         require (_usdcAmount >= transaction.get_balance ("USDC",_liquidator), "Liquidator does not have enough balance");
         require (ethToTransfer < collateral.get_collateral_ETH_by_record (_borrower, _loanID), "Not enough ETH available for this collateral to be discounted");
-        update_deposit_pool (_liquidator, _usdcAmount);
-        collateral.send_to_liquidator (_liquidator, ethToTransfer);
+        //update_deposit_pool (_liquidator, _usdcAmount);
+        //collateral.send_to_liquidator (_liquidator, ethToTransfer);
         update_liquidation_records (_liquidator,_borrower,_loanID,_usdcAmount, ethToTransfer);
+        return ethToTransfer;
     }
+
+    function is_a_liquidator 
+    (
+        address _liquidator
+    ) 
+    public 
+    view 
+    returns (bool) {
+        return liquidatorsMap[_liquidator].liquidator != address(0);
+    }
+
+    function yet_to_be_liquidated 
+    (
+        address _borrower,
+        uint256 _loanID
+    )
+    public
+    view
+    returns (bool) {
+        LiquidationReadyCollateral memory col = liqReg.get_liquidation_collateral(_borrower, _loanID);
+        return col.yetToBeLiquidated;
+    }
+
+    function set_liquidated_status 
+    (
+        address _borrower,
+        uint256 _loanID,
+        bool _status
+    )
+    public {
+        LiquidationReadyCollateral memory col = liqReg.get_liquidation_collateral(_borrower, _loanID);
+        col.yetToBeLiquidated = _status;
+        // LiquidationReadyCollateralLoanIDMap storage loanMap = liqReg.addressToLoanIDToCollateral[_borrower];
+        // loanMap.map[_loanID] = col;
+    }     
 }

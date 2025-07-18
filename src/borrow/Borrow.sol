@@ -274,4 +274,16 @@ contract Borrow {
         );
         return _liquidityToBorrow;
     }
+
+    function yet_to_be_borrowed (
+        address _borrowerAddress,
+        uint256 _correspondingColletaralID
+    )
+    public
+    view
+    only_existing_borrower (_borrowerAddress)
+    returns (bool) {
+        BorrowRecord storage record = borrowers[_borrowerAddress].borrows[_correspondingColletaralID];
+        return record.amount == 0;  
+    }
 }

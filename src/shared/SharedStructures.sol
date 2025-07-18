@@ -152,6 +152,7 @@ struct LiquidationReadyCollateral {
     uint256 currentRate;
     uint256 postDiscountETHPrice;
     CollateralView cv;
+    bool yetToBeLiquidated;
 }
 
 struct LiquidationReadyCollateralLoanIDMap {

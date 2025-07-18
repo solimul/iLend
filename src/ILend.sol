@@ -39,6 +39,20 @@ contract iLend {
         uint256 timestamp
     );
 
+    event LiquidationUSDCReceived(
+        address indexed liquidator,
+        uint256 usdcAmount,
+        uint256 poolBalance,
+        uint256 timestamp
+    );
+
+    event LiquidatorReceivesETH(
+        address indexed liquidator,
+        uint256 ethAmount,
+        uint256 poolBalance,
+        uint256 timestamp
+    );
+
     Params private params;   
     address private owner;
     Deposit private deposit;
@@ -86,18 +100,21 @@ contract iLend {
         
         address trAddress = address (treasury);
         
-        deposit = new Deposit(pAddress, 
-                            usdcContractAddress,  
-                            txAddress);
-
-        address depositAddress = address (deposit);                    
-
         collateral = new Collateral(pAddress, 
                         pfAddress,  
                         txAddress, 
                         ethContractAddress);
 
         address collateralAddress = address (collateral);
+
+        deposit = new Deposit(pAddress, 
+                            usdcContractAddress,  
+                            txAddress,
+                            collateralAddress);
+
+        address depositAddress = address (deposit);                    
+
+
 
         borrow = new Borrow(pAddress, 
                     pfAddress, 
@@ -128,6 +145,7 @@ contract iLend {
                         collateralAddress,
                         depositAddress, 
                         txAddress);
+        collateral.set_liquidation_engine (address (liquidationEngine));
     } 
 
     function deposit_funds (uint256 _amount, uint256 _lockupPeriod) external {
@@ -198,13 +216,13 @@ contract iLend {
 
         if (!borrow.borrower_exists (msg.sender))
             borrow.add_new_borrower (msg.sender, 0, 0, 0, 0);
-            
-        uint256 borrowAmount = borrow.update_borrow_records (msg.sender, collateral.get_collateral_depositors_deposit_count(msg.sender)-1);
-        collateral.update_borrowed_against_collateral (msg.sender, collateral.get_collateral_depositors_deposit_count(msg.sender)-1, true);
+        uint256 collateralDepositCount = collateral.get_collateral_deposit_count(msg.sender);
+        uint256 borrowAmount = borrow.update_borrow_records (msg.sender, collateralDepositCount-1);
+        collateral.update_borrowed_against_collateral (msg.sender, collateralDepositCount-1, true);
         
         token = IERC20 (usdcContractAddress);
         currentBalance = token.balanceOf(address (deposit));
-        deposit.withdraw_to (token, msg.sender, borrowAmount);
+        deposit.withdraw_to_borrower (token, msg.sender, borrowAmount, msg.sender, collateralDepositCount-1);
         newBalance = token.balanceOf(address(deposit));
         require(newBalance == currentBalance - borrowAmount, "USDC borrow amount mismatch after transfer to borrower");
 
@@ -228,21 +246,64 @@ contract iLend {
 
     function get_liquidation_ready_collaterals () 
     external view returns (LiquidationReadyCollateral [] [] memory) {
-        address [] memory list = liquidationRegistry.get_list_of_liqudation_ready_addresses (); 
+        address [] memory list = liquidationRegistry.get_liqudation_ready_addresses (); 
         uint256 n = list.length;
         LiquidationReadyCollateral [][] memory _cols = new LiquidationReadyCollateral [][] (n);
         for (uint256 i=0; i< n; i++){
-            _cols [i] = liquidationRegistry.get_liquidation_ready_collateral_information_for_the_borrower (list [i]);
+            _cols [i] = liquidationRegistry.get_liquidation_ready_collaterals_by_borrower (list [i]);
         }
         return _cols;
     }
 
-    function inject_liquid_against_undercollateralized_borrow 
+    function liquidate_position_for_ETH 
     (
         address _borrower,
         uint256 _loanID,
         uint256 _usdcAmount
     ) external {
-        liquidationEngine.inject_liquid_send_discounted_collateral(msg.sender, _borrower, _loanID, _usdcAmount);
+        IERC20 token = IERC20(usdcContractAddress);
+        require (token.balanceOf (msg.sender) >= _usdcAmount, "Borrower Does not have enough ETH collaterals");
+        require(
+            token.allowance(msg.sender, address(this)) >= _usdcAmount,
+            "TOKEN: allowance too low"
+        );
+
+        uint256 currentBalance = token.balanceOf (address (deposit));
+
+        require(
+            token.transferFrom(msg.sender, address (deposit), _usdcAmount),
+            "While injecting liquidation, USDC transfer to the deposit pool failed"
+        );
+
+        emit LiquidationUSDCReceived(
+            msg.sender,
+            _usdcAmount,
+            currentBalance + _usdcAmount,
+            block.timestamp
+        );
+
+        uint256 newBalance = token.balanceOf (address (deposit));
+
+        require (newBalance == currentBalance + _usdcAmount, "USDC transfer amount mismatch while injecting liquidation");
+
+        uint256 ethAmount 
+            = liquidationEngine.update_on_liquidation_deposit (msg.sender, _borrower, _loanID, _usdcAmount);
+
+        token = IERC20 (ethContractAddress);
+        currentBalance = token.balanceOf(address (collateral));
+
+        require (token.balanceOf (address(collateral)) >= ethAmount, 
+                    "Collateral Pool does not have enough ETH for rewarding the liquidator");
+        collateral.withdraw_to_liquidator (token, msg.sender, ethAmount, _borrower, _loanID);
+        newBalance = token.balanceOf(address(collateral));
+        require(newBalance >= currentBalance - ethAmount, "ETH amount mismatch in the collateral pool after transfer to liquidator");
+        liquidationEngine.set_liquidated_status(_borrower, _loanID, true);
+        emit LiquidatorReceivesETH(
+            msg.sender,
+            ethAmount,
+            newBalance,
+            block.timestamp
+        );
+
     }
 }

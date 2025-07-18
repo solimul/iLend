@@ -13,6 +13,9 @@ import {CollateralView,
 import {Transaction} from "../misc/Transcation.sol";
 import {PriceConverter} from "../helper/PriceConverter.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
+import {LiquidationEngine} from "../liquidation/LiquidationEngine.sol";
 
 contract Collateral is CollateralPool {
 
@@ -29,6 +32,7 @@ contract Collateral is CollateralPool {
     Params private params;
     Borrow private borrow;
     Transaction private transaction;
+    LiquidationEngine private liquidationEngine;
     AggregatorV3Interface private pricefeed;
   
     mapping (address => CollateralDepositor) private collateralDepositors;
@@ -99,7 +103,7 @@ contract Collateral is CollateralPool {
         collateralDepositor.collateralDepositRecords[_depositIndex].hasBorrowedAgainst = _hasBorrowedAgainst;
     }
 
-    function get_collateral_depositors_deposit_count(address _depositor) 
+    function get_collateral_deposit_count(address _depositor) 
         external 
         view 
         only_active_depositor(_depositor) 
@@ -241,7 +245,41 @@ contract Collateral is CollateralPool {
         return collateralDeposotorAddresses;
     }
 
-    function send_to_liquidator (address _liquidator, uint256 _ethAmount) public {
-        transaction.safe_transfer ("ETH", address (this), _liquidator, _ethAmount);
+    function withdraw_to_liquidator (
+        IERC20 _token,
+        address _liquidtor,
+        uint256 _amount,
+        address _borrower,
+        uint256 _loanID 
+    ) public returns (bool) {
+        require (liquidationEngine.is_a_liquidator (_liquidtor), "Not a liquidator");
+        require (liquidationEngine.yet_to_be_liquidated (_borrower, _loanID), "Liquidator has already liquidated this collateral");
+        bool ok = _token.transfer(_liquidtor, _amount);
+        return ok;
     }
+
+    function is_collateral_deposted 
+    (
+        address _borrower,
+        uint256 _collateralID
+    )
+    public 
+    returns (bool) {
+        CollateralDepositor storage collateralDepositor = collateralDepositors[_borrower];
+        return collateralDepositor.collateralDepositRecords[_collateralID].amount > 0;
+    }
+
+    function is_existing_collateral_depositor (
+        address _depositor
+    )
+    public
+    view
+    returns (bool) {
+        return collateralDepositors[_depositor].isActive;   
+    }
+
+    function set_liquidation_engine (address _liqEngineAddress) external {
+        require(_liqEngineAddress != address(0), "Invalid liquidation engine address");
+        liquidationEngine = LiquidationEngine(_liqEngineAddress);
+    }   
 }

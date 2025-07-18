@@ -114,7 +114,8 @@ contract Monitor is KeeperCompatibleInterface {
                     liquidableETH: liquidableETH,
                     currentRate: currentRate,
                     postDiscountETHPrice: postDiscountETHPrice,
-                    cv: cv
+                    cv: cv,
+                    yetToBeLiquidated: true
                 });
 
                 liquidationRegistry.add_collateral_as_liquidation_ready(dAddress, col);

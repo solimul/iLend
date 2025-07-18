@@ -15,6 +15,7 @@ import {Lender,
         from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
 import {InvariantsLib} from "../lib/InvariantsLib.sol";
+import {Collateral} from "../collateral/Collateral.sol";
 
 /** 
  * @title Deposit Contract - handle usdc depostsits 
@@ -47,7 +48,7 @@ contract Deposit is DepositPool {
 
     Params private params;
     Transaction private transaction;
-
+    Collateral private collateral;
     
     mapping (address => Depositor) private depositors;
     address[] private depositorAddresses;
@@ -63,11 +64,13 @@ contract Deposit is DepositPool {
 
     constructor(address _paramsAddress, 
             address _usdcContractAddress, 
-            address _tAddress) 
+            address _tAddress,
+            address _collateralAddress) 
             DepositPool(msg.sender, _usdcContractAddress) {
         params = Params (_paramsAddress);
         depositorCounts = 0;
         transaction = Transaction (_tAddress);
+        collateral = Collateral (_collateralAddress);
         // Initialize the contract if needed
     }
 
@@ -449,11 +452,21 @@ contract Deposit is DepositPool {
         return lenders;
     }
 
-    function withdraw_to (
+    function withdraw_to_borrower (
         IERC20 _token, 
         address _to, 
-        uint256 _amount
+        uint256 _amount,
+        address _borrower,
+        uint256 _collateralID
     ) public returns (bool) { 
+        require (_to != address(0), 
+            "Invalid recipient address");
+        require (_to == _borrower, 
+            "Recipient must be the borrower");
+        require (collateral.is_existing_collateral_depositor(_borrower), 
+            "Borrower is not a collateral depositor");
+        require (collateral.is_collateral_deposted(_borrower, _collateralID), 
+            "collateral has not been deposited yet by the borrower");
         bool ok = _token.transfer(_to, _amount);
         return ok;
     }

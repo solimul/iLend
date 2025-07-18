@@ -49,7 +49,7 @@
 3. **Liquidation Readiness**  
    - Bots and dApps can **off-chain query** `LiquidationQuery` or **listen to events**.
    - Collateral status is available via:
-     - `get_list_of_liqudation_ready_addresses()`
+     - `get_liqudation_ready_addresses()`
      - `get_liquidation_ready_collateral_information_for_the_borrower()`
 
 4. **Quote Generation**  
