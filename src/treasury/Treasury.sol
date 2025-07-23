@@ -64,7 +64,7 @@ contract Treasury {
         emit ERC20Withdrawn(token, to, amount);
     }
 
-    function updateProtocolRewardRecord (uint256 amount, 
+    function update_protocol_reward_record (uint256 amount, 
                                         address from, 
                                         uint256 loanID) public {
         protocolRewardRecords.push (ProtocolRewardInfo ({

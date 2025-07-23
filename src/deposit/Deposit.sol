@@ -290,7 +290,7 @@ contract Deposit is DepositPool {
     // }
 
 
-    function withdraw_principal (address _depositorAddress, 
+    function withdraw_deposit (address _depositorAddress, 
             uint256 amount) 
             external 
             existingDepositor (_depositorAddress) {

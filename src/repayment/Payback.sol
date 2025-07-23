@@ -17,6 +17,16 @@ contract Payback {
     Transaction private transaction;
     IERC20 private usdc;
 
+    error RemainingAmountNotZeroAfterRepayment(
+        address borrowerAddress, 
+        uint256 loanID, 
+        uint256 amount, 
+        uint256 principalAmount, 
+        uint256 interestAmount, 
+        uint256 protocolRewardAmount, 
+        uint256 remaining
+    );
+
 
     constructor (address _bAddress, 
             address _dAddress, 
@@ -36,27 +46,26 @@ contract Payback {
     }
 
 
-    function pay_principal_to_lender 
-        (
-            address _borrowerAddress, 
-            address _depositorAddress, 
-            uint256 _id
-        ) 
-        public 
-        returns (uint256) {
+    function update_principal_records 
+    (
+        address _depositorAddress, 
+        uint256 _id
+    ) 
+    public 
+    returns (uint256) {
         uint256 lentOutAmount = deposit.get_lentout_amount (_depositorAddress, _id);
         uint256 old = deposit.get_usdc_balance();
         require (old >= lentOutAmount, "Borrower does not have enough USDC for principal repayment.");        
         deposit.update_principal_payback_record (
-             _depositorAddress, _id);
-        require (transaction.check_approval_and_safe_transfer("USDC",_borrowerAddress, address (deposit), lentOutAmount), 
-                    "Cannot receive from the Borrower");
-        uint256 current = deposit.get_usdc_balance();
-        require (current == old + lentOutAmount, "USDC transfer amount mismatch");
+              _depositorAddress, _id);
+        // require (transaction.check_approval_and_safe_transfer("USDC",_borrowerAddress, address (deposit), lentOutAmount), 
+        //             "Cannot receive from the Borrower");
+        // uint256 current = deposit.get_usdc_balance();
+        //require (current == old + lentOutAmount, "USDC transfer amount mismatch");
         return lentOutAmount;
     }
 
-    function pay_loan_principal (address _borrowersAddress, 
+    function update_principal_receipt (address _borrowersAddress, 
         uint256 _loanID, 
         uint256 _principalAmount) 
     internal {
@@ -67,7 +76,7 @@ contract Payback {
             uint256 borrowedFromThisLender = 0;
             for (uint256 j=0; j<bRecord.lenders [i].depositAccountIDs.length; j++){
                 uint256 id = bRecord.lenders [i].depositAccountIDs [j];
-                borrowedFromThisLender += pay_principal_to_lender (_borrowersAddress, lAddress, id);
+                borrowedFromThisLender += update_principal_records (lAddress, id);
             }
             remaining -= borrowedFromThisLender;
         }
@@ -75,7 +84,7 @@ contract Payback {
     }
 
 
-    function pay_interest_to_lender
+    function update_interest_record
         (
             address _borrower,
             uint256 _loanID,
@@ -103,7 +112,7 @@ contract Payback {
         return interestPaid;
     }
 
-    function pay_interest  (address _borrowersAddress, 
+    function update_interest_receipt  (address _borrowersAddress, 
                            uint256 _loanID, 
                            uint256 _interestAmount, 
                            uint256 _principalAmount) 
@@ -116,7 +125,7 @@ contract Payback {
             address lAddress = _lender.lender; 
             for (uint256 j=0; j < _lender.depositAccountIDs.length; j++){
                 uint256 depositID = _lender.depositAccountIDs [j];
-                interestToThisLender += pay_interest_to_lender (
+                interestToThisLender += update_interest_record (
                     _borrowersAddress, _loanID, lAddress, depositID, _interestAmount, _principalAmount);
             }
             remaining -= interestToThisLender;
@@ -125,25 +134,30 @@ contract Payback {
 
     }
 
-    function pay_protocol_reward (address _borrowersAddress, 
-                                  uint256 loanID, 
-                                  uint256 amount) 
+    function update_protocol_reward_receipt 
+    (
+        address _borrowersAddress, 
+        uint256 _loanID, 
+        uint256 _amount
+    ) 
     internal {
-        //treasury.reciveERC20Deposit (usdc, _borrowersAddress, amount);
-        treasury.updateProtocolRewardRecord (amount, _borrowersAddress, loanID);
+        treasury.update_protocol_reward_record (_amount, _borrowersAddress, _loanID);
     }
 
-    function pay_remaining_to_treasury (address _borrowersAddress, 
-                                        uint256 amount, 
-                                        string memory context) 
-    internal {
-        treasury.reciveERC20Deposit (usdc, _borrowersAddress, amount);
-        treasury.updateMiscRecievedRecord (amount, context);
-    }
+    // function pay_remaining_to_treasury (address _borrowersAddress, 
+    //                                     uint256 amount, 
+    //                                     string memory context) 
+    // internal {
+    //     treasury.reciveERC20Deposit (usdc, _borrowersAddress, amount);
+    //     treasury.updateMiscRecievedRecord (amount, context);
+    // }
 
-    function process_repayment (address _borrowersAddress, 
-                               uint256 loanID, 
-                               uint256 amount) 
+    function update_loan_repayment 
+    (
+        address _borrowersAddress, 
+        uint256 loanID, 
+        uint256 amount
+    ) 
     external 
     only_existing_borrower(_borrowersAddress)
     returns (RepaymentComponent memory) {
@@ -153,18 +167,27 @@ contract Payback {
         require(amount >= requiredAmount, "Amount is not Enough");
         
         //pay interests
-        pay_interest (_borrowersAddress, loanID, rep.iAmount, rep.pAmount);
+        update_interest_receipt (_borrowersAddress, loanID, rep.iAmount, rep.pAmount);
         remaining -= rep.iAmount;
 
         //pay protocol reward
-        pay_protocol_reward (_borrowersAddress, loanID, rep.rAmount);
+        update_protocol_reward_receipt (_borrowersAddress, loanID, rep.rAmount);
         remaining -= rep.rAmount;
         //repay principal
-        pay_loan_principal (_borrowersAddress, loanID, rep.pAmount);
+        update_principal_receipt (_borrowersAddress, loanID, rep.pAmount);
         remaining -= rep.pAmount;
 
-        if (remaining > 0) 
-            pay_remaining_to_treasury (_borrowersAddress, amount, "");
+        if (remaining > 0){
+            revert RemainingAmountNotZeroAfterRepayment(
+                _borrowersAddress, 
+                loanID, 
+                amount, 
+                rep.pAmount, 
+                rep.iAmount, 
+                rep.rAmount, 
+                remaining
+            );
+        }
         return rep;
     }
 }
