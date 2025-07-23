@@ -7,7 +7,7 @@ import {Borrow} from "./borrow/Borrow.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./helper/PriceConverter.sol";
 import {PricefeedManagerLib} from "./lib/PricefeedManagerLib.sol";
-import {CollateralView, LiquidationReadyCollateral} from "./shared/SharedStructures.sol";
+import {CollateralView, LiquidationReadyCollateral, RepaymentComponent} from "./shared/SharedStructures.sol";
 import {Treasury} from "./treasury/Treasury.sol";
 import {NetworkConfigLib} from "./lib/NetworkConfigLib.sol";
 import {Payback} from "./repayment/Payback.sol";
@@ -53,18 +53,31 @@ contract iLend {
         uint256 timestamp
     );
 
-    error DepositorDoesNotHaveEnoughUSDC(address depositor);
-    error DepositorUSDCAllowanceTooLow(
-        address depositor, 
-        address depositAddress
+    error DoesNotHaveEnoughUSDC (
+        address from, 
+        string fromName, 
+        address to, 
+        string toName, 
+        uint256 amount
     );
-    error DepoistorUSDCTransferFromFailed(
-        address depositor,
-        address depositAddress,
+    error DoesNotHaveEnoughAllowance (
+        address from, 
+        string fromName, 
+        address to, 
+        string toName, 
         uint256 amount
     );
 
-    error TransferAmountMismatchInDepositPoolAfterTransfer(
+    error TransferFromFailed(
+        string tokenName,
+        address from,
+        string fromName,
+        address to,
+        string toName,
+        uint256 amount
+    );
+
+    error TransferAmountMismatchInDepositPoolAfterIncomingTransfer_Deposit(
         uint256 amountSent,
         uint256 beforeTransferBalance,
         uint256 newBalance
@@ -92,7 +105,7 @@ contract iLend {
     );
 
 
-    error TransferAmountMismatchInDepositPoolAfterTransferToBorrower(
+    error TransferAmountMismatchInDepositPoolAfterOutgingTransfer_Borrower(
         uint256 amountSent,
         uint256 beforeTransferBalance,
         uint256 newBalance
@@ -127,12 +140,28 @@ contract iLend {
         uint256 availableAmount
     );
 
-    error OnlyOwnerCanCallThisFunction(address caller, address owner);
+    error OnlyOwnerCanCallThisFunction(address caller, address i_owner);
+    error TransferAmountMismatchInDepositPoolAfterIncomingTransfer_Liquidation(
+        uint256 amountSent,
+        uint256 beforeTransferBalance,
+        uint256 newBalance
+    );
+
+    error BalanceMismatchAfterIncomingTransfer(
+        string tokenName,
+        address from,
+        string fromName,
+        address to,
+        string toName,
+        uint256 amount,
+        uint256 beforeTransferBalance,
+        uint256 newBalance
+    );
 
 
-    Params private params;   
-    address private owner;
-    Deposit private deposit;
+    Params immutable private i_params;   
+    address immutable private i_owner;
+    Deposit immutable private deposit;
     Collateral private collateral;
     Borrow private borrow;
     Treasury private treasury;
@@ -145,11 +174,21 @@ contract iLend {
 
     address private usdcContractAddress;
     address private ethContractAddress;
+
+    string constant USDCSTR = "USDC";
+    string constant DEPOSITORSTR = "Depositor";
+    string constant DEPOSITCONTRACTSTR = "DepositContract";
+    string constant ILENDSTR = "iLend";
+    string constant ETHSTR = "ETH";
+    string constant COLLATERALPROVIDERSTR = "CollateralProvider";
+    string constant COLLATERALCONTRACTSTR = "CollateralContract";
+    string constant BORROERCONTRACTSTR = "BorrowerContract";
+    string constant TREASURYCONTRACTSTR = "TreasuryContract";
     
     // Modifiers
     modifier only_owner() {
-        if (msg.sender != owner) {
-            revert OnlyOwnerCanCallThisFunction(msg.sender, owner);
+        if (msg.sender != i_owner) {
+            revert OnlyOwnerCanCallThisFunction(msg.sender, i_owner);
         }
         _;
     }
@@ -161,12 +200,12 @@ contract iLend {
     // }
 
     constructor () {
-        owner = msg.sender;
-        params = new Params(msg.sender, false, false, false);
-        params.set_params ();
+        i_owner = msg.sender;
+        i_params = new Params(msg.sender, false, false, false);
+        i_params.set_params ();
         priceFeed = AggregatorV3Interface(PricefeedManagerLib.get_price_feed_address());
 
-        address pAddress = address (params);
+        address pAddress = address (i_params);
         address pfAddress = address (priceFeed);
         usdcContractAddress = NetworkConfigLib.get_usdc_contract_address();
         ethContractAddress = NetworkConfigLib.get_usdc_contract_address();
@@ -175,7 +214,7 @@ contract iLend {
 
         address txAddress = address (transaction);
         
-        treasury = new Treasury (owner, address (txAddress));
+        treasury = new Treasury (i_owner, address (txAddress));
         
         address trAddress = address (treasury);
         
@@ -227,39 +266,63 @@ contract iLend {
         collateral.set_liquidation_engine (address (liquidationEngine));
     } 
 
-    function deposit_funds (uint256 _amount, uint256 _lockupPeriod) external {
-        // Call the deposit function in the Deposit contract
-        IERC20 token = IERC20(usdcContractAddress); 
-        if (token.balanceOf (msg.sender) < _amount) {
-            revert DepositorDoesNotHaveEnoughUSDC(msg.sender);
+    function transfer_funds_from_external(
+        IERC20 _token,
+        string memory _tokenName,
+        address _from,
+        string memory _fromName,
+        address _to,
+        string memory _toName,
+        uint256 _amount
+    ) internal {
+        uint256 balanceOfSenderBeforeTransfer = _token.balanceOf(_from);
+        if (balanceOfSenderBeforeTransfer < _amount) {
+            revert DoesNotHaveEnoughUSDC (_from,_fromName,_to, _toName,  _amount);
         }
-        if (token.allowance(msg.sender, address(this)) < _amount){
-            revert DepositorUSDCAllowanceTooLow(msg.sender, address(deposit));
+        if (_token.allowance(msg.sender, address(this)) < _amount){
+            revert DoesNotHaveEnoughAllowance (_from, _fromName, address(this), ILENDSTR, _amount);
         }
 
-        uint256 currentBalance = token.balanceOf(address(deposit));
+        uint256 balanceOfReceiverBeforeReceive = _token.balanceOf(_to);
 
-        if (token.transferFrom(msg.sender, address (deposit), _amount) == false) {
-            revert DepoistorUSDCTransferFromFailed(
-                msg.sender,
-                address(deposit),
+        if (_token.transferFrom(_from,_to, _amount) == false) {
+            revert TransferFromFailed(_tokenName,
+                _from,
+                _fromName,
+                _to,
+                _toName,
                 _amount
             );
         }
 
           
-        uint256 newBalance = token.balanceOf(address(deposit));
-        if (newBalance < _amount + currentBalance) {
-            revert TransferAmountMismatchInDepositPoolAfterTransfer(
+        uint256 newBalance = _token.balanceOf(_to);
+
+        if (newBalance < _amount + balanceOfSenderBeforeTransfer) {
+            revert BalanceMismatchAfterIncomingTransfer(
+                _tokenName,
+                _from,
+                _fromName,
+                _to,
+                _toName,
                 _amount,
-                currentBalance,
+                balanceOfSenderBeforeTransfer,
                 newBalance
             );
         }
-        
-       
-        deposit.update_post_deposit (msg.sender, _amount, _lockupPeriod);
+    }
 
+    function deposit_funds (uint256 _amount, uint256 _lockupPeriod) external {
+        transfer_funds_from_external(
+            IERC20(usdcContractAddress),
+            USDCSTR,
+            msg.sender,
+            DEPOSITORSTR,
+            address(deposit),
+            DEPOSITCONTRACTSTR,
+            _amount
+        );
+        deposit.update_post_deposit (msg.sender, _amount, _lockupPeriod);
         emit FundDepoistDone (
             msg.sender,
             _amount,
@@ -278,44 +341,26 @@ contract iLend {
     }
 
 
-   function deposit_collateral_borrow (uint256 amount) 
+   function deposit_collateral_borrow (uint256 _amount) 
     external {
-        // Call the deposit function in the Deposit contract
-        IERC20 token = IERC20(ethContractAddress);
-        uint256 borrowerETHBalance = token.balanceOf(msg.sender);
-        if ( borrowerETHBalance < amount) {
-            revert BorrowerDoesNotHaveEnoughETHCollateral(msg.sender, amount, borrowerETHBalance);
-        }
-
-        if (borrowerETHBalance < amount){
-            revert BorrowerETHCollateralAllowanceTooLowForILend(msg.sender, address(collateral));
-        }
-  
-        collateral.update_collateral_records (msg.sender, amount);
-
-        uint256 currentBalance = token.balanceOf(address(collateral));
-        if (token.transferFrom(msg.sender, address (collateral), amount) == false) {
-            revert BorrowerETHCollateralTransferFromFailed(
-                msg.sender,
-                address(collateral),
-                amount
-            );
-        }
-
-        uint256 newBalance = token.balanceOf(address(collateral));
         
-        if (newBalance < currentBalance + amount) {
-            revert TransferAmountMismatchInCollateralAfterTransfer(
-                amount,
-                currentBalance,
-                newBalance
-            );
-        }
+        transfer_funds_from_external(
+            IERC20(usdcContractAddress),
+            ETHSTR,
+            msg.sender,
+            COLLATERALPROVIDERSTR,
+            address(deposit),
+            COLLATERALCONTRACTSTR,
+            _amount
+        );
+
+        collateral.update_collateral_records (msg.sender, _amount);
+
 
         emit CollateralDepositDone(
             msg.sender,
             address(collateral),
-            amount,
+            _amount,
             block.timestamp
         );
         
@@ -326,12 +371,12 @@ contract iLend {
         uint256 borrowAmount = borrow.update_borrow_records (msg.sender, collateralDepositCount-1);
         collateral.update_borrowed_against_collateral (msg.sender, collateralDepositCount-1, true);
         
-        token = IERC20 (usdcContractAddress);
-        currentBalance = token.balanceOf(address (deposit));
+        IERC20 token = IERC20 (usdcContractAddress);
+        uint256 currentBalance = token.balanceOf(address (deposit));
         deposit.withdraw_to_borrower (token, msg.sender, borrowAmount, msg.sender, collateralDepositCount-1);
-        newBalance = token.balanceOf(address(deposit));
+        uint256 newBalance = token.balanceOf(address(deposit));
         if (newBalance > currentBalance - borrowAmount) {
-            revert TransferAmountMismatchInDepositPoolAfterTransferToBorrower(
+            revert TransferAmountMismatchInDepositPoolAfterOutgingTransfer_Borrower(
                 borrowAmount,
                 currentBalance,
                 newBalance
@@ -351,13 +396,53 @@ contract iLend {
         return collateral.get_collateral_depositor_info(msg.sender);
     }
 
-    function close_loan (uint256 _loanID) external payable {
-        payback.process_repayment (msg.sender, _loanID, msg.value);
-        collateral.unlock_collateral (msg.sender, _loanID);
+    /**
+     * @notice Allows a borrower to close an active loan by repaying the owed amount in ETH.
+     * @dev 
+     * - Forwards the received ETH to the `payback` contract to process repayment.
+     * - After successful repayment, instructs the `collateral` contract to unlock the borrower's collateral.
+     * - Caller must send the exact repayment amount as `msg.value`.
+     * 
+     * @param _loanID The ID of the loan the caller wants to close.
+     */
+    function close_loan (uint256 _loanID, uint256 _amount) external {
+        RepaymentComponent memory rep = payback.process_repayment (msg.sender, _loanID, _amount);
+        transfer_funds_from_external(
+            IERC20(usdcContractAddress),
+            USDCSTR,
+            msg.sender,
+            BORROERCONTRACTSTR,
+            address(deposit),
+            DEPOSITCONTRACTSTR,
+            rep.pAmount + rep.iAmount
+        );
+
+        transfer_funds_from_external(
+            IERC20(usdcContractAddress),
+            USDCSTR,
+            msg.sender,
+            BORROERCONTRACTSTR,
+            address(treasury),
+            TREASURYCONTRACTSTR,
+            rep.rAmount
+        );
+
+        collateral.unlock_collateral (IERC20 (ethContractAddress), msg.sender, _loanID);
     }
 
+    /**
+     * @notice Retrieves all liquidation-ready collateral records grouped by borrower.
+     * @dev 
+     * - Fetches a list of borrower addresses with at least one liquidation-ready position.
+     * - For each borrower, calls the registry to get their associated liquidation-ready collaterals.
+     * - Returns a two-dimensional array where each inner array contains the collaterals for a borrower.
+     * 
+     * @return An array of arrays, where each inner array holds `LiquidationReadyCollateral` entries for a borrower.
+     */
     function get_liquidation_ready_collaterals () 
-    external view returns (LiquidationReadyCollateral [] [] memory) {
+    external 
+    view 
+    returns (LiquidationReadyCollateral [] [] memory) {
         address [] memory list = liquidationRegistry.get_liqudation_ready_addresses (); 
         uint256 n = list.length;
         LiquidationReadyCollateral [][] memory _cols = new LiquidationReadyCollateral [][] (n);
@@ -367,12 +452,30 @@ contract iLend {
         return _cols;
     }
 
+        /**
+     * @notice Allows a third-party liquidator to liquidate a borrower's USDC loan in exchange for ETH collateral.
+     * @dev 
+     * - This function performs multiple checks:
+     *   - Ensures the liquidator has sufficient USDC balance and allowance.
+     *   - Transfers USDC to the Deposit contract and validates balance updates.
+     *   - Calls the liquidation engine to process the liquidation.
+     *   - Transfers ETH collateral from the Collateral contract to the liquidator.
+     *   - Emits events to record the liquidation and ETH transfer.
+     * - The function uses custom errors to save gas and provide precise reverts.
+     * - Emits `LiquidationUSDCReceived` and `LiquidatorReceivesETH` on success.
+     * 
+     * @param _borrower The address of the borrower whose position is being liquidated.
+     * @param _loanID The ID of the loan associated with the borrower's position.
+     * @param _usdcAmount The amount of USDC the liquidator is using to repay the borrower's debt.
+     */
+
     function liquidate_position_for_ETH 
     (
         address _borrower,
         uint256 _loanID,
         uint256 _usdcAmount
-    ) external {
+    ) 
+    external {
         IERC20 token = IERC20(usdcContractAddress);
         uint256 lequidatorUSDCBalance = token.balanceOf(msg.sender);
         if (lequidatorUSDCBalance < _usdcAmount) {
@@ -405,19 +508,12 @@ contract iLend {
         uint256 newBalance = token.balanceOf (address (deposit));
 
         if (newBalance < currentBalance + _usdcAmount) {
-            revert TransferAmountMismatchInDepositPoolAfterTransfer(
+            revert TransferAmountMismatchInDepositPoolAfterIncomingTransfer_Liquidation(
                 _usdcAmount,
                 currentBalance,
                 newBalance
             );
         }
-
-        emit LiquidationUSDCReceived(
-            msg.sender,
-            _usdcAmount,
-            currentBalance + _usdcAmount,
-            block.timestamp
-        );
 
         uint256 ethAmount 
             = liquidationEngine.update_on_liquidation_deposit (msg.sender, _borrower, _loanID, _usdcAmount);
@@ -443,6 +539,13 @@ contract iLend {
         }
 
         liquidationEngine.set_liquidated_status(_borrower, _loanID, true);
+
+        emit LiquidationUSDCReceived(
+            msg.sender,
+            _usdcAmount,
+            currentBalance + _usdcAmount,
+            block.timestamp
+        );
         emit LiquidatorReceivesETH(
             msg.sender,
             ethAmount,

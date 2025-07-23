@@ -29,6 +29,8 @@ contract Collateral is CollateralPool {
         uint256 depositCounts
     );
 
+    error INSUFFICIENT_BALANCE_IN_COLLATERAL(uint256 required, uint256 available);
+
     Params private params;
     Borrow private borrow;
     Transaction private transaction;
@@ -230,11 +232,19 @@ contract Collateral is CollateralPool {
         delete collateralDepositor.collateralDepositRecords[_collateralID];
     }
 
-    function unlock_collateral (address _cDepositorAddress, 
-            uint256 _collateralID) 
-            public {
+    function unlock_collateral 
+    (
+        IERC20 _token,
+        address _cDepositorAddress, 
+        uint256 _collateralID
+    ) 
+    public {
         uint256 amount = get_collateral_ETH_by_record(_cDepositorAddress, _collateralID);
-        transaction.check_approval_and_safe_transfer ("ETH", address (this), _cDepositorAddress, amount);
+        uint256 balance = _token.balanceOf(address(this));
+        if (amount > balance) {
+            revert INSUFFICIENT_BALANCE_IN_COLLATERAL (amount, balance);
+        }
+        _token.transfer(_cDepositorAddress, amount);
         deleteCollateralRecord (_cDepositorAddress, _collateralID);
     }
 

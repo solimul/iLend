@@ -95,11 +95,11 @@ contract Payback {
                     _interestAmount, _principalAmount, lentFromThisDepositAccount
                 );
 
-        require (transaction.check_approval_and_safe_transfer("USDC",_borrower, address (deposit), interestPaid), 
-                    "Cannot receive Interest for this deposit record from the Borrower");
+        // require (transaction.check_approval_and_safe_transfer("USDC",_borrower, address (deposit), interestPaid), 
+        //             "Cannot receive Interest for this deposit record from the Borrower");
         
-        uint256 current = deposit.get_usdc_balance();
-        require (current == old + interestPaid, "USDC transfer amount mismatch");
+        // uint256 current = deposit.get_usdc_balance();
+        // require (current == old + interestPaid, "USDC transfer amount mismatch");
         return interestPaid;
     }
 
@@ -129,7 +129,7 @@ contract Payback {
                                   uint256 loanID, 
                                   uint256 amount) 
     internal {
-        treasury.reciveERC20Deposit (usdc, _borrowersAddress, amount);
+        //treasury.reciveERC20Deposit (usdc, _borrowersAddress, amount);
         treasury.updateProtocolRewardRecord (amount, _borrowersAddress, loanID);
     }
 
@@ -145,7 +145,8 @@ contract Payback {
                                uint256 loanID, 
                                uint256 amount) 
     external 
-    only_existing_borrower(_borrowersAddress){
+    only_existing_borrower(_borrowersAddress)
+    returns (RepaymentComponent memory) {
         RepaymentComponent memory rep = borrow.calculate_repayment_components (_borrowersAddress, loanID);
         uint256 requiredAmount = rep.pAmount + rep.iAmount + rep.rAmount;
         uint256 remaining = amount;
@@ -164,6 +165,7 @@ contract Payback {
 
         if (remaining > 0) 
             pay_remaining_to_treasury (_borrowersAddress, amount, "");
+        return rep;
     }
 }
 
