@@ -11,7 +11,6 @@ import {CollateralView, LiquidationReadyCollateral, RepaymentComponent} from "./
 import {Treasury} from "./treasury/Treasury.sol";
 import {NetworkConfigLib} from "./lib/NetworkConfigLib.sol";
 import {Payback} from "./repayment/Payback.sol";
-import {Transaction} from "./misc/Transcation.sol";
 import {Monitor} from "./liquidation/Monitor.sol";
 import {LiquidationRegistry} from "./liquidation/LiquidationRegistry.sol";
 import {LiquidationEngine} from "./liquidation/LiquidationEngine.sol";
@@ -117,52 +116,21 @@ contract iLend {
         uint256 newBalance
     );
 
-    error BalanceMismatchAfterOutgoingTransfer(
-        string tokenName,
-        address from,
-        string fromName,
-        address to,
-        string toName,
-        uint256 amount,
-        uint256 beforeTransferBalance,
-        uint256 newBalance,
-        string context
-    );
-
 
     Params immutable private iParams;   
     address immutable private iOwner;
     Deposit immutable private iDeposit;
-    Collateral private collateral;
-    Borrow private borrow;
-    Treasury private treasury;
-    Payback private payback;
-    Transaction private transaction;
-    Monitor private monitor;
-    AggregatorV3Interface private priceFeed;
-    LiquidationRegistry private liquidationRegistry;
-    LiquidationEngine private liquidationEngine;
+    Collateral immutable private iCollateral;
+    Borrow immutable private iBorrow;
+    Treasury immutable private iTreasury;
+    Payback immutable private iPayback;
+    Monitor immutable private iMonitor;
+    AggregatorV3Interface immutable private iPriceFeed;
+    LiquidationRegistry private iLiquidationRegistry;
+    LiquidationEngine private iLiquidationEngine;
 
-    address private usdcContractAddress;
-    address private ethContractAddress;
-
-    string constant USDCSTR = "USDC";
-    string constant DEPOSITORSTR = "Depositor";
-    string constant DEPOSITCONTRACTSTR = "DepositContract";
-    string constant ILENDSTR = "iLend";
-    string constant ETHSTR = "ETH";
-    string constant COLLATERALPROVIDERSTR = "CollateralProvider";
-    string constant COLLATERALCONTRACTSTR = "CollateralContract";
-    string constant BORROERCONTRACTSTR = "BorrowerContract";
-    string constant TREASURYCONTRACTSTR = "TreasuryContract";
-    string constant BORROWINGCNTXT = "Borrowing";
-    string constant LENDERDEPOSITCNTXT = "LenderDeposit";
-    string constant COLLATERALDEPOSITINGCNTXT = "CollateralDepositing";
-    string constant PRINCPALREPAYMENTCNTXT = "PrincipalRepayment";
-    string constant INTERESTREPAYMENTCNTXT = "InterestRepayment";
-    string constant PROTOCOLREWARDCNTXT = "ProtocolReward";
-    string constant LIQUIDATORCONTRACTSTR = "LiquidatorContract";
-    string constant LIQUIDATOR = "Liquidator";
+    address private iUSDCContractAddress;
+    address private iETHContractAddress;
     
     // Modifiers
     modifier only_owner() {
@@ -202,7 +170,6 @@ contract iLend {
      * @param _priceFeed Address of the Chainlink price feed.
      * @param _usdcContractAddress Address of the USDC ERC20 token contract.
      * @param _ethContractAddress Address of the wrapped ETH (WETH) ERC20 token contract.
-     * @param _transaction Address of the Transaction module.
      * @param _treasury Address of the Treasury contract (payable).
      * @param _collateral Address of the Collateral management contract.
      * @param _deposit Address of the Deposit contract.
@@ -219,7 +186,6 @@ contract iLend {
         address _priceFeed,
         address _usdcContractAddress,
         address _ethContractAddress,
-        address _transaction,
         address _treasury,
         address _collateral,
         address _deposit,
@@ -232,23 +198,22 @@ contract iLend {
         iOwner                = msg.sender;
 
         iParams               = Params(_params);
-        priceFeed              = AggregatorV3Interface(_priceFeed);
+        iPriceFeed              = AggregatorV3Interface(_priceFeed);
 
-        usdcContractAddress    = _usdcContractAddress;
-        ethContractAddress     = _ethContractAddress;
+        iUSDCContractAddress    = _usdcContractAddress;
+        iETHContractAddress     = _ethContractAddress;
 
         // Core modules
-        transaction            = Transaction(_transaction);
-        treasury               = Treasury(payable (_treasury));
-        collateral             = Collateral(_collateral);
+        iTreasury               = Treasury(payable (_treasury));
+        iCollateral             = Collateral(_collateral);
         iDeposit                = Deposit(_deposit);
-        borrow                 = Borrow(_borrow);
-        payback                = Payback(_payback);
-        liquidationRegistry    = LiquidationRegistry(_liquidationRegistry);
-        monitor                = Monitor(_monitor);
-        liquidationEngine      = LiquidationEngine(_liquidationEngine);
+        iBorrow                 = Borrow(_borrow);
+        iPayback                = Payback(_payback);
+        iLiquidationRegistry    = LiquidationRegistry(_liquidationRegistry);
+        iMonitor                = Monitor(_monitor);
+        iLiquidationEngine      = LiquidationEngine(_liquidationEngine);
 
-        collateral.set_liquidation_engine(_liquidationEngine);
+        iCollateral.set_liquidation_engine(_liquidationEngine);
     }    
 
 
@@ -316,7 +281,7 @@ contract iLend {
     ) 
     external {
         transfer_funds_from_external(
-            IERC20(usdcContractAddress),
+            IERC20(iUSDCContractAddress),
             msg.sender,
             address(iDeposit),
             _amount,
@@ -387,7 +352,7 @@ contract iLend {
    ) 
    external {     
         transfer_funds_from_external(
-            IERC20(usdcContractAddress),
+            IERC20(iUSDCContractAddress),
             msg.sender,
             address(iDeposit),
             _amount,
@@ -396,24 +361,24 @@ contract iLend {
             TransferFromFailedWhileDepositingCollateral.selector,
             BalanceMismatchAfterIncomingTransferWhileDepositingCollateral.selector);
 
-        collateral.update_collateral_records (msg.sender, _amount);
+        iCollateral.update_collateral_records (msg.sender, _amount);
 
 
         emit CollateralDepositDone(
             msg.sender,
-            address(collateral),
+            address(iCollateral),
             _amount,
             block.timestamp
         );
         
 
-        if (!borrow.borrower_exists (msg.sender))
-            borrow.add_new_borrower (msg.sender, 0, 0, 0, 0);
-        uint256 collateralDepositCount = collateral.get_collateral_deposit_count(msg.sender);
-        uint256 borrowAmount = borrow.update_borrow_records (msg.sender, collateralDepositCount-1);
-        collateral.update_borrowed_against_collateral (msg.sender, collateralDepositCount-1, true);
+        if (!iBorrow.borrower_exists (msg.sender))
+            iBorrow.add_new_borrower (msg.sender, 0, 0, 0, 0);
+        uint256 collateralDepositCount = iCollateral.get_collateral_deposit_count(msg.sender);
+        uint256 borrowAmount = iBorrow.update_borrow_records (msg.sender, collateralDepositCount-1);
+        iCollateral.update_borrowed_against_collateral (msg.sender, collateralDepositCount-1, true);
         
-        IERC20 token = IERC20 (usdcContractAddress);
+        IERC20 token = IERC20 (iUSDCContractAddress);
         uint256 currentBalance = token.balanceOf(address (iDeposit));
         iDeposit.withdraw_to_borrower (token, msg.sender, borrowAmount, msg.sender, collateralDepositCount-1);
         uint256 newBalance = token.balanceOf(address(iDeposit));
@@ -439,8 +404,8 @@ contract iLend {
 
     function get_my_collateral_info () external returns (CollateralView [] memory) {
         // Call the view function in the Collateral contract
-        collateral.set_borrower_contract(address (borrow));
-        return collateral.get_collateral_depositor_info(msg.sender);
+        iCollateral.set_borrower_contract(address (iBorrow));
+        return iCollateral.get_collateral_depositor_info(msg.sender);
     }
 
     /**
@@ -458,10 +423,10 @@ contract iLend {
         uint256 _amount
     ) 
     external {
-        RepaymentComponent memory rep = payback.update_loan_repayment (msg.sender, _loanID, _amount);
+        RepaymentComponent memory rep = iPayback.update_loan_repayment (msg.sender, _loanID, _amount);
         
         transfer_funds_from_external(
-            IERC20(usdcContractAddress),
+            IERC20(iUSDCContractAddress),
             msg.sender,
             address(iDeposit),
             rep.pAmount,
@@ -472,7 +437,7 @@ contract iLend {
         );
 
            transfer_funds_from_external(
-                IERC20(usdcContractAddress),
+                IERC20(iUSDCContractAddress),
                 msg.sender,
                 address(iDeposit),
                 rep.iAmount,
@@ -483,9 +448,9 @@ contract iLend {
             );
 
         transfer_funds_from_external(
-            IERC20(usdcContractAddress),
+            IERC20(iUSDCContractAddress),
             msg.sender,
-            address(treasury),
+            address(iTreasury),
             rep.rAmount,
             DoesNotHaveEnoughUSDCWhilePayingProtocolReward.selector,
             DoesNotHaveEnoughUSDCAllowanceWhilePayingProtocolReward.selector,
@@ -493,7 +458,7 @@ contract iLend {
             BalanceMismatchAfterIncomingTransferWhilePayingProtocolReward.selector
         );
 
-        collateral.unlock_collateral (IERC20 (ethContractAddress), msg.sender, _loanID);
+        iCollateral.unlock_collateral (IERC20 (iETHContractAddress), msg.sender, _loanID);
     }
 
     /**
@@ -509,11 +474,11 @@ contract iLend {
     external 
     view 
     returns (LiquidationReadyCollateral [] [] memory) {
-        address [] memory list = liquidationRegistry.get_liqudation_ready_addresses (); 
+        address [] memory list = iLiquidationRegistry.get_liqudation_ready_addresses (); 
         uint256 n = list.length;
         LiquidationReadyCollateral [][] memory _cols = new LiquidationReadyCollateral [][] (n);
         for (uint256 i=0; i< n; i++){
-            _cols [i] = liquidationRegistry.get_liquidation_ready_collaterals_by_borrower (list [i]);
+            _cols [i] = iLiquidationRegistry.get_liquidation_ready_collaterals_by_borrower (list [i]);
         }
         return _cols;
     }
@@ -542,7 +507,7 @@ contract iLend {
         uint256 _usdcAmount
     ) 
     external {
-        IERC20 token = IERC20(usdcContractAddress);
+        IERC20 token = IERC20(iUSDCContractAddress);
         uint256 lequidatorUSDCBalance = token.balanceOf(msg.sender);
         if (lequidatorUSDCBalance < _usdcAmount) {
             revert LiquidatorDoesNotHaveEnoughUSDC(
@@ -582,25 +547,25 @@ contract iLend {
         }
 
         uint256 ethAmount 
-            = liquidationEngine.update_on_liquidation_deposit (msg.sender, _borrower, _loanID, _usdcAmount);
+            = iLiquidationEngine.update_on_liquidation_deposit (msg.sender, _borrower, _loanID, _usdcAmount);
 
-        token = IERC20 (ethContractAddress);
-        currentBalance = token.balanceOf(address (collateral));
+        token = IERC20 (iETHContractAddress);
+        currentBalance = token.balanceOf(address (iCollateral));
 
-        if (token.balanceOf (address(collateral)) < ethAmount) {
+        if (token.balanceOf (address(iCollateral)) < ethAmount) {
             revert CollateralPoolDoesNotHaveEnoughETHForLiquidation(
-                address(collateral),
+                address(iCollateral),
                 ethAmount,
-                token.balanceOf(address(collateral))
+                token.balanceOf(address(iCollateral))
             );
         }
-        collateral.withdraw_to_liquidator (token, msg.sender, ethAmount, _borrower, _loanID);
-        newBalance = token.balanceOf(address(collateral));
+        iCollateral.withdraw_to_liquidator (token, msg.sender, ethAmount, _borrower, _loanID);
+        newBalance = token.balanceOf(address(iCollateral));
         if (newBalance > currentBalance - ethAmount) {
             revert BalanceMismatchAfterOutgoingETHTransferToLiquidator ();
         }
 
-        liquidationEngine.set_liquidated_status(_borrower, _loanID, true);
+        iLiquidationEngine.set_liquidated_status(_borrower, _loanID, true);
 
         emit LiquidationUSDCReceived(
             msg.sender,
