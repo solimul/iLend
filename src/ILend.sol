@@ -53,6 +53,83 @@ contract iLend {
         uint256 timestamp
     );
 
+    error DepositorDoesNotHaveEnoughUSDC(address depositor);
+    error DepositorUSDCAllowanceTooLow(
+        address depositor, 
+        address depositAddress
+    );
+    error DepoistorUSDCTransferFromFailed(
+        address depositor,
+        address depositAddress,
+        uint256 amount
+    );
+
+    error TransferAmountMismatchInDepositPoolAfterTransfer(
+        uint256 amountSent,
+        uint256 beforeTransferBalance,
+        uint256 newBalance
+    );
+
+    error BorrowerDoesNotHaveEnoughETHCollateral(
+        address borrower, 
+        uint256 requiredAmount, 
+        uint256 availableAmount
+    );
+    error BorrowerETHCollateralAllowanceTooLowForILend(
+        address borrower, 
+        address collateralAddress
+    );
+    error BorrowerETHCollateralTransferFromFailed(
+        address borrower,
+        address collateralAddress,
+        uint256 amount
+    );
+
+    error TransferAmountMismatchInCollateralAfterTransfer(
+        uint256 amountSent,
+        uint256 beforeTransferBalance,
+        uint256 newBalance
+    );
+
+
+    error TransferAmountMismatchInDepositPoolAfterTransferToBorrower(
+        uint256 amountSent,
+        uint256 beforeTransferBalance,
+        uint256 newBalance
+    );
+
+    error TransferAmountMismatchInCollateralAfterTransferToLiquidator(
+        uint256 amountSent,
+        uint256 beforeTransferBalance,
+        uint256 newBalance
+    );
+
+    error LiquidatorUSDCTransferFromFailed(
+        address liquidator,
+        address depositAddress,
+        uint256 amount
+    );
+
+    error LiquidatorUSDCAllowanceTooLowForILend (
+        address liquidator,
+        address depositAddress
+    );
+
+    error LiquidatorDoesNotHaveEnoughUSDC(
+        address liquidator,
+        uint256 requiredAmount,
+        uint256 availableAmount
+    );
+
+    error CollateralPoolDoesNotHaveEnoughETHForLiquidation(
+        address collateralAddress,
+        uint256 requiredAmount,
+        uint256 availableAmount
+    );
+
+    error OnlyOwnerCanCallThisFunction(address caller, address owner);
+
+
     Params private params;   
     address private owner;
     Deposit private deposit;
@@ -70,8 +147,10 @@ contract iLend {
     address private ethContractAddress;
     
     // Modifiers
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized");
+    modifier only_owner() {
+        if (msg.sender != owner) {
+            revert OnlyOwnerCanCallThisFunction(msg.sender, owner);
+        }
         _;
     }
 
@@ -151,20 +230,33 @@ contract iLend {
     function deposit_funds (uint256 _amount, uint256 _lockupPeriod) external {
         // Call the deposit function in the Deposit contract
         IERC20 token = IERC20(usdcContractAddress); 
-        require (token.balanceOf (msg.sender) >= _amount, "Depositor does not have enough USDC");
-        require(
-            token.allowance(msg.sender, address(this)) >= _amount,
-            "TOKEN: allowance too low"
-        );
+        if (token.balanceOf (msg.sender) < _amount) {
+            revert DepositorDoesNotHaveEnoughUSDC(msg.sender);
+        }
+        if (token.allowance(msg.sender, address(this)) < _amount){
+            revert DepositorUSDCAllowanceTooLow(msg.sender, address(deposit));
+        }
+
         uint256 currentBalance = token.balanceOf(address(deposit));
 
-        require(
-            token.transferFrom(msg.sender, address (deposit), _amount),
-            "USDC transfer to the deposit pool failed"); 
+        if (token.transferFrom(msg.sender, address (deposit), _amount) == false) {
+            revert DepoistorUSDCTransferFromFailed(
+                msg.sender,
+                address(deposit),
+                _amount
+            );
+        }
+
           
         uint256 newBalance = token.balanceOf(address(deposit));
-
-        require (newBalance >= _amount + currentBalance, "Deposit amount mismatch after transfer of USDC to the deposit pool");
+        if (newBalance < _amount + currentBalance) {
+            revert TransferAmountMismatchInDepositPoolAfterTransfer(
+                _amount,
+                currentBalance,
+                newBalance
+            );
+        }
+        
        
         deposit.update_post_deposit (msg.sender, _amount, _lockupPeriod);
 
@@ -190,21 +282,35 @@ contract iLend {
     external {
         // Call the deposit function in the Deposit contract
         IERC20 token = IERC20(ethContractAddress);
-        require (token.balanceOf (msg.sender) >= amount, "Borrower Does not have enough ETH collaterals");
-        require(
-            token.allowance(msg.sender, address(this)) >= amount,
-            "TOKEN: allowance too low"
-        );
+        uint256 borrowerETHBalance = token.balanceOf(msg.sender);
+        if ( borrowerETHBalance < amount) {
+            revert BorrowerDoesNotHaveEnoughETHCollateral(msg.sender, amount, borrowerETHBalance);
+        }
+
+        if (borrowerETHBalance < amount){
+            revert BorrowerETHCollateralAllowanceTooLowForILend(msg.sender, address(collateral));
+        }
+  
         collateral.update_collateral_records (msg.sender, amount);
 
         uint256 currentBalance = token.balanceOf(address(collateral));
-        require(
-            token.transferFrom(msg.sender, address (collateral), amount), 
-            "TOKEN: transferFrom failed"
-        );
+        if (token.transferFrom(msg.sender, address (collateral), amount) == false) {
+            revert BorrowerETHCollateralTransferFromFailed(
+                msg.sender,
+                address(collateral),
+                amount
+            );
+        }
+
         uint256 newBalance = token.balanceOf(address(collateral));
         
-        require(newBalance == currentBalance + amount, "Collateral deposit (ETH) amount mismatch after transfer");
+        if (newBalance < currentBalance + amount) {
+            revert TransferAmountMismatchInCollateralAfterTransfer(
+                amount,
+                currentBalance,
+                newBalance
+            );
+        }
 
         emit CollateralDepositDone(
             msg.sender,
@@ -224,7 +330,13 @@ contract iLend {
         currentBalance = token.balanceOf(address (deposit));
         deposit.withdraw_to_borrower (token, msg.sender, borrowAmount, msg.sender, collateralDepositCount-1);
         newBalance = token.balanceOf(address(deposit));
-        require(newBalance == currentBalance - borrowAmount, "USDC borrow amount mismatch after transfer to borrower");
+        if (newBalance > currentBalance - borrowAmount) {
+            revert TransferAmountMismatchInDepositPoolAfterTransferToBorrower(
+                borrowAmount,
+                currentBalance,
+                newBalance
+            );
+        }
 
         emit LendingDone(
             msg.sender,
@@ -262,18 +374,43 @@ contract iLend {
         uint256 _usdcAmount
     ) external {
         IERC20 token = IERC20(usdcContractAddress);
-        require (token.balanceOf (msg.sender) >= _usdcAmount, "Borrower Does not have enough ETH collaterals");
-        require(
-            token.allowance(msg.sender, address(this)) >= _usdcAmount,
-            "TOKEN: allowance too low"
-        );
+        uint256 lequidatorUSDCBalance = token.balanceOf(msg.sender);
+        if (lequidatorUSDCBalance < _usdcAmount) {
+            revert LiquidatorDoesNotHaveEnoughUSDC(
+                msg.sender,
+                _usdcAmount,
+                lequidatorUSDCBalance
+            );
+        }
 
+        if ( token.allowance(msg.sender, address(this))< _usdcAmount) {
+            revert LiquidatorUSDCAllowanceTooLowForILend(
+                msg.sender,
+                address(this)
+            );
+        }
+  
         uint256 currentBalance = token.balanceOf (address (deposit));
 
-        require(
-            token.transferFrom(msg.sender, address (deposit), _usdcAmount),
-            "While injecting liquidation, USDC transfer to the deposit pool failed"
-        );
+        if (token.transferFrom(msg.sender, address (deposit), _usdcAmount) == false) {
+            revert LiquidatorUSDCTransferFromFailed(
+                msg.sender,
+                address(deposit),
+                _usdcAmount
+            );
+        }
+
+   
+
+        uint256 newBalance = token.balanceOf (address (deposit));
+
+        if (newBalance < currentBalance + _usdcAmount) {
+            revert TransferAmountMismatchInDepositPoolAfterTransfer(
+                _usdcAmount,
+                currentBalance,
+                newBalance
+            );
+        }
 
         emit LiquidationUSDCReceived(
             msg.sender,
@@ -282,21 +419,29 @@ contract iLend {
             block.timestamp
         );
 
-        uint256 newBalance = token.balanceOf (address (deposit));
-
-        require (newBalance == currentBalance + _usdcAmount, "USDC transfer amount mismatch while injecting liquidation");
-
         uint256 ethAmount 
             = liquidationEngine.update_on_liquidation_deposit (msg.sender, _borrower, _loanID, _usdcAmount);
 
         token = IERC20 (ethContractAddress);
         currentBalance = token.balanceOf(address (collateral));
 
-        require (token.balanceOf (address(collateral)) >= ethAmount, 
-                    "Collateral Pool does not have enough ETH for rewarding the liquidator");
+        if (token.balanceOf (address(collateral)) < ethAmount) {
+            revert CollateralPoolDoesNotHaveEnoughETHForLiquidation(
+                address(collateral),
+                ethAmount,
+                token.balanceOf(address(collateral))
+            );
+        }
         collateral.withdraw_to_liquidator (token, msg.sender, ethAmount, _borrower, _loanID);
         newBalance = token.balanceOf(address(collateral));
-        require(newBalance >= currentBalance - ethAmount, "ETH amount mismatch in the collateral pool after transfer to liquidator");
+        if (newBalance > currentBalance - ethAmount) {
+            revert TransferAmountMismatchInCollateralAfterTransferToLiquidator(
+                ethAmount,
+                currentBalance,
+                newBalance
+            );
+        }
+
         liquidationEngine.set_liquidated_status(_borrower, _loanID, true);
         emit LiquidatorReceivesETH(
             msg.sender,

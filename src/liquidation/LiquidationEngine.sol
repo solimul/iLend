@@ -150,5 +150,5 @@ contract LiquidationEngine {
         col.yetToBeLiquidated = _status;
         // LiquidationReadyCollateralLoanIDMap storage loanMap = liqReg.addressToLoanIDToCollateral[_borrower];
         // loanMap.map[_loanID] = col;
-    }     
+    }   
 }
