@@ -382,35 +382,38 @@ contract Deposit is DepositPool {
         //emit DepositorInterestWithDrawalDone (address(this), _depositorAddress, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
 
-   function match_funders (uint256 _amount)
+   function match_update_lenders (uint256 _amount)
     external
     returns (Lender[] memory) {
-        Lender[] memory tempLenders = new Lender[](depositorAddresses.length); 
+        uint256 len = depositorAddresses.length;
+        Lender[] memory tempLenders = new Lender[](len); 
         Lender memory lender;
 
         uint256 fund = 0;
         bool completed = false;
         uint256 matchedLendersCount = 0;
 
-        for (uint256 i = 0; i < depositorAddresses.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             Depositor storage depositor = depositors[depositorAddresses[i]];
             uint256 nDeposits = 0;
-            uint256[] memory tepmIDs = new uint256[](depositor.depositCounts);
+            uint256 cnt = depositor.depositCounts;
+            uint256[] memory tepmIDs = new uint256[](cnt);
             uint256 totalLent = 0;
-            for (uint256 j = 0; j < depositor.depositCounts; j++) {
+            for (uint256 j = 0; j < cnt; j++) {
+                // if (remaining == 0) {
+                //     completed = true;
+                //     break;
+                // }
+
                 DepositRecord storage dRecord = depositor.deposits[j];
-                uint256 remaining = _amount - fund;
-
-                if (remaining == 0) {
-                    completed = true;
-                    break;
-                }
-
-                if (dRecord.availableToLend > 0) {
+                uint256 availableToLend = dRecord.availableToLend;
+                if (availableToLend > 0) {
                     tepmIDs[nDeposits++] = j;
+                    uint256 remaining = _amount- fund;
 
-                    uint256 lentAmount = remaining > dRecord.availableToLend
-                        ? dRecord.availableToLend
+                    uint256 lentAmount = 
+                        remaining > availableToLend
+                        ? availableToLend
                         : remaining;
 
                     fund += lentAmount;
@@ -448,7 +451,6 @@ contract Deposit is DepositPool {
         for (uint256 i = 0; i < matchedLendersCount; i++) {
             lenders[i] = tempLenders[i];
         }
-
         return lenders;
     }
 

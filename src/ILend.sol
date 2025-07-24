@@ -51,7 +51,7 @@ contract iLend {
         uint256 timestamp
     );
 
-    event LiquidatorReceivesETH(
+    event SentETHToLiquidator(
         address indexed liquidator,
         uint256 ethAmount,
         uint256 poolBalance,
@@ -493,7 +493,7 @@ contract iLend {
      *   - Transfers ETH collateral from the Collateral contract to the liquidator.
      *   - Emits events to record the liquidation and ETH transfer.
      * - The function uses custom errors to save gas and provide precise reverts.
-     * - Emits `LiquidationUSDCReceived` and `LiquidatorReceivesETH` on success.
+     * - Emits `LiquidationUSDCReceived` and `SentETHToLiquidator` on success.
      * 
      * @param _borrower The address of the borrower whose position is being liquidated.
      * @param _loanID The ID of the loan associated with the borrower's position.
@@ -573,12 +573,11 @@ contract iLend {
             currentBalance + _usdcAmount,
             block.timestamp
         );
-        emit LiquidatorReceivesETH(
+        emit SentETHToLiquidator(
             msg.sender,
             ethAmount,
             newBalance,
             block.timestamp
         );
-
     }
 }

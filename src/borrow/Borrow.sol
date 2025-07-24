@@ -247,7 +247,7 @@ contract Borrow {
         require (_liquidityToBorrow <= depositPool.get_pool_balance(), "Not enough liquidity in the pool");
         require (collateralPool.is_collateral_available (_borrowerAddress, _correspondingColletaralID), "Collateral already borrowed against");
         
-        Lender [] memory _lenders = depositPool.match_funders (_liquidityToBorrow);
+        Lender [] memory _lenders = depositPool.match_update_lenders (_liquidityToBorrow);
         depositPool.update_lentout_amount (_liquidityToBorrow);
 
         BorrowerRecord storage borrower = borrowers[_borrowerAddress];

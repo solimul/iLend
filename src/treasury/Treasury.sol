@@ -6,94 +6,98 @@ import {ProtocolRewardInfo, MiscFundRecievedInfo} from "../shared/SharedStructur
 import {Transaction} from "../misc/Transcation.sol";
 
 contract Treasury {
-    event ReceivedETH(address indexed sender, uint256 amount);
-    event ERC20Received(address indexed token, address indexed from, uint256 amount);
-    event ETHWithdrawn(address indexed to, uint256 amount);
+    event NativeETHReceived (address indexed sender, uint256 amount);
+    event WETHWithdrawn(address indexed to, uint256 amount);
     event ERC20Withdrawn(address indexed token, address indexed to, uint256 amount);
-    address public immutable treasuryOwner;
-    Transaction private transaction;
-    ProtocolRewardInfo [] protocolRewardRecords;
-    MiscFundRecievedInfo [] miscFundReceivedRecords;
+    event NativeETHWithdrawn(address indexed to, uint256 amount);
+
+    error OnlyTreasuryOwnerCanAccess (address user, address iTreasuryOwner);
+    error TreasuryHasInsufficientBalance (uint256 requested, uint256 available);
+
+    address public immutable iTreasuryOwner;
+    ProtocolRewardInfo [] sProtocolRewardRecords;
 
     
-    modifier onlyOwner (address user){
-        require (user == treasuryOwner, "Only the treasury user can withdraw.");
+    modifier only_owner 
+    (
+        address _user
+    ){
+        if (_user != iTreasuryOwner) {
+            revert OnlyTreasuryOwnerCanAccess (_user, iTreasuryOwner);
+        }
         _;
     }
 
-    modifier enoughBalance (address from, 
-                            IERC20 token, 
-                            uint256 amount) {
-        require (token.balanceOf (address(this)) >= amount, "Insufficient funds to be recieved by treasury.");
-        _;
-    }
 
-    constructor (address _owner, 
-                address _tAddress)  {
-        treasuryOwner = _owner;
-        transaction = Transaction (_tAddress);
+    constructor (address _owner ) {
+        iTreasuryOwner = _owner;
     }
 
     receive() external payable {
-        emit ReceivedETH(msg.sender, msg.value);
+        emit NativeETHReceived (msg.sender, msg.value);
     }
 
     fallback() external payable {
-        emit ReceivedETH(msg.sender, msg.value);
+        emit NativeETHReceived (msg.sender, msg.value);
     }
 
-    function reciveERC20Deposit(IERC20 token, 
-                                address from, 
-                                uint256 amount) external enoughBalance (from, token, amount) {
-        require(token.transferFrom(from, address(this), amount), "Transfer failed");
-        emit ERC20Received(address(token), from, amount);
+    function withdraw_wrapped_ETH
+    (
+        address payable _to, 
+        uint256 _amount
+    ) 
+    external 
+    only_owner (_to) {
+        if (address(this).balance < _amount){
+            revert TreasuryHasInsufficientBalance (_amount, address(this).balance);
+        }
+        _to.transfer(_amount);
+        emit WETHWithdrawn(_to, _amount);
     }
 
-    function withdrawETH(address payable to, 
-                        uint256 amount) external onlyOwner (to) {
-        require(address(this).balance >= amount, "Insufficient ETH");
+    function withdraw_native_ETH
+    (
+        address payable to, 
+        uint256 amount
+    ) 
+    external 
+    only_owner (msg.sender) {
+        require(address(this).balance >= amount, "Insufficient native ETH balance");
         to.transfer(amount);
-        emit ETHWithdrawn(to, amount);
+        emit NativeETHWithdrawn(to, amount);
     }
 
-    function withdrawERC20(address token, 
-                           address to, 
-                           uint256 amount) external onlyOwner (to) {
-        require(IERC20(token).balanceOf(address(this)) >= amount, "Insufficient token balance");
-        IERC20(token).transfer(to, amount); 
-        emit ERC20Withdrawn(token, to, amount);
-    }
-
-    function update_protocol_reward_record (uint256 amount, 
-                                        address from, 
-                                        uint256 loanID) public {
-        protocolRewardRecords.push (ProtocolRewardInfo ({
-            amount : amount,
-            borrowerAddress: from,
-            loanID: loanID,
+    function update_protocol_reward_records 
+    (
+        uint256 _amount, 
+        address _from, 
+        uint256 _loanID
+    ) 
+    public 
+    {
+        sProtocolRewardRecords.push (ProtocolRewardInfo ({
+            amount : _amount,
+            borrowerAddress: _from,
+            loanID: _loanID,
             dateReceived: block.timestamp
         }));
     }
 
-    function updateMiscRecievedRecord (uint256 amount, 
-                                      string memory context) public {
-        miscFundReceivedRecords.push (MiscFundRecievedInfo ({
-            amount : amount,
-            context: context,
-            dateReceived: block.timestamp
-        }));
-    }
-
-    function getETHBalance() external view returns (uint256) {
-        return address(this).balance;
-    }
-
-    function getTokenBalance(address token) external view returns (uint256) {
+    function get_wrapped_ETH_balance 
+    (
+        address token
+    ) 
+    external 
+    view 
+    returns (uint256) {
         return IERC20(token).balanceOf(address(this));
     }
 
+    function get_native_ETH_balance() external view returns (uint256) {
+        return address(this).balance;
+    }
 
-    function getTreasuryAddress() external view returns (address) {
-        return treasuryOwner;
+    function get_treasury_address () external view returns (address) {
+        return iTreasuryOwner;
     }
 }
