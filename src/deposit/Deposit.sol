@@ -46,6 +46,37 @@ contract Deposit is DepositPool {
         uint256 timestamp
     ); 
 
+    error DepositorBalanceTooLow(address depositor, uint256 balance, uint256 required);
+    error PoolBalanceTooLow(uint256 poolBalance, uint256 required);
+
+    error WithdrawalExceedsUnlockedFunds(uint256 available, uint256 requested);
+
+    error USDCTokenTransferFailed();
+
+    error USDCTokenTransferAmountMismatch(uint256 expected, uint256 actual);
+
+    error DepositorNotActive(address depositor);
+
+    error InsufficientInterestIncome(uint256 available, uint256 requested);
+    // PoolBalanceTooLow already declared
+
+    error USDCTokenTransferFailedSafeTransfer (address from, address to, uint256 amount);
+    error USDCTokenTransferAmountMismatchParams (uint256 expected, uint256 actual);
+
+    error InvalidRecipientAddress();
+    error RecipientNotBorrower(address expected, address actual);
+    error BorrowerNotCollateralDepositor(address borrower);
+    error CollateralNotDeposited(address borrower, uint256 collateralID);
+
+    error NotAnActiveDepositor(address depositor);
+
+    error DepositTooSmall(uint256 provided, uint256 minimum);
+    error DepositTooLarge(uint256 provided, uint256 maximum);
+    error LockupPeriodTooShort(uint256 provided, uint256 minimum);
+    error LockupPeriodTooLong(uint256 provided, uint256 maximum);
+
+
+
     Params private params;
     Transaction private transaction;
     Collateral private collateral;
@@ -79,7 +110,9 @@ contract Deposit is DepositPool {
      */
     
     modifier existingDepositor (address depositor_address) {
-        require (depositors[depositor_address].isActive, "Not a depositor");
+        if (!depositors[depositor_address].isActive) {
+            revert NotAnActiveDepositor(depositor_address);
+        }
         _;
     }
 
@@ -90,28 +123,26 @@ contract Deposit is DepositPool {
 
     modifier deposit_check (uint256 amount, 
             uint256 lockupPeriod) {
-        require(amount >= params.getMinDeposit (),string(
-            abi.encodePacked(
-            "Deposit must be >= ",
-            Strings.toString(params.getMinDeposit())
-            )));
-        require(amount <= params.getMaxDeposit (),string(
-            abi.encodePacked(
-            "Deposit must be <= ",
-            Strings.toString(params.getMaxDeposit())
-            )));
+        uint256 minDeposit = params.getMinDeposit();
+        if (amount < minDeposit) {
+            revert DepositTooSmall(amount, minDeposit);
+        }
 
-        require(lockupPeriod >= params.getMinLockupPeriod (),string(
-            abi.encodePacked(
-            "Lockup period must be >= ",
-            Strings.toString(params.getMinLockupPeriod())
-            )));
+        uint256 maxDeposit = params.getMaxDeposit();
+        if (amount > maxDeposit) {
+            revert DepositTooLarge(amount, maxDeposit);
+        }
 
-        require(lockupPeriod <= params.getMaxLockupPeriod (),string(
-            abi.encodePacked(
-            "Lockup period must be <= ",
-            Strings.toString(params.getMaxLockupPeriod())
-            )));
+        uint256 minLockup = params.getMinLockupPeriod();
+        if (lockupPeriod < minLockup) {
+            revert LockupPeriodTooShort(lockupPeriod, minLockup);
+        }
+
+        uint256 maxLockup = params.getMaxLockupPeriod();
+        if (lockupPeriod > maxLockup) {
+            revert LockupPeriodTooLong(lockupPeriod, maxLockup);
+        }
+
             _;
     }
 
@@ -295,9 +326,15 @@ contract Deposit is DepositPool {
             external 
             existingDepositor (_depositorAddress) {
         Depositor storage depositor = depositors[msg.sender];
-        require(depositor.totalAmount >= amount, "Insufficient balance");
+        if (depositor.totalAmount < amount) {
+            revert DepositorBalanceTooLow(msg.sender, depositor.totalAmount, amount);
+        }
+
         uint256 old = get_usdc_balance();
-        require (old >= amount, "Insufficient pool balance");
+        if (old < amount) {
+            revert PoolBalanceTooLow(old, amount);
+        }
+
 
         uint256 totalWithdrawable = 0;
         for (uint256 i = 0; i < depositor.depositCounts; i++) {
@@ -307,17 +344,23 @@ contract Deposit is DepositPool {
             }
         }
 
-        require(totalWithdrawable >= amount, "Cannot withdraw locked funds");
+        if (totalWithdrawable < amount) {
+            revert WithdrawalExceedsUnlockedFunds(totalWithdrawable, amount);
+        }
 
         // Update the depositor's total amount
         update_principal_withdrawal (_depositorAddress, amount);
 
         // Transfer USDC back to the depositor
         bool success = usdc_contract.transfer(_depositorAddress, amount);
-        require(success, "USDC transfer failed");
+        if (!success) {
+            revert USDCTokenTransferFailed();
+        }
 
         uint256 current = get_usdc_balance();
-        require (current == old - amount, "USDC transfer amount mismatch");
+        if (current != old - amount) {
+            revert USDCTokenTransferAmountMismatch(old - amount, current);
+        }
 
         emit DepositorPrincipalWithDrawalDone(address(this), _depositorAddress, totalWithdrawable, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
@@ -327,7 +370,9 @@ contract Deposit is DepositPool {
             returns (uint256 totalInterestIncome) {
         uint256 currentTime = block.timestamp;
         Depositor storage depositor = depositors[_depositorAddress];
-        require(depositor.isActive, "Depositor not active");
+        if (!depositor.isActive) {
+            revert DepositorNotActive(msg.sender);
+        }
 
         for (uint256 i = 0; i < depositor.depositCounts; i++) {
             DepositRecord storage record = depositor.deposits[i];
@@ -347,7 +392,9 @@ contract Deposit is DepositPool {
             returns (uint256 totalInterestIncome) {
         uint256 currentTime = block.timestamp;
         Depositor storage depositor = depositors[_depositorAddress];
-        require(depositor.isActive, "Depositor not active");
+        if (!depositor.isActive) {
+            revert DepositorNotActive(msg.sender);
+        }
 
         for (uint256 i = 0; i < depositor.depositCounts; i++) {
             DepositRecord storage record = depositor.deposits[i];
@@ -368,16 +415,28 @@ contract Deposit is DepositPool {
         
         uint256 old = usdc_contract.balanceOf(address(this));
         
-        require(totalInterestIncome >= amount, "Insufficient interest income");
-        require (old >= amount, "Insufficient pool balance");
+        if (totalInterestIncome < amount) {
+            revert InsufficientInterestIncome(totalInterestIncome, amount);
+        }
+
+        if (old < amount) {
+            revert PoolBalanceTooLow(old, amount);
+        }
+
         
         update_interest_withdrawal(_depositorAddress, amount);
         // Transfer USDC back to the depositor
-        bool success = transaction.safe_transfer("USDC",address (this), _depositorAddress, amount);
-        require(success, "USDC transfer failed");
+        bool success = transaction.safe_transfer("USDC", address(this), _depositorAddress, amount);
+        if (!success) {
+            revert USDCTokenTransferFailedSafeTransfer(address(this), _depositorAddress, amount);
+        }
 
         uint256 current = usdc_contract.balanceOf(address(this));
-        require (current == old - amount, "USDC transfer amount mismatch");
+        uint256 expected = old - amount;
+        if (current != expected) {
+            revert USDCTokenTransferAmountMismatch(expected, current);
+        }
+
         
         //emit DepositorInterestWithDrawalDone (address(this), _depositorAddress, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
@@ -461,14 +520,22 @@ contract Deposit is DepositPool {
         address _borrower,
         uint256 _collateralID
     ) public returns (bool) { 
-        require (_to != address(0), 
-            "Invalid recipient address");
-        require (_to == _borrower, 
-            "Recipient must be the borrower");
-        require (collateral.is_existing_collateral_depositor(_borrower), 
-            "Borrower is not a collateral depositor");
-        require (collateral.is_collateral_deposted(_borrower, _collateralID), 
-            "collateral has not been deposited yet by the borrower");
+        if (_to == address(0)) {
+            revert InvalidRecipientAddress();
+        }
+
+        if (_to != _borrower) {
+            revert RecipientNotBorrower(_borrower, _to);
+        }
+
+        if (!collateral.is_existing_collateral_depositor(_borrower)) {
+            revert BorrowerNotCollateralDepositor(_borrower);
+        }
+
+        if (!collateral.is_collateral_deposted(_borrower, _collateralID)) {
+            revert CollateralNotDeposited(_borrower, _collateralID);
+        }
+
         bool ok = _token.transfer(_to, _amount);
         return ok;
     }

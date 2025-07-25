@@ -19,6 +19,18 @@ import {LiquidationEngine} from "../liquidation/LiquidationEngine.sol";
 
 contract Collateral is CollateralPool {
 
+    error NotARegisteredLiquidator(address caller);
+    error CollateralAlreadyLiquidated(address borrower, uint256 loanID);
+    error InvalidLiquidationEngineAddress();
+    error CollateralDepositTooSmall(uint256 provided, uint256 minimum);
+    error CollateralDepositTooLarge(uint256 provided, uint256 maximum);
+
+    error NotAnActiveCollateralDepositor(address depositor);
+
+    error InvalidCollateralDepositIndex(address depositor, uint256 index, uint256 maxIndex);
+    error InvalidBorrowerContractAddress();
+
+
     using PriceConverter for AggregatorV3Interface;
 
     event CollateralDeposited(
@@ -49,28 +61,35 @@ contract Collateral is CollateralPool {
         pricefeed = AggregatorV3Interface (_priceFeedAddress);
     } 
 
-    modifier deposit_check (uint256 amount) {
-        require(amount >= params.get_min_collateral_amount (),string(
-            abi.encodePacked(
-            "Collateral deposit must be >= ",
-            Strings.toString(params.get_min_collateral_amount())
-            )));
-        require(amount <= params.get_max_collateral_amount (),string(
-            abi.encodePacked(
-            "Collateral deposit must be <= ",
-            Strings.toString(params.get_max_collateral_amount())
-            )));
-            _;
+    modifier deposit_check(uint256 amount) {
+        uint256 min = params.get_min_collateral_amount();
+        uint256 max = params.get_max_collateral_amount();
+
+        if (amount < min) {
+            revert CollateralDepositTooSmall(amount, min);
+        }
+
+        if (amount > max) {
+            revert CollateralDepositTooLarge(amount, max);
+        }
+        _;
     }
 
     modifier only_active_depositor(address _depositor) {
-        require(collateralDepositors[_depositor].isActive, "Not an active depositor");
+        if (!collateralDepositors[_depositor].isActive) {
+            revert NotAnActiveCollateralDepositor(_depositor);
+        }
         _;
     }
+
     modifier only_valid_deposit_Index(address _depositor, uint256 _depositIndex) {
-        require(_depositIndex < collateralDepositors[_depositor].depositCounts, "Invalid deposit index");
+        uint256 maxIndex = collateralDepositors[_depositor].depositCounts;
+        if (_depositIndex >= maxIndex) {
+            revert InvalidCollateralDepositIndex(_depositor, _depositIndex, maxIndex);
+        }
         _;
     }
+
 
     function update_collateral_records (address _depositor, uint256 _amount) external deposit_check (_amount) returns (bool)  {
         //require(deposit_eth(_depositor, _amount), "Transfer failed");
@@ -221,7 +240,9 @@ contract Collateral is CollateralPool {
     }
 
     function set_borrower_contract (address _borrowerContractAddress) external {
-        require(_borrowerContractAddress != address(0), "Invalid borrower contract address");
+        if (_borrowerContractAddress == address(0)) {
+            revert InvalidBorrowerContractAddress();
+        }
         borrow = Borrow(_borrowerContractAddress);
     }
 
@@ -262,8 +283,13 @@ contract Collateral is CollateralPool {
         address _borrower,
         uint256 _loanID 
     ) public returns (bool) {
-        require (liquidationEngine.is_a_liquidator (_liquidtor), "Not a liquidator");
-        require (liquidationEngine.yet_to_be_liquidated (_borrower, _loanID), "Liquidator has already liquidated this collateral");
+       if (!liquidationEngine.is_a_liquidator(_liquidtor)) {
+            revert NotARegisteredLiquidator(_liquidtor);
+        }
+
+        if (!liquidationEngine.yet_to_be_liquidated(_borrower, _loanID)) {
+            revert CollateralAlreadyLiquidated(_borrower, _loanID);
+        }
         bool ok = _token.transfer(_liquidtor, _amount);
         return ok;
     }
@@ -289,7 +315,9 @@ contract Collateral is CollateralPool {
     }
 
     function set_liquidation_engine (address _liqEngineAddress) external {
-        require(_liqEngineAddress != address(0), "Invalid liquidation engine address");
+        if (_liqEngineAddress == address(0)) {
+            revert InvalidLiquidationEngineAddress();
+        }
         liquidationEngine = LiquidationEngine(_liqEngineAddress);
     }   
 }

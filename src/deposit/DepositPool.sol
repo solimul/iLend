@@ -24,18 +24,4 @@ contract DepositPool {
     function get_usdc_contract_address () external view returns (IERC20) {
         return usdc_contract;
     }
-
-
-    function deposit_usdc (address depositor, 
-            uint256 amount) 
-            public 
-            returns (bool) {
-        bool success = usdc_contract.transferFrom(depositor, address(this), amount);
-        if (!success)
-            return false;
-        require (success, "Transfer failed");
-        poolBalance += amount;
-        emit DepositDone (depositor, address (this), amount, poolBalance,  block.timestamp);
-        return true;
-    }
 }

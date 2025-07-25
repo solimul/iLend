@@ -16,6 +16,9 @@ contract CollateralPool {
         uint256 poolBalance,
         uint256 timestamp
     );
+
+    error TransferFailed();
+
     // This contract serves as a base for collateral management
     // It can be extended by other contracts to implement specific collateral logic
     using PriceConverter for uint256; 
@@ -38,7 +41,9 @@ contract CollateralPool {
         bool success = eth_contract.transferFrom(depositor, address(this), amount);
         if (!success)
             return false;
-        require (success, "Transfer failed");
+        if (!success) {
+            revert TransferFailed();
+        }
         poolBalance += amount;
         emit CollateralDepositDone (depositor, address (this), amount, poolBalance,  block.timestamp);
         return true;

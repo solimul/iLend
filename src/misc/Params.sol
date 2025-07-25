@@ -33,14 +33,16 @@ contract Params {
                              address _oracleAddress,
                              uint256 _heartbeat,
                              uint256 _decimals);
-    event CollateralParamsSetup (address indexed user,
+    event CollateralParamsSetup (address indexed _user,
                                  address indexed _asset,
                                  uint256 _minCollateralAmount,
                                  uint256 _maxCollateralAmount,
                                  uint256 _collateralFactor,
                                  bool _isSupported);
 
-    address public owner;
+    address public immutable iOwner;
+
+    error OnlyOwnerCanAccess(address user, address iOwner);
 
     struct DepositParams {
         uint256 minDepositAmount;
@@ -102,14 +104,16 @@ contract Params {
     CollateralParams public collateralParams;
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized");
+        if (msg.sender != iOwner) {
+            revert OnlyOwnerCanAccess(msg.sender, iOwner);
+        }
         _;
     }
     constructor(address _owner, 
             bool _depositPaused, 
             bool _borrowingPaused, 
             bool _liquidationPaused) {
-        owner = _owner;
+        iOwner = _owner;
         depositsPaused = _depositPaused;
         borrowingPaused = _borrowingPaused;
         liquidationPaused = _liquidationPaused;
@@ -199,7 +203,7 @@ contract Params {
             minLockupPeriod: _minLockupPeriod,
             maxLockupPeriod: _maxLockupPeriod
         });
-        emit DepositParamsSetup(owner, _minDepositAmount, _maxDepositAmount, _depositFee, _minLockupPeriod, _maxLockupPeriod);
+        emit DepositParamsSetup(iOwner, _minDepositAmount, _maxDepositAmount, _depositFee, _minLockupPeriod, _maxLockupPeriod);
     }
 
     function set_borrow_params(
@@ -229,7 +233,7 @@ contract Params {
             interestRate: _interestRate
         });
 
-        emit BorrowParamsSetup(owner, _minBorrowAmount, _maxBorrowAmount, _borrowFee, _minRepaymentPeriod, _maxRepaymentPeriod, _baseRate, _reserveFactor, _maxInterestRate, _minInterestRate);
+        emit BorrowParamsSetup(iOwner, _minBorrowAmount, _maxBorrowAmount, _borrowFee, _minRepaymentPeriod, _maxRepaymentPeriod, _baseRate, _reserveFactor, _maxInterestRate, _minInterestRate);
     }
 
     function set_liquidation_params(
@@ -252,7 +256,7 @@ contract Params {
             liquidationDiscountRate: _liquidationDiscountRate,
             liqudationBonusType: _liquidationBonusType
         });
-        emit LiquidationParamsSetup(owner, _liquidationThreshold, _liquidationFee, _minLiquidationThreshold, _maxLiquidationThreshold, _minLiquidationAmount, _maxLiquidationAmount, _liquidationDiscountRate, _liquidationBonusType);
+        emit LiquidationParamsSetup(iOwner, _liquidationThreshold, _liquidationFee, _minLiquidationThreshold, _maxLiquidationThreshold, _minLiquidationAmount, _maxLiquidationAmount, _liquidationDiscountRate, _liquidationBonusType);
     }
 
     function set_oracle_params(
@@ -265,7 +269,7 @@ contract Params {
             heartbeat: _heartbeat,
             decimals: _decimals
         });
-        emit OracleParamsSetup(owner, _oracleAddress, _heartbeat, _decimals);
+        emit OracleParamsSetup(iOwner, _oracleAddress, _heartbeat, _decimals);
     }
 
     function set_collateral_params (
@@ -283,6 +287,6 @@ contract Params {
             isSupported: _isSupported
         });
         collateralParams = _collateral;
-        emit CollateralParamsSetup(owner, _asset, _minCollateralAmount, _maxCollateralAmount, _collateralFactor, _isSupported);
+        emit CollateralParamsSetup(iOwner, _asset, _minCollateralAmount, _maxCollateralAmount, _collateralFactor, _isSupported);
     }
 }

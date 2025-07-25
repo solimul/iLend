@@ -16,6 +16,21 @@ import {Transaction} from "../misc/Transcation.sol";
 contract Borrow {
     using PriceConverter for uint256;
 
+    error InvalidBorrowerContractAddress();
+
+    error BorrowerDoesNotExist(address borrower);
+    error NoActiveLoanForCollateral(address borrower, uint256 collateralID);
+
+    error RepaymentAmountZero();
+    error RepaymentAmountExceedsBorrowed(uint256 repayment, uint256 borrowed);
+    error RepaymentLessThanInterest(uint256 repayment, uint256 interestDue);
+    error RepaymentLessThanInterestAndReward(uint256 repayment, uint256 totalDue);
+
+    error BorrowerAlreadyExists(address borrower);
+
+    error InsufficientPoolLiquidity(uint256 requested, uint256 available);
+    error CollateralAlreadyUsed(address borrower, uint256 collateralID);
+
 
     event NewBorrowerAdded(
         address indexed borrowerAddress,
@@ -53,26 +68,57 @@ contract Borrow {
     IERC20 private usdcContract;
 
     modifier only_existing_borrower(address _borrowerAddress) {
-        require(borrower_exists(_borrowerAddress), "Borrower does not exist");
+        if (!borrower_exists(_borrowerAddress)) {
+            revert BorrowerDoesNotExist(_borrowerAddress);
+        }
         _;
     }
 
     modifier only_active_loan(address _borrowerAddress, uint256 _correspondingColletaralID) {
-        require(borrowers[_borrowerAddress].borrows[_correspondingColletaralID].amount > 0, "No active loan for this collateral");
+        if (borrowers[_borrowerAddress].borrows[_correspondingColletaralID].amount == 0) {
+            revert NoActiveLoanForCollateral(_borrowerAddress, _correspondingColletaralID);
+        }
         _;
     }
 
-    modifier enough_for_repayment (address _borrowerAddress, uint256 _correspondingColletaralID, uint256 _repaymentAmount) {
-        require(_repaymentAmount > 0, "Repayment amount must be greater than zero");
+
+    modifier enough_for_repayment(
+        address _borrowerAddress, 
+        uint256 _correspondingColletaralID, 
+        uint256 _repaymentAmount
+    ) {
+        if (_repaymentAmount == 0) {
+            revert RepaymentAmountZero();
+        }
+
         uint256 borrowedAmount = borrowers[_borrowerAddress].borrows[_correspondingColletaralID].amount;
-        require(_repaymentAmount <= borrowedAmount, "Repayment amount exceeds borrowed amount");
+        if (_repaymentAmount > borrowedAmount) {
+            revert RepaymentAmountExceedsBorrowed(_repaymentAmount, borrowedAmount);
+        }
+
         uint256 interestRate = borrowers[_borrowerAddress].borrows[_correspondingColletaralID].interestRate;
-        uint256 interestPayable = (borrowedAmount * interestRate * (block.timestamp - borrowers[_borrowerAddress].borrows[_correspondingColletaralID].borrowTime)) / (365 days * 100);
-        require(_repaymentAmount >= interestPayable, "Repayment amount must cover interest payable");
-        uint256 protocolReward = (borrowedAmount * params.get_reserve_factor() * (block.timestamp - borrowers[_borrowerAddress].borrows[_correspondingColletaralID].borrowTime)) / (365 days * 100);
-        require(_repaymentAmount >= interestPayable + protocolReward, "Repayment amount must cover interest and protocol reward");
+        uint256 interestPayable = (
+            borrowedAmount * interestRate * 
+            (block.timestamp - borrowers[_borrowerAddress].borrows[_correspondingColletaralID].borrowTime)
+        ) / (365 days * 100);
+
+        if (_repaymentAmount < interestPayable) {
+            revert RepaymentLessThanInterest(_repaymentAmount, interestPayable);
+        }
+
+        uint256 protocolReward = (
+            borrowedAmount * params.get_reserve_factor() * 
+            (block.timestamp - borrowers[_borrowerAddress].borrows[_correspondingColletaralID].borrowTime)
+        ) / (365 days * 100);
+
+        uint256 totalDue = interestPayable + protocolReward;
+        if (_repaymentAmount < totalDue) {
+            revert RepaymentLessThanInterestAndReward(_repaymentAmount, totalDue);
+        }
+
         _;
     }
+
 
     constructor (address _paramsAddress, 
             address _priceFeedAddress, 
@@ -217,7 +263,9 @@ contract Borrow {
     uint256 _interestRate,
     uint256 _l2b) 
     external {
-        require (borrower_exists(_borrowerAddress) == false, "Borrower already exists");
+        if (borrower_exists(_borrowerAddress)) {
+            revert BorrowerAlreadyExists(_borrowerAddress);
+        }
         
         BorrowerRecord storage b = borrowers[_borrowerAddress];
         b.borrowerAddress = _borrowerAddress;
@@ -244,8 +292,15 @@ contract Borrow {
         // the deposit pull must have enough usdc to lend
         uint256 _liquidityToBorrow = calculate_liquidity_to_borrow_for_collateral (_borrowerAddress, _correspondingColletaralID); 
         
-        require (_liquidityToBorrow <= depositPool.get_pool_balance(), "Not enough liquidity in the pool");
-        require (collateralPool.is_collateral_available (_borrowerAddress, _correspondingColletaralID), "Collateral already borrowed against");
+        uint256 poolBalance = depositPool.get_pool_balance();
+        if (_liquidityToBorrow > poolBalance) {
+            revert InsufficientPoolLiquidity(_liquidityToBorrow, poolBalance);
+        }
+
+        if (!collateralPool.is_collateral_available(_borrowerAddress, _correspondingColletaralID)) {
+            revert CollateralAlreadyUsed(_borrowerAddress, _correspondingColletaralID);
+        }
+
         
         Lender [] memory _lenders = depositPool.match_update_lenders (_liquidityToBorrow);
         depositPool.update_lentout_amount (_liquidityToBorrow);

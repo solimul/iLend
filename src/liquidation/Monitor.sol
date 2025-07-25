@@ -13,9 +13,9 @@ contract Monitor is KeeperCompatibleInterface {
     /*  @param protocol                The iLend contract address
         @param borrowerAddress         The ID of the borrower
         @param loanID                  The identifier of the loan to be liquidated
-        @param depositAmount           Amount of collateral originally deposited (in ETH)
-        @param debtAmount              Total USDC borrowed against this collateral
-        @param collateralValue         Current USD value of the collateral held
+        @param depositAmount           Amount of iCollateral originally deposited (in ETH)
+        @param debtAmount              Total USDC borrowed against this iCollateral
+        @param collateralValue         Current USD value of the iCollateral held
         @param discountBasisPoints     Liquidator’s bonus, in basis points (e.g. 500 = 5%)
         @param currentValueToBorrow    Collateral value available to borrow (after L2B adjustment)
         @param shortfallUSD            USD shortfall below required collateralization
@@ -44,28 +44,52 @@ contract Monitor is KeeperCompatibleInterface {
     uint256 private constant BASIS_POINT = 10000;
     uint256 private constant HUNDRED = 100;
 
-    uint256 private lastETHPrice;
-    AggregatorV3Interface private priceFeed;
-    Collateral private collateral;
-    address private iLendAddress;
-    Params private params;
-    LiquidationRegistry private liquidationRegistry;
+    uint256 private sLastETHPrice;
+    AggregatorV3Interface private immutable iPriceFeed;
+    Collateral private immutable iCollateral;
+    address private immutable iLendAddress;
+    Params private immutable iParams;
+    LiquidationRegistry private immutable iLiquidationRegistry;
 
     
+    /**
+     * @notice Initializes the contract with addresses of dependent modules and records the initial ETH price.
+     * @dev Sets up references to external contracts and captures the latest ETH price at deployment time 
+     * for future comparison in upkeep checks.
+     * @param _paramsAddress The address of the Params contract containing protocol-level parameters.
+     * @param _priceFeedAddress The address of the ETH price feed contract.
+     * @param _collateral The address of the Collateral contract used to fetch depositor collateral info.
+     * @param _iLendAddress The address of the main lending contract (used in events).
+     * @param _liquidationQuryAddress The address of the LiquidationRegistry contract to store liquidatable collaterals.
+     */
+
 
     constructor (address _paramsAddress, 
             address _priceFeedAddress, 
             address _collateral, 
             address _iLendAddress,
             address _liquidationQuryAddress) {
-        priceFeed = AggregatorV3Interface (_priceFeedAddress);
-        lastETHPrice = priceFeed.getPrice ();
-        collateral = Collateral (_collateral);
+        iPriceFeed = AggregatorV3Interface (_priceFeedAddress);
+        sLastETHPrice = iPriceFeed.getPrice ();
+        iCollateral = Collateral (_collateral);
         iLendAddress = _iLendAddress;
-        params = Params (_paramsAddress);
-        liquidationRegistry = LiquidationRegistry (_liquidationQuryAddress);
+        iParams = Params (_paramsAddress);
+        iLiquidationRegistry = LiquidationRegistry (_liquidationQuryAddress);
     }
-        
+
+    /**
+     * @notice Checks whether `performUpkeep` should be triggered based on ETH price movement.
+     * @dev This function is called by Chainlink Automation nodes to determine if upkeep is needed.
+     * It compares the current ETH price from the price feed with the last recorded price 
+     * (`sLastETHPrice`) and calculates the percentage change. If the price has dropped more than 
+     * a predefined threshold (`PERCENTAGE_CHANGE_THRESHOLD`), upkeep is marked as needed.
+     *
+     * Price increase does not trigger upkeep.
+     *
+     * @return upkeepNeeded A boolean indicating whether `performUpkeep` should be executed.
+     * @return performData Placeholder for additional data (not used).
+     */
+   
 
     function checkUpkeep (bytes calldata /*checkData*/) 
     external 
@@ -73,30 +97,47 @@ contract Monitor is KeeperCompatibleInterface {
     override
     returns (bool upkeepNeeded, bytes memory /*performData*/) {
         upkeepNeeded = false;
-        uint256 currentETHPrice = priceFeed.getPrice();
-        int256 priceDiff = int256 (currentETHPrice - lastETHPrice);
+        uint256 currentETHPrice = iPriceFeed.getPrice();
+        int256 priceDiff = int256 (currentETHPrice - sLastETHPrice);
         if (priceDiff < 0){
             uint256 absPriceDiff = uint256 (priceDiff * (-1));
-            uint256 percentageChange = (absPriceDiff / lastETHPrice) * 1000;
+            uint256 percentageChange = (absPriceDiff / sLastETHPrice) * 1000;
             upkeepNeeded = percentageChange > PERCENTAGE_CHANGE_THRESHOLD;
         } else if (priceDiff > 0){
             upkeepNeeded = false;
         }
     }
 
+    /**
+     * @notice Identifies undercollateralized loans and marks them as eligible for liquidation.
+     * @dev This function is intended to be called by Chainlink Automation (Keepers).
+     * It loops through all collateral depositors and evaluates their depleted collaterals.
+     * If a collateral's value falls below the liquidation threshold, it calculates the liquidation
+     * parameters (such as shortfall, discounted ETH value) and registers the collateral in the 
+     * `iLiquidationRegistry` for liquidation.
+     *
+     * Emits a `LiquidationOpportunity` event for each undercollateralized loan detected.
+     *
+     * Key calculations include:
+     * - `currentValueToBorrow`: ratio of current collateral value to USDC borrowed.
+     * - `shortFallUSD`: deficit amount below the required threshold (0 if not undercollateralized).
+     * - `liquidableETH`: amount of ETH eligible for liquidation based on shortfall and ETH price.
+     * - `postDiscountETHPrice`: ETH price after applying liquidation discount.
+     */
+
     function performUpkeep (bytes calldata /**/) 
     external override
     {
-        address [] memory addresses = collateral.get_collateral_depositor_addresses ();
-        liquidationRegistry.reset_liquidation_ready_collaterals ();
+        address [] memory addresses = iCollateral.get_collateral_depositor_addresses ();
+        iLiquidationRegistry.reset_liquidation_ready_collaterals ();
         for (uint i=0; i< addresses.length; i++) {
             address dAddress = addresses [i];
-            CollateralView [] memory depletedCollaterals = collateral.get_depeleted_collaterals (dAddress);
+            CollateralView [] memory depletedCollaterals = iCollateral.get_depeleted_collaterals (dAddress);
             for (uint256 j=0; j<depletedCollaterals.length;j++) {
                 CollateralView memory cv = depletedCollaterals [j];
-                uint256 lqTh = params.getLiquidationThreshold ();
-                uint256 discountRate = params.getLiquidationDiscountRate ();
-                uint256 currentRate = priceFeed.getPrice ();
+                uint256 lqTh = iParams.getLiquidationThreshold ();
+                uint256 discountRate = iParams.getLiquidationDiscountRate ();
+                uint256 currentRate = iPriceFeed.getPrice ();
 
                 uint256 currentCollateralValue = currentRate * cv.depositAmount * HUNDRED;
                 uint256 currentValueToBorrow = currentCollateralValue / cv.totalUSDCBorrowed; 
@@ -118,7 +159,7 @@ contract Monitor is KeeperCompatibleInterface {
                     yetToBeLiquidated: true
                 });
 
-                liquidationRegistry.add_collateral_as_liquidation_ready(dAddress, col);
+                iLiquidationRegistry.add_collateral_as_liquidation_ready(dAddress, col);
 
                 emit LiquidationOpportunity 
                     (
