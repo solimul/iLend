@@ -33,8 +33,8 @@ contract Treasury {
     }
 
 
-    constructor (address _owner ) {
-        iTreasuryOwner = _owner;
+    constructor () {
+        iTreasuryOwner = msg.sender;
     }
 
     receive() external payable {

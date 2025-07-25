@@ -64,13 +64,13 @@ contract UnitTest is Test {
     uint256 private constant NBORROWERS = 5;
     uint256 private constant NLIQUIDATORS = 5;
 
-    uint256 private constant FUNDERS_INIT_USDC_FUNDS = 10000e8;
+    uint256 private constant FUNDERS_INIT_USDC_FUNDS = 100e8;
     uint256 private constant FUNDERS_INIT_ETH_FUNDS = 0;
 
     uint256 private constant BORROWERS_INIT_USDC_FUNDS = 0;
     uint256 private constant BORROWERS_INIT_ETH_FUNDS = 100 ether;
 
-    uint256 private constant LIQUIDATORS_INIT_USDC_FUNDS = 100000e8;
+    uint256 private constant LIQUIDATORS_INIT_USDC_FUNDS = 1000e8;
     uint256 private constant LIQUIDATORS_INIT_ETH_FUNDS = 0;
 
 
@@ -92,7 +92,7 @@ contract UnitTest is Test {
     Actor [] private liquidators;
 
     function setUp() public virtual {
-        params = new Params(msg.sender, false, false, false);
+        params = new Params(false, false, false);
         params.set_params();
 
         priceFeed = AggregatorV3Interface(PricefeedManagerLib.get_price_feed_address());
@@ -102,7 +102,7 @@ contract UnitTest is Test {
         transaction = new Transaction(usdcAddress, wrappedETHAddress);
         address txAddress = address(transaction);
 
-        treasury = new Treasury(msg.sender);
+        treasury = new Treasury();
         address trAddress = address(treasury);
         address pAddress = address(params);
         address pfAddress = address(priceFeed);
@@ -170,6 +170,7 @@ contract UnitTest is Test {
             LIQUIDATORS_INIT_ETH_FUNDS, 
             liquidators
         );
+
     }
 
     function setup_facade_contract () internal {
@@ -219,6 +220,40 @@ contract UnitTest is Test {
                         }
                     )
                 );
+        }
+    }
+
+
+    function test_each_funders_init_balance () public view {
+        //console.log ("Reached here");
+        for (uint256 i=0; i<NFUNDERS; i++){
+            Actor memory funder = funders [i];
+            //console.log ("Reached here", IERC20(usdcAddress).balanceOf(funder.actor));
+
+            assert(IERC20(usdcAddress).balanceOf(funder.actor) == funder.usdcBalance);
+            assert(IERC20(wrappedETHAddress).balanceOf(funder.actor) == 0);
+        }
+    }
+
+    function test_each_borrowers_init_balance () public view {
+        //console.log ("Reached here");
+        for (uint256 i=0; i<NBORROWERS; i++){
+            Actor memory borrower = borrowers [i];
+            //console.log ("Reached here", IERC20(wrappedETHAddress).balanceOf(borrower.actor));
+
+            assert(IERC20(usdcAddress).balanceOf(borrower.actor) == 0);
+            assert(IERC20(wrappedETHAddress).balanceOf(borrower.actor) == borrower.wrappedETHBalance);
+        }
+    }
+
+        function test_each_liquidators_init_balance () public view {
+        //console.log ("Reached here");
+        for (uint256 i=0; i<NLIQUIDATORS; i++){
+            Actor memory liquidator = liquidators [i];
+            //console.log ("Reached here", IERC20(usdcAddress).balanceOf(liquidator.actor));
+
+            assert(IERC20(usdcAddress).balanceOf(liquidator.actor) == liquidator.usdcBalance);
+            assert(IERC20(wrappedETHAddress).balanceOf(liquidator.actor) == 0);
         }
     }
 

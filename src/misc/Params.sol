@@ -109,15 +109,16 @@ contract Params {
 
     modifier onlyOwner() {
         if (msg.sender != iOwner) {
+
             revert OnlyOwnerCanAccess(msg.sender, iOwner);
         }
         _;
     }
-    constructor(address _owner, 
+    constructor( 
             bool _depositPaused, 
             bool _borrowingPaused, 
             bool _liquidationPaused) {
-        iOwner = _owner;
+        iOwner = msg.sender;
         depositsPaused = _depositPaused;
         borrowingPaused = _borrowingPaused;
         liquidationPaused = _liquidationPaused;
@@ -297,4 +298,5 @@ contract Params {
     function set_facade_contract (iLend _iLend) external {
         facadeContract = _iLend;
     }
+
 }

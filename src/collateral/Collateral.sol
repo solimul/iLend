@@ -323,7 +323,7 @@ contract Collateral is CollateralPool {
         }
         liquidationEngine = LiquidationEngine(_liqEngineAddress);
     }   
-    
+
     function set_facade_contract (iLend _iLend) external {
         facadeContract = _iLend;
     }
