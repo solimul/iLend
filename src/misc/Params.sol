@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
 
+import {iLend} from "../ILend.sol";
+
+
 contract Params {
     
     event DepositParamsSetup (address indexed user, 
@@ -41,6 +44,7 @@ contract Params {
                                  bool _isSupported);
 
     address public immutable iOwner;
+    iLend private facadeContract;
 
     error OnlyOwnerCanAccess(address user, address iOwner);
 
@@ -288,5 +292,9 @@ contract Params {
         });
         collateralParams = _collateral;
         emit CollateralParamsSetup(iOwner, _asset, _minCollateralAmount, _maxCollateralAmount, _collateralFactor, _isSupported);
+    }
+
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
     }
 }

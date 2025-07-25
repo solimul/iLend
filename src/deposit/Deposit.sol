@@ -2,6 +2,7 @@
 pragma solidity ^0.8.29;
 
 import "../../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {iLend} from "../ILend.sol";
 
 import {Params} from "../misc/Params.sol";
 import {DepositPool} from "../deposit/DepositPool.sol";
@@ -86,6 +87,8 @@ contract Deposit is DepositPool {
     uint256 private depositorCounts;
 
     uint256 private totalAvailableToLend;
+
+    iLend private facadeContract;
 
 
     /**
@@ -538,5 +541,9 @@ contract Deposit is DepositPool {
 
         bool ok = _token.transfer(_to, _amount);
         return ok;
+    }
+
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
     }
 }

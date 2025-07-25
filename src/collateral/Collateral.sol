@@ -14,6 +14,7 @@ import {Transaction} from "../misc/Transcation.sol";
 import {PriceConverter} from "../helper/PriceConverter.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {iLend} from "../ILend.sol";
 
 import {LiquidationEngine} from "../liquidation/LiquidationEngine.sol";
 
@@ -51,6 +52,8 @@ contract Collateral is CollateralPool {
   
     mapping (address => CollateralDepositor) private collateralDepositors;
     address [] private collateralDeposotorAddresses;
+    iLend private facadeContract;
+
 
     constructor(address _paramsAddress, 
                 address _priceFeedAddress, 
@@ -320,4 +323,8 @@ contract Collateral is CollateralPool {
         }
         liquidationEngine = LiquidationEngine(_liqEngineAddress);
     }   
+    
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
+    }
 }

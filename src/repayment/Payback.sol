@@ -6,6 +6,7 @@ import {Treasury} from "../treasury/Treasury.sol";
 import {RepaymentComponent, BorrowRecord, Lender, DepositRecord, InterestEarned} from "../shared/SharedStructures.sol";
 
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {iLend} from "../ILend.sol";
 
 contract Payback {
     
@@ -61,6 +62,9 @@ contract Payback {
     Deposit immutable private iDeposit;
     Treasury immutable private iTreasury;
     IERC20 immutable private iUSDC;
+
+    iLend private facadeContract;
+
 
     
     /**
@@ -329,6 +333,10 @@ contract Payback {
             );
         }
         return rep;
+    }
+
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
     }
 }
 

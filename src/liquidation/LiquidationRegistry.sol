@@ -1,15 +1,17 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
 import {LiquidationReadyCollateral, LiquidationReadyCollateralLoanIDMap} from "../shared/SharedStructures.sol";
+import {iLend} from "../ILend.sol";
 
 contract LiquidationRegistry {
 
     error BorrowerDoesNotHaveLiquidationReadyCollateral(address borrower);
-    
+
     address[] private sLiquidationReadyList;
     mapping (address => uint256 []) private sLiquidationReadyBorrower2LoanIDs;
     mapping (address=>LiquidationReadyCollateral []) private sLiquidationReadyCollaterals;
     mapping (address=> LiquidationReadyCollateralLoanIDMap) private sAddressToLoanIDToCollateral;
+    iLend private facadeContract;
 
     
     /**
@@ -137,5 +139,9 @@ contract LiquidationRegistry {
     _borrowerExists (_borrower)
     returns (uint256 [] memory) {
         return sLiquidationReadyBorrower2LoanIDs [_borrower];
+    }
+
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
     }
 }

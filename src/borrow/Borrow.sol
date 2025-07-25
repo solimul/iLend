@@ -12,6 +12,7 @@ import {ProtocolReward} from "../misc/ProtocolReward.sol";
 import {Treasury} from "../treasury/Treasury.sol";
 import {RepaymentComponent, BorrowRecord, BorrowerRecord} from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
+import {iLend} from "../ILend.sol";
 
 contract Borrow {
     using PriceConverter for uint256;
@@ -66,6 +67,8 @@ contract Borrow {
 
     
     IERC20 private usdcContract;
+    iLend private facadeContract;
+
 
     modifier only_existing_borrower(address _borrowerAddress) {
         if (!borrower_exists(_borrowerAddress)) {
@@ -340,5 +343,9 @@ contract Borrow {
     returns (bool) {
         BorrowRecord storage record = borrowers[_borrowerAddress].borrows[_correspondingColletaralID];
         return record.amount == 0;  
+    }
+
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
     }
 }

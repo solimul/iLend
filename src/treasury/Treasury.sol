@@ -4,6 +4,8 @@ pragma solidity ^0.8.29;
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ProtocolRewardInfo, MiscFundRecievedInfo} from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
+import {iLend} from "../ILend.sol";
+
 
 contract Treasury {
     event NativeETHReceived (address indexed sender, uint256 amount);
@@ -16,6 +18,8 @@ contract Treasury {
 
     address public immutable iTreasuryOwner;
     ProtocolRewardInfo [] sProtocolRewardRecords;
+
+    iLend private facadeContract;
 
     
     modifier only_owner 
@@ -99,5 +103,9 @@ contract Treasury {
 
     function get_treasury_address () external view returns (address) {
         return iTreasuryOwner;
+    }
+
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
     }
 }

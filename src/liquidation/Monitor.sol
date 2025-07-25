@@ -8,6 +8,8 @@ import {CollateralView, LiquidationReadyCollateral} from "../shared/SharedStruct
 import {Params} from "../misc/Params.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {LiquidationRegistry} from "../liquidation/LiquidationRegistry.sol";
+import {iLend} from "../ILend.sol";
+
 
 contract Monitor is KeeperCompatibleInterface {
     /*  @param protocol                The iLend contract address
@@ -50,6 +52,8 @@ contract Monitor is KeeperCompatibleInterface {
     address private immutable iLendAddress;
     Params private immutable iParams;
     LiquidationRegistry private immutable iLiquidationRegistry;
+
+    iLend private facadeContract;
 
     
     /**
@@ -179,5 +183,9 @@ contract Monitor is KeeperCompatibleInterface {
                     );
             }
         }
+    }
+
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
     }
 }

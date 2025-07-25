@@ -8,6 +8,7 @@ import {Deposit} from "../deposit/Deposit.sol";
 import {Liquidator, LiquidationRecord, LiquidationReadyCollateralLoanIDMap} from "../shared/SharedStructures.sol";
 
 import {Transaction} from "../misc/Transcation.sol";
+import {iLend} from "../ILend.sol";
 
 contract LiquidationEngine {
 
@@ -65,6 +66,8 @@ contract LiquidationEngine {
 
     address [] iLiquidatorsList;
     mapping (address => Liquidator) iLiquidatorsMap;
+    iLend private facadeContract;
+
 
     /**
      * @notice Initializes the LiquidationEngine contract with required component contract addresses.
@@ -274,4 +277,8 @@ contract LiquidationEngine {
         LiquidationReadyCollateral memory col = iLiqReg.get_liquidation_collateral(_borrower, _loanID);
         col.yetToBeLiquidated = _status;
     }   
+
+    function set_facade_contract (iLend _iLend) external {
+        facadeContract = _iLend;
+    }
 }

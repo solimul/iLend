@@ -2,12 +2,16 @@
 pragma solidity ^0.8.29;
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Script} from "../../lib/forge-std/src/Script.sol";
+import {iLend} from "../ILend.sol";
+
 
 contract Transaction {
 
     mapping (string => IERC20) tokenMapping;
     string constant USDC = "USDC";
     string constant ETH = "ETH";
+    iLend private facadeContract;
+
     constructor (address _usdcAddress, address _ethAddress) {
         tokenMapping [USDC] = IERC20 (_usdcAddress);
         tokenMapping [ETH] = IERC20 (_ethAddress);
