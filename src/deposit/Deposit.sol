@@ -146,7 +146,7 @@ contract Deposit is DepositPool {
             revert LockupPeriodTooLong(lockupPeriod, maxLockup);
         }
 
-            _;
+        _;
     }
 
 

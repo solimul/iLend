@@ -246,8 +246,8 @@ contract UnitTest is Test {
         }
     }
 
-        function test_each_liquidators_init_balance () public view {
-        //console.log ("Reached here");
+    function test_each_liquidators_init_balance () public view {
+    //console.log ("Reached here");
         for (uint256 i=0; i<NLIQUIDATORS; i++){
             Actor memory liquidator = liquidators [i];
             //console.log ("Reached here", IERC20(usdcAddress).balanceOf(liquidator.actor));
@@ -255,6 +255,40 @@ contract UnitTest is Test {
             assert(IERC20(usdcAddress).balanceOf(liquidator.actor) == liquidator.usdcBalance);
             assert(IERC20(wrappedETHAddress).balanceOf(liquidator.actor) == 0);
         }
+    }
+
+    function test_deposit_my_funds () public {
+        Actor memory funder = funders [0];
+        vm.startPrank (funder.actor);
+        uint256 funderUSDCBalance = (IERC20 (usdcAddress)).balanceOf (address (funder.actor));
+        uint256 amount = funderUSDCBalance/2;
+        uint256 currentBalance = (IERC20 (usdcAddress)).balanceOf (address (deposit));
+        lendProtocol.deposit_my_funds (amount, 365 days); 
+        uint256 updatedBalance = (IERC20 (usdcAddress)).balanceOf (address (deposit));
+        console.log ((IERC20 (usdcAddress)).balanceOf (address (funder.actor)), funderUSDCBalance , amount);
+        assert (updatedBalance == currentBalance + amount);
+        assert ((IERC20 (usdcAddress)).balanceOf (address (funder.actor)) == funderUSDCBalance - amount);
+    }
+
+      function test_deposit_my_funds_multiple () public {
+        uint256 total = 0;
+        uint256 totalUpdated = 0;
+        uint256 totalCurrent = 0;
+        for (uint256 i=0; i< funders.length; i++){
+            Actor memory funder = funders [i];
+            vm.startPrank (funder.actor);
+            uint256 amount = funder.usdcBalance/2;
+            uint256 currentBalance = (IERC20 (usdcAddress)).balanceOf (address (deposit));
+            lendProtocol.deposit_my_funds (amount, 365 days); 
+            uint256 updatedBalance = (IERC20 (usdcAddress)).balanceOf (address (deposit));
+            console.log (updatedBalance, currentBalance, amount);
+            total += amount;
+            totalUpdated += updatedBalance;
+            totalCurrent += currentBalance;
+            vm.stopPrank();
+        }
+        console.log (totalUpdated, totalCurrent, total);
+        assert (totalUpdated == totalCurrent + total);
     }
 
 }
