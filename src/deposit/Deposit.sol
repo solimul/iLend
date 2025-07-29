@@ -546,4 +546,59 @@ contract Deposit is DepositPool {
     function set_facade_contract (iLend _iLend) external {
         facadeContract = _iLend;
     }
+
+    /**uint256 totalAmount;
+    mapping (uint256 => DepositRecord) deposits; // Maps deposit index to DepositRecord
+    InterestWithdrawalRecord [] interestWithdrawalRecords;
+    PrincipalWithdrawalRecord [] principalWithdrawalRecords;
+    bool isActive;
+    uint256 depositCounts; // To keep track of the number of deposits */
+
+    function test_get_depositor_deposit_attributes 
+    (
+        address _depositor
+    ) 
+    public
+    view
+    returns (uint256, uint256, uint256, bool, uint256) {
+        Depositor storage depositor = depositors[_depositor];
+        if (!depositors[_depositor].isActive)
+            return (0,0,0,false, 0);
+        return (depositor.totalAmount, 
+                depositor.interestWithdrawalRecords.length,
+                depositor.principalWithdrawalRecords.length,
+                depositor.isActive,
+                depositor.depositCounts);
+    }
+
+    /** struct DepositRecord {
+    uint256 amount;
+    uint256 depositTime;
+    uint256 lockupPeriod;
+    uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
+    uint256 availableToLend;
+    InterestEarned [] interestEarned;
+}
+    **/
+
+    function test_get_depositor_deposit_record_attributes 
+    (
+        address _depositor,
+        uint256 _recordID
+    ) 
+    public
+    view
+    returns (uint256, uint256, uint256, uint256 ) {
+        Depositor storage depositor = depositors[_depositor];
+        DepositRecord memory depositRecord = depositor.deposits [_recordID];
+        if (!depositors[_depositor].isActive)
+            return (0, 0, 0, 0);
+        return (depositRecord.amount, 
+                depositRecord.lockupPeriod,
+                depositRecord.availableToLend,
+                depositRecord.interestEarned.length);
+    }
+
+    
+
 }

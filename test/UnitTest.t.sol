@@ -257,7 +257,7 @@ contract UnitTest is Test {
         }
     }
 
-    function test_deposit_my_funds () public {
+    function test_deposit_my_funds_update_balance () public {
         Actor memory funder = funders [0];
         vm.startPrank (funder.actor);
         uint256 funderUSDCBalance = (IERC20 (usdcAddress)).balanceOf (address (funder.actor));
@@ -270,7 +270,7 @@ contract UnitTest is Test {
         assert ((IERC20 (usdcAddress)).balanceOf (address (funder.actor)) == funderUSDCBalance - amount);
     }
 
-      function test_deposit_my_funds_multiple () public {
+      function test_deposit_my_funds_update_balance_multiple () public {
         uint256 total = 0;
         uint256 totalUpdated = 0;
         uint256 totalCurrent = 0;
@@ -290,5 +290,177 @@ contract UnitTest is Test {
         console.log (totalUpdated, totalCurrent, total);
         assert (totalUpdated == totalCurrent + total);
     }
+
+    function test_deposit_my_funds_depost_update () public {
+        Actor memory funder = funders [0];
+
+        (uint256 ta0, uint256 iwr0, uint256 pwr0, bool ia0, uint256 dc0) 
+                =deposit.test_get_depositor_deposit_attributes (funder.actor);
+
+        vm.startPrank (funder.actor);
+        uint256 funderUSDCBalance = (IERC20 (usdcAddress)).balanceOf (address (funder.actor));
+        uint256 amount = funderUSDCBalance/2;
+        lendProtocol.deposit_my_funds (amount, 365 days); 
+        (uint256 ta1, uint256 iwr1, uint256 pwr1, bool ia1, uint256 dc1) 
+                =deposit.test_get_depositor_deposit_attributes (funder.actor);
+
+        assert (ta1 == ta0 +amount);
+        assert (iwr0 == iwr1);
+        assert (pwr0 == pwr1);
+        assert (ia0 == false && ia1 == true);
+        assert (dc0 == 0);
+        assert (dc1 == dc0 + 1);
+    }
+
+    function test_deposit_my_funds_depost_update_multiple () public {
+        for (uint i = 0; i < 10; i++) {
+            Actor memory funder = funders[0];
+
+            (uint256 ta0, uint256 iwr0, uint256 pwr0, bool ia0, uint256 dc0) = 
+                deposit.test_get_depositor_deposit_attributes(funder.actor);
+
+            vm.startPrank(funder.actor);
+            uint256 funderUSDCBalance = IERC20(usdcAddress).balanceOf(address(funder.actor));
+            uint256 amount = funderUSDCBalance / 2;
+            lendProtocol.deposit_my_funds(amount, 365 days);
+
+            (uint256 ta1, uint256 iwr1, uint256 pwr1, bool ia1, uint256 dc1) = 
+                deposit.test_get_depositor_deposit_attributes(funder.actor);
+
+            console.log("Iteration %s", i);
+            console.log("  ta  %s : %s", ta0, ta1);
+            console.log("  iwr %s : %s", iwr0, iwr1);
+            console.log("  pwr %s : %s", pwr0, pwr1);
+            console.log("  ia  %s : %s", ia0, ia1);
+            console.log("  dc  %s : %s", dc0, dc1);
+
+            assert(ta1 == ta0 + amount);
+            assert(iwr0 == iwr1);
+            assert(pwr0 == pwr1);
+            if (i == 0)
+                assert(ia0 == false && ia1 == true);
+            else
+                assert(ia0 == true && ia1 == true);
+            assert(dc1 == dc0 + 1);
+        }
+    }
+
+
+
+    function test_deposit_my_funds_depost_record_update () public {
+        Actor memory funder = funders [0];
+        vm.startPrank (funder.actor);
+        uint256 funderUSDCBalance = (IERC20 (usdcAddress)).balanceOf (address (funder.actor));
+        uint256 amount = funderUSDCBalance/2;
+        lendProtocol.deposit_my_funds (amount, 365 days); 
+        (uint256 am, 
+         uint256 lp,
+         uint256 atl,
+         uint256 iec) 
+         = deposit.test_get_depositor_deposit_record_attributes (funder.actor, 0);
+        assert (am == amount);
+        assert (lp == 365 days);
+        assert (atl == amount);
+        assert (iec == 0);
+    }
+
+    function test_deposit_my_funds_depost_record_update_multiple () public { 
+        uint256 am = 0; 
+        uint256 lp = 0;
+        uint256 atl = 0;
+        uint256 iec =0; 
+        for (uint i = 0; i < 10; i++) {
+            Actor memory funder = funders[0];
+            vm.startPrank (funder.actor);
+            uint256 funderUSDCBalance = (IERC20 (usdcAddress)).balanceOf (address (funder.actor));
+            uint256 amount = funderUSDCBalance/2;
+            lendProtocol.deposit_my_funds (amount, 365 days); 
+            (am, 
+            lp,
+            atl,
+            iec) 
+            = deposit.test_get_depositor_deposit_record_attributes (funder.actor, i);
+            assert (am == amount);
+            assert (lp == 365 days);
+            assert (atl == amount);
+            assert (iec == 0);
+        }
+    }
+
+
+
+    
+
+    function test_deposit_my_funds_depost_update_multi_funders_multi_deposits () public {
+       (uint256 ta00, uint256 iw00, uint256 pwr00, bool ia00, uint256 dc00, uint256 amount00)  = fund_it (0);
+       (uint256 ta10, uint256 iw10, uint256 pwr10, bool ia10, uint256 dc10, uint256 amount10) = fund_it(1);
+       (uint256 ta01, uint256 iw01, uint256 pwr01, bool ia01, uint256 dc01, uint256 amount01)  = fund_it (0);
+       (uint256 ta02, uint256 iw02, uint256 pwr02, bool ia02, uint256 dc02, uint256 amount02)  = fund_it (0);
+       (uint256 ta11, uint256 iw11, uint256 pwr11, bool ia11, uint256 dc11, uint256 amount11) = fund_it(1);
+       (uint256 ta12, uint256 iw12, uint256 pwr12, bool ia12, uint256 dc12, uint256 amount12) = fund_it(1);
+
+        assert (
+                    ta00 == amount00 
+                    && iw00 == 0
+                    && pwr00 == 0
+                    && ia00 == true
+                    && dc00 == 1
+               );
+        
+        assert (
+                    ta01 == ta00 + amount01 
+                    && iw01 == 0
+                    && pwr01 == 0
+                    && ia01 == true
+                    && dc01 == dc00 + 1
+               );
+
+        assert (
+                ta02 == ta01 + amount02 
+                && iw02 == 0
+                && pwr02 == 0
+                && ia02 == true
+                && dc02 == dc01 + 1
+            );
+
+            assert (
+            ta10 == amount10
+            && iw10 == 0
+            && pwr10 == 0
+            && ia10 == true
+            && dc10 == 1
+        );
+
+        assert (
+            ta11 == ta10 + amount11
+            && iw11 == 0
+            && pwr11 == 0
+            && ia11 == true
+            && dc11 == dc10 + 1
+        );
+
+        assert (
+            ta12 == ta11 + amount12
+            && iw12 == 0
+            && pwr12 == 0
+            && ia12 == true
+            && dc12 == dc11 + 1
+        );
+        assert ((IERC20 (usdcAddress)).balanceOf (address (deposit)) 
+                == amount00+amount01+amount02+amount10+amount11+amount12);    
+    }
+
+    function fund_it (uint256 _funderIndex) 
+    public 
+    returns (uint256 ta, uint256 iwr, uint256 pwr, bool ia, uint256 dc, uint256 amount) {
+        Actor memory funder = funders [_funderIndex];
+        vm.startPrank (funder.actor);
+        uint256 funderUSDCBalance = (IERC20 (usdcAddress)).balanceOf (address (funder.actor));
+        amount = funderUSDCBalance/2;
+        lendProtocol.deposit_my_funds (amount, 365 days); 
+        (ta, iwr, pwr, ia, dc) 
+        = deposit.test_get_depositor_deposit_attributes (funder.actor);
+    }
+
 
 }
