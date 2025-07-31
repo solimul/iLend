@@ -42,7 +42,6 @@ import {iLend} from "../src/ILend.sol";
 
 import {PriceConverter} from "../src/helper/PriceConverter.sol";
 
-
 contract UnitTest is Test {
     using PriceConverter for uint256;
 
@@ -243,7 +242,7 @@ contract UnitTest is Test {
      * ***** deposit_my_funds test 
     */
 
-    function test_each_funders_init_balance () public view {
+    function test_init_funder_balances () public view {
         //console.log ("Reached here");
         for (uint256 i=0; i<NFUNDERS; i++){
             Actor memory funder = funders [i];
@@ -256,7 +255,7 @@ contract UnitTest is Test {
 
     
 
-    function test_deposit_my_funds_update_balance () public {
+    function test_deposit_balance_change () public {
         Actor memory funder = funders [0];
         vm.startPrank (funder.actor);
         uint256 funderUSDCBalance = (IERC20 (usdcAddress)).balanceOf (address (funder.actor));
@@ -269,7 +268,7 @@ contract UnitTest is Test {
         assert ((IERC20 (usdcAddress)).balanceOf (address (funder.actor)) == funderUSDCBalance - amount);
     }
 
-      function test_deposit_my_funds_update_balance_multiple () public {
+      function test_deposit_balance_change_all_funders () public {
         uint256 total = 0;
         uint256 totalUpdated = 0;
         uint256 totalCurrent = 0;
@@ -290,7 +289,7 @@ contract UnitTest is Test {
         assert (totalUpdated == totalCurrent + total);
     }
 
-    function test_deposit_my_funds_depost_update () public {
+    function test_deposit_state_single () public {
         Actor memory funder = funders [0];
 
         (uint256 ta0, uint256 iwr0, uint256 pwr0, bool ia0, uint256 dc0) 
@@ -311,7 +310,7 @@ contract UnitTest is Test {
         assert (dc1 == dc0 + 1);
     }
 
-    function test_deposit_my_funds_depost_update_multiple () public {
+    function test_deposit_state_multiple () public {
         for (uint i = 0; i < 10; i++) {
             Actor memory funder = funders[0];
 
@@ -346,7 +345,7 @@ contract UnitTest is Test {
 
 
 
-    function test_deposit_my_funds_depost_record_update () public {
+    function test_deposit_record_single () public {
         Actor memory funder = funders [0];
         vm.startPrank (funder.actor);
         uint256 funderUSDCBalance = (IERC20 (usdcAddress)).balanceOf (address (funder.actor));
@@ -363,7 +362,7 @@ contract UnitTest is Test {
         assert (iec == 0);
     }
 
-    function test_deposit_my_funds_depost_record_update_multiple () public { 
+    function test_deposit_record_multiple () public { 
         uint256 am = 0; 
         uint256 lp = 0;
         uint256 atl = 0;
@@ -390,7 +389,7 @@ contract UnitTest is Test {
 
     
 
-    function test_deposit_my_funds_depost_update_multi_funders_multi_deposits () public {
+    function test_deposit_state_multi_funders () public {
        (uint256 ta00, uint256 iw00, uint256 pwr00, bool ia00, uint256 dc00, uint256 amount00)  = fund_it (0);
        (uint256 ta10, uint256 iw10, uint256 pwr10, bool ia10, uint256 dc10, uint256 amount10) = fund_it(1);
        (uint256 ta01, uint256 iw01, uint256 pwr01, bool ia01, uint256 dc01, uint256 amount01)  = fund_it (0);
@@ -466,7 +465,7 @@ contract UnitTest is Test {
         deposit_collateral_borrow testing
     */
 
-    function test_each_borrowers_init_balance () public view {
+    function test_init_borrower_balances () public view {
         for (uint256 i=0; i<NBORROWERS; i++){
             Actor memory borrower = borrowers [i];
 
@@ -475,7 +474,7 @@ contract UnitTest is Test {
         }
     }
 
-    function test_deposit_deposit_collateral_balance_update () public {
+    function test_collateral_balance_change () public {
         uint256 depBalance0 = IERC20(usdcAddress).balanceOf (address (deposit));
         uint256 totalDeposited = seed_deposit_pool ();
         uint256 depBalance1 = IERC20(usdcAddress).balanceOf (address (deposit));
@@ -505,7 +504,7 @@ contract UnitTest is Test {
 
     
 
-    function test_borrow_usdc_balance_update () public {
+    function test_borrow_balance_change () public {
         seed_deposit_pool ();
         uint256 depBalance0 = IERC20 (usdcAddress).balanceOf (address (deposit));
         Actor storage borrower = borrowers [0]; 
@@ -539,7 +538,7 @@ contract UnitTest is Test {
     }
 
 
-    function test_deposit_collateral_state_update () public {
+    function test_collateral_state_change_on_deposit () public {
         seed_deposit_pool ();
         Actor storage borrower = borrowers [0]; 
         (uint256 ta0, uint256 cwrCount0, bool ia0, uint256 dc0) = collateral.test_get_collateral_depositor_state (borrower.actor);
@@ -554,7 +553,7 @@ contract UnitTest is Test {
         assert (dc1 == dc0 +1);
     }
 
-    function test_deposit_collateral_record_state_update 
+    function helper_check_balance 
     (
         uint256 _index,
         uint256 _recordID 
@@ -572,20 +571,20 @@ contract UnitTest is Test {
 
 
 
-    function test_deposit_collateral_record_state_update_multiple () public {
+    function test_collateral_record_state_change_multiple () public {
         for (uint256 i=0; i< NBORROWERS_TO_TEST; i++){
             for (uint256 j=0; j< NCOLLATERALDEPOSIT_TO_TEST; j++) {
                 console.log ("borrower :",i, " record: ",j);
-                test_deposit_collateral_record_state_update (i, j);
+                helper_check_balance (i, j);
             }
         } 
     }
 
-    function test_collateral_counts_match () public {
+    function test_collateral_counts_consistency () public {
         for (uint256 i=0; i< NBORROWERS_TO_TEST; i++){
             for (uint256 j=0; j< NCOLLATERALDEPOSIT_TO_TEST; j++) {
                 console.log ("borrower :",i, " record: ",j);
-                test_deposit_collateral_record_state_update (i, j);
+                helper_check_balance (i, j);
             }
             assert (collateral.get_num_records_for_collateral_deposotor (borrowers [i].actor) == NCOLLATERALDEPOSIT_TO_TEST);
         } 
