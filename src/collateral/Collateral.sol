@@ -15,6 +15,7 @@ import {PriceConverter} from "../helper/PriceConverter.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {iLend} from "../ILend.sol";
+import {console} from "../../lib/forge-std/src/Script.sol";
 
 import {LiquidationEngine} from "../liquidation/LiquidationEngine.sol";
 
@@ -106,7 +107,7 @@ contract Collateral is CollateralPool {
         CollateralDepositRecord memory newDeposit = CollateralDepositRecord({
             amount: _amount,
             hasBorrowedAgainst: false, // Initially, the deposit has not been borrowed against
-            l2b: params.getL2B(), // Assuming L2B is a parameter set in Params
+            l2b: params.get_l2b(), // Assuming L2B is a parameter set in Params
             depositTime: block.timestamp
         });
         collateralDepositor.collateralDepositRecords [collateralDepositor.depositCounts] = newDeposit;
@@ -337,5 +338,29 @@ contract Collateral is CollateralPool {
         cwrCount = collateralDepositor.collateralWithdrawalRecord.length;
         ia = collateralDepositor.isActive;
         dc = collateralDepositor.depositCounts;
+    }
+
+    function test_get_collateral_deposit_record_state 
+    (
+        address _depositor, 
+        uint256 _recordID
+    ) 
+    external
+    view
+    returns (uint256 amnt, uint256 l2b, bool borrowedAgainst) {
+        CollateralDepositor storage collateralDepositor = collateralDepositors[_depositor];
+        CollateralDepositRecord storage record = collateralDepositor.collateralDepositRecords [_recordID];
+        amnt = record.amount;
+        l2b = record.l2b;
+        borrowedAgainst = record.hasBorrowedAgainst;
+    }
+
+    function get_num_collateral_depositors () public view returns (uint256){
+        return collateralDeposotorAddresses.length;
+    }
+
+    function get_num_records_for_collateral_deposotor (address _colDepositor) public view returns (uint256) {
+        CollateralDepositor storage collateralDepositor = collateralDepositors[_colDepositor];
+        return collateralDepositor.depositCounts;
     }
 }

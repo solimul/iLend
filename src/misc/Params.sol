@@ -154,7 +154,7 @@ contract Params {
     function get_min_collateral_amount() public view returns (uint256) {
         return collateralParams.minCollateralAmount;
     }
-    function getL2B() public view returns (uint256) {
+    function get_l2b() public view returns (uint256) {
         return collateralParams.l2b;
     }
 

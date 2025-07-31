@@ -84,6 +84,10 @@ contract UnitTest is Test {
     uint256 private constant ETHER_IN_WEI = 1e18;
     uint256 private constant USDC_IN_WEI = 1e6;
 
+    uint256 private constant NBORROWERS_TO_TEST = 5;
+    uint256 private constant NCOLLATERALDEPOSIT_TO_TEST = 3;
+
+
 
     struct Actor {
         address actor;
@@ -550,6 +554,43 @@ contract UnitTest is Test {
         assert (dc1 == dc0 +1);
     }
 
+    function test_deposit_collateral_record_state_update 
+    (
+        uint256 _index,
+        uint256 _recordID 
+    ) 
+    public {
+        Actor storage borrower = borrowers [_index]; 
+        uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor))/2;
+        execute_collateral_deposit (borrower.actor, collateralAmount);
+        (uint256 amnt, uint256 l2b, bool hasBorrowedAgainst) = collateral.test_get_collateral_deposit_record_state (borrower.actor, _recordID);
+
+        assert (amnt == collateralAmount);
+        assert (l2b == params.get_l2b ());
+        assert (hasBorrowedAgainst == false);
+    }
+
+
+
+    function test_deposit_collateral_record_state_update_multiple () public {
+        for (uint256 i=0; i< NBORROWERS_TO_TEST; i++){
+            for (uint256 j=0; j< NCOLLATERALDEPOSIT_TO_TEST; j++) {
+                console.log ("borrower :",i, " record: ",j);
+                test_deposit_collateral_record_state_update (i, j);
+            }
+        } 
+    }
+
+    function test_collateral_counts_match () public {
+        for (uint256 i=0; i< NBORROWERS_TO_TEST; i++){
+            for (uint256 j=0; j< NCOLLATERALDEPOSIT_TO_TEST; j++) {
+                console.log ("borrower :",i, " record: ",j);
+                test_deposit_collateral_record_state_update (i, j);
+            }
+            assert (collateral.get_num_records_for_collateral_deposotor (borrowers [i].actor) == NCOLLATERALDEPOSIT_TO_TEST);
+        } 
+        assert (collateral.get_num_collateral_depositors () == NBORROWERS_TO_TEST);
+    }
 
     function execute_collateral_deposit 
     (
@@ -580,4 +621,7 @@ contract UnitTest is Test {
             totalDeposited += dep;
         }
     }
+
+
+
 }
