@@ -7,7 +7,6 @@ contract DepositPool {
   
     address public owner;
     IERC20 public immutable usdc_contract;
-    uint256 public poolBalance;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not authorized");
@@ -18,7 +17,6 @@ contract DepositPool {
             address _usdcContractAddress) {
         owner = _owner;
         usdc_contract = IERC20 (_usdcContractAddress);
-        poolBalance = 0;
     }
 
     function get_usdc_contract_address () external view returns (IERC20) {

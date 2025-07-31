@@ -51,7 +51,7 @@ contract Params {
     struct DepositParams {
         uint256 minDepositAmount;
         uint256 maxDepositAmount;
-        uint256 depositFee;
+        uint256 depositFeePercentage;
         uint256 minLockupPeriod;
         uint256 maxLockupPeriod;
     }
@@ -125,11 +125,11 @@ contract Params {
     }
 
     function set_params() public {
-        set_deposit_params (1000, 1000000, 50, 1 days, 365 days);
+        set_deposit_params (100e6, 100_000_0e6, 5, 1 days, 365 days);
         set_borrow_params (1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
         set_liquidation_params (150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
         set_oracle_params (address(this), 60 seconds, 18);
-        set_collateral_params (address(this), 1000, 1000000, 75, true);
+        set_collateral_params (address(this), 1e18, 1000e18, 75, true);
     }
 
     function getMinDeposit() public view returns (uint256) {
@@ -197,18 +197,18 @@ contract Params {
     function set_deposit_params(
         uint256 _minDepositAmount,
         uint256 _maxDepositAmount,
-        uint256 _depositFee,
+        uint256 _depositFeePercentage,
         uint256 _minLockupPeriod,
         uint256 _maxLockupPeriod
     ) internal onlyOwner {
         depositParams = DepositParams({
             minDepositAmount: _minDepositAmount,
             maxDepositAmount: _maxDepositAmount,
-            depositFee: _depositFee,
+            depositFeePercentage: _depositFeePercentage,
             minLockupPeriod: _minLockupPeriod,
             maxLockupPeriod: _maxLockupPeriod
         });
-        emit DepositParamsSetup(iOwner, _minDepositAmount, _maxDepositAmount, _depositFee, _minLockupPeriod, _maxLockupPeriod);
+        emit DepositParamsSetup(iOwner, _minDepositAmount, _maxDepositAmount, _depositFeePercentage, _minLockupPeriod, _maxLockupPeriod);
     }
 
     function set_borrow_params(

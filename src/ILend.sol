@@ -346,15 +346,15 @@ contract iLend {
      * 
      * @param _amount The amount of ETH (or wrapped ETH-like token) to Deposit as collateral.
      */
-   function deposit_collateral_borrow 
+   function deposit_collateral 
    (
         uint256 _amount
    ) 
    external {     
         transfer_funds_from_external(
-            IERC20(iUSDCContractAddress),
+            IERC20(iETHContractAddress),
             msg.sender,
-            address(iDeposit),
+            address(iCollateral),
             _amount,
             DoesNotHaveEnoughETHWhileDepositingCollateral.selector,
             DoesNotHaveEnoughETHAllowanceWhileDepositingCollateral.selector,
@@ -370,8 +370,9 @@ contract iLend {
             _amount,
             block.timestamp
         );
-        
+    }
 
+    function borrow_usdc () external returns (uint256) {
         if (!iBorrow.borrower_exists (msg.sender))
             iBorrow.add_new_borrower (msg.sender, 0, 0, 0, 0);
         uint256 collateralDepositCount = iCollateral.get_collateral_deposit_count(msg.sender);
@@ -390,6 +391,7 @@ contract iLend {
             borrowAmount,
             block.timestamp
         );
+        return borrowAmount;
     }
 
     /**

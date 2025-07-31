@@ -40,8 +40,12 @@ import "../src/treasury/Treasury.sol";
 // Shared interface
 import {iLend} from "../src/ILend.sol";
 
+import {PriceConverter} from "../src/helper/PriceConverter.sol";
+
 
 contract UnitTest is Test {
+    using PriceConverter for uint256;
+
     Borrow private borrow;
     Collateral private collateral;
     CollateralPool private collateralPool;
@@ -64,21 +68,21 @@ contract UnitTest is Test {
     uint256 private constant NBORROWERS = 5;
     uint256 private constant NLIQUIDATORS = 5;
 
-    uint256 private constant FUNDERS_INIT_USDC_FUNDS = 100e8;
+    uint256 private constant FUNDERS_INIT_USDC_FUNDS = 100_00e6; // 10000 USDC: 
     uint256 private constant FUNDERS_INIT_ETH_FUNDS = 0;
 
     uint256 private constant BORROWERS_INIT_USDC_FUNDS = 0;
-    uint256 private constant BORROWERS_INIT_ETH_FUNDS = 100 ether;
+    uint256 private constant BORROWERS_INIT_ETH_FUNDS = 10e18; // 10 ether
 
-    uint256 private constant LIQUIDATORS_INIT_USDC_FUNDS = 1000e8;
+    uint256 private constant LIQUIDATORS_INIT_USDC_FUNDS = 100_00e6; // 10000 usdc
     uint256 private constant LIQUIDATORS_INIT_ETH_FUNDS = 0;
 
 
     uint256 private constant ZERO = 0;
-
-
-
-
+    uint256 private constant HUNDRED = 100;
+    uint256 private constant DEFAULT_COLLATERAL_PERCENTAGE = 10;
+    uint256 private constant ETHER_IN_WEI = 1e18;
+    uint256 private constant USDC_IN_WEI = 1e6;
 
 
     struct Actor {
@@ -197,7 +201,7 @@ contract UnitTest is Test {
         for (uint256 i=0; i<_cnt; i++){
             string memory label = string(abi.encodePacked(_type,"_", vm.toString(i)));
             address actorAddress = makeAddr (label);
-            uint256 usdcAmount = _initFundsUSDC* (i+1);
+            uint256 usdcAmount = (_initFundsUSDC* (i+1));
             deal (usdcAddress, actorAddress, usdcAmount);
             uint256 ethAmount = _initFundsETH* (i+1);
             deal (wrappedETHAddress, actorAddress, ethAmount);
@@ -223,6 +227,9 @@ contract UnitTest is Test {
         }
     }
 
+    /***
+     * ***** deposit_my_funds test 
+    */
 
     function test_each_funders_init_balance () public view {
         //console.log ("Reached here");
@@ -235,27 +242,7 @@ contract UnitTest is Test {
         }
     }
 
-    function test_each_borrowers_init_balance () public view {
-        //console.log ("Reached here");
-        for (uint256 i=0; i<NBORROWERS; i++){
-            Actor memory borrower = borrowers [i];
-            //console.log ("Reached here", IERC20(wrappedETHAddress).balanceOf(borrower.actor));
-
-            assert(IERC20(usdcAddress).balanceOf(borrower.actor) == 0);
-            assert(IERC20(wrappedETHAddress).balanceOf(borrower.actor) == borrower.wrappedETHBalance);
-        }
-    }
-
-    function test_each_liquidators_init_balance () public view {
-    //console.log ("Reached here");
-        for (uint256 i=0; i<NLIQUIDATORS; i++){
-            Actor memory liquidator = liquidators [i];
-            //console.log ("Reached here", IERC20(usdcAddress).balanceOf(liquidator.actor));
-
-            assert(IERC20(usdcAddress).balanceOf(liquidator.actor) == liquidator.usdcBalance);
-            assert(IERC20(wrappedETHAddress).balanceOf(liquidator.actor) == 0);
-        }
-    }
+    
 
     function test_deposit_my_funds_update_balance () public {
         Actor memory funder = funders [0];
@@ -265,7 +252,7 @@ contract UnitTest is Test {
         uint256 currentBalance = (IERC20 (usdcAddress)).balanceOf (address (deposit));
         lendProtocol.deposit_my_funds (amount, 365 days); 
         uint256 updatedBalance = (IERC20 (usdcAddress)).balanceOf (address (deposit));
-        console.log ((IERC20 (usdcAddress)).balanceOf (address (funder.actor)), funderUSDCBalance , amount);
+        //console.log ((IERC20 (usdcAddress)).balanceOf (address (funder.actor)), funderUSDCBalance , amount);
         assert (updatedBalance == currentBalance + amount);
         assert ((IERC20 (usdcAddress)).balanceOf (address (funder.actor)) == funderUSDCBalance - amount);
     }
@@ -281,13 +268,13 @@ contract UnitTest is Test {
             uint256 currentBalance = (IERC20 (usdcAddress)).balanceOf (address (deposit));
             lendProtocol.deposit_my_funds (amount, 365 days); 
             uint256 updatedBalance = (IERC20 (usdcAddress)).balanceOf (address (deposit));
-            console.log (updatedBalance, currentBalance, amount);
+            //console.log (updatedBalance, currentBalance, amount);
             total += amount;
             totalUpdated += updatedBalance;
             totalCurrent += currentBalance;
             vm.stopPrank();
         }
-        console.log (totalUpdated, totalCurrent, total);
+        //console.log (totalUpdated, totalCurrent, total);
         assert (totalUpdated == totalCurrent + total);
     }
 
@@ -460,7 +447,90 @@ contract UnitTest is Test {
         lendProtocol.deposit_my_funds (amount, 365 days); 
         (ta, iwr, pwr, ia, dc) 
         = deposit.test_get_depositor_deposit_attributes (funder.actor);
+        vm.stopPrank ();
+    }
+
+    /** 
+        deposit_collateral_borrow testing
+    */
+
+    function test_each_borrowers_init_balance () public view {
+        for (uint256 i=0; i<NBORROWERS; i++){
+            Actor memory borrower = borrowers [i];
+
+            assert(IERC20(usdcAddress).balanceOf(borrower.actor) == 0);
+            assert(IERC20(wrappedETHAddress).balanceOf(borrower.actor) == borrower.wrappedETHBalance);
+        }
+    }
+
+    function test_deposit_deposit_collateral_balance_update () public {
+        uint256 depBalance0 = IERC20(usdcAddress).balanceOf (address (deposit));
+        uint256 totalDeposited = seed_deposit_pool ();
+        uint256 depBalance1 = IERC20(usdcAddress).balanceOf (address (deposit));
+        assert (totalDeposited + depBalance0 == depBalance1);
+        
+        Actor storage borrower = borrowers [0]; 
+        vm.startPrank (borrower.actor);
+            uint256 colBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+            uint256 borrowerBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor));
+            
+            uint256 ethAmount = borrowerBalance0/2;
+            //console.log ("====>", borrower.actor, borrowerBalance0);
+            lendProtocol.deposit_collateral (ethAmount);
+            
+            uint256 borrowerBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor));
+            uint256 colBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        vm.stopPrank ();
+        bool colInv = colBalance1 == colBalance0 + ethAmount;
+        bool borInv = borrowerBalance1 == borrowerBalance0 - ethAmount;
+        assert (colInv == true);
+        assert (borInv == true);
     }
 
 
+    
+
+
+    
+
+    function test_borrow_usdc_balance_update () public {
+        seed_deposit_pool ();
+        uint256 depBalance0 = IERC20 (usdcAddress).balanceOf (address (deposit));
+        Actor storage borrower = borrowers [0]; 
+        uint256 borrowerETHBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (address (borrower.actor)));
+        uint256 borrowerUSDCBalance0 = IERC20 (usdcAddress).balanceOf (address (address (borrower.actor)));
+
+        vm.startPrank (borrower.actor);
+            uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor))/2;
+            uint256 colBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+
+            lendProtocol.deposit_collateral (collateralAmount);    
+            uint256 borrowAmount = lendProtocol.borrow_usdc ();
+            
+        vm.stopPrank ();
+
+        uint256 depBalance1 = IERC20 (usdcAddress).balanceOf (address (deposit));
+        uint256 colBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 borrowerETHBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (address (borrower.actor)));
+        uint256 borrowerUSDCBalance1 = IERC20 (usdcAddress).balanceOf (address (address (borrower.actor)));
+
+
+        bool depInv = depBalance0 - borrowAmount == depBalance1;
+        bool colInv = colBalance0 + collateralAmount == colBalance1;
+        bool borETHInv =  borrowerETHBalance1 == borrowerETHBalance0 - collateralAmount;
+        bool borUSDCInv = borrowerUSDCBalance1 == borrowerUSDCBalance0 + borrowAmount;
+        
+        assert (depInv == true);
+        assert (colInv == true);
+        assert (borETHInv == true);
+        assert (borUSDCInv == true);
+    }
+
+    function seed_deposit_pool () public returns (uint256 totalDeposited){
+        totalDeposited = 0;
+        for (uint256 i=0; i<NFUNDERS; i++) {
+            (uint256 dep,,,,,) = fund_it (i);
+            totalDeposited += dep;
+        }
+    }
 }

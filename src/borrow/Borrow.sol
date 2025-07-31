@@ -13,6 +13,7 @@ import {Treasury} from "../treasury/Treasury.sol";
 import {RepaymentComponent, BorrowRecord, BorrowerRecord} from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
 import {iLend} from "../ILend.sol";
+import {console} from "../../lib/forge-std/src/Script.sol";
 
 contract Borrow {
     using PriceConverter for uint256;
@@ -251,7 +252,8 @@ contract Borrow {
     returns (uint256) {
         uint256 collateralL2B = collateralPool.get_collateralL2B_by_record(_borrowerAddress, _correspondingColletaralID);
         uint256 collateralETH = collateralPool.get_collateral_ETH_by_record (_borrowerAddress, _correspondingColletaralID);
-        uint256 collateralETHToUSDC = collateralETH.ethToUSD(priceFeed);
+        collateralETH = collateralETH.convertWEIToETH(); // WEI to Ether
+        uint256 collateralETHToUSDC = collateralETH.ethToUSDWEI(priceFeed);
         return (collateralETHToUSDC * collateralL2B) / 100; // Adjust based on your L2B logic
     }
 
@@ -295,7 +297,7 @@ contract Borrow {
         // the deposit pull must have enough usdc to lend
         uint256 _liquidityToBorrow = calculate_liquidity_to_borrow_for_collateral (_borrowerAddress, _correspondingColletaralID); 
         
-        uint256 poolBalance = depositPool.get_pool_balance();
+        uint256 poolBalance = depositPool.get_deposit_balance ();
         if (_liquidityToBorrow > poolBalance) {
             revert InsufficientPoolLiquidity(_liquidityToBorrow, poolBalance);
         }
@@ -306,6 +308,7 @@ contract Borrow {
 
         
         Lender [] memory _lenders = depositPool.match_update_lenders (_liquidityToBorrow);
+        console.log ("lenders count", _lenders.length);
         depositPool.update_lentout_amount (_liquidityToBorrow);
 
         BorrowerRecord storage borrower = borrowers[_borrowerAddress];

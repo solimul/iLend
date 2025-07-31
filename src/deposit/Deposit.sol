@@ -164,9 +164,9 @@ contract Deposit is DepositPool {
      * @return uint256 - the total amount available to lend
      */
 
-    function get_pool_balance () public view returns (uint256) {
-        return poolBalance;
-    }
+    // function get_pool_balance () public view returns (uint256) {
+    //     return poolBalance;
+    // }
 
 
     /**
@@ -270,7 +270,6 @@ contract Deposit is DepositPool {
         uint256 _amount
     ) 
     public {
-        poolBalance -= _amount;
         totalAvailableToLend -= _amount;
     }
 
@@ -279,7 +278,6 @@ contract Deposit is DepositPool {
             private {
         Depositor storage depositor = depositors[_depositorAddress];
         depositor.totalAmount -= amount;
-        poolBalance -= amount;
         // Record the withdrawal
         depositor.principalWithdrawalRecords.push(PrincipalWithdrawalRecord({
             amountWithdrawn: amount,
@@ -291,7 +289,6 @@ contract Deposit is DepositPool {
             uint256 amount) 
             private {
         Depositor storage depositor = depositors[_depositorAddress];
-        poolBalance -= amount;
         totalAvailableToLend -= amount;
         // Record the interest withdrawal
         uint256 currentTime = block.timestamp;
@@ -365,7 +362,7 @@ contract Deposit is DepositPool {
             revert USDCTokenTransferAmountMismatch(old - amount, current);
         }
 
-        emit DepositorPrincipalWithDrawalDone(address(this), _depositorAddress, totalWithdrawable, amount, depositor.totalAmount, poolBalance, block.timestamp);
+        emit DepositorPrincipalWithDrawalDone(address(this), _depositorAddress, totalWithdrawable, amount, depositor.totalAmount, usdc_contract.balanceOf(address (this)), block.timestamp);
     }
 
     function calculate_depositor_interest (address _depositorAddress) 
