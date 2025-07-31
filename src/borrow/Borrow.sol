@@ -58,6 +58,7 @@ contract Borrow {
     );
 
     mapping(address => BorrowerRecord) private borrowers;
+    address [] sBorrowersList;
 
     Params private params;
     AggregatorV3Interface private priceFeed;
@@ -277,6 +278,7 @@ contract Borrow {
         b.totalBorrowed = _totalBorrowed;
         b.borrowCount = 0;
 
+        sBorrowersList.push (_borrowerAddress);
         emit NewBorrowerAdded(
                 _borrowerAddress,
                 _totalCollateral,
@@ -308,11 +310,11 @@ contract Borrow {
 
         
         Lender [] memory _lenders = depositPool.match_update_lenders (_liquidityToBorrow);
-        console.log ("lenders count", _lenders.length);
         depositPool.update_lentout_amount (_liquidityToBorrow);
 
         BorrowerRecord storage borrower = borrowers[_borrowerAddress];
         borrower.totalBorrowed += _liquidityToBorrow;
+        borrower.borrowCount += 1;
         // Create the borrow record without assigning `lenders` yet
         BorrowRecord storage record = borrower.borrows[_correspondingColletaralID];
         record.loanID = _correspondingColletaralID;
@@ -351,4 +353,24 @@ contract Borrow {
     function set_facade_contract (iLend _iLend) external {
         facadeContract = _iLend;
     }
+
+    function test_get_borrower_record_attributes
+    (
+        address _borrower
+    )
+    public
+    returns 
+    (
+        uint256 borrowerCount,
+        uint256 totalBorrowed,
+        uint256 borrowCount,
+        address borrowerAddress
+    ){
+        borrowerCount = sBorrowersList.length;
+        BorrowerRecord storage borrower = borrowers[_borrower];
+        totalBorrowed = borrower.totalBorrowed;
+        borrowCount = borrower.borrowCount;
+        borrowerAddress = borrower.borrowerAddress;
+    }
+
 }

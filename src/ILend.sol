@@ -392,10 +392,10 @@ contract iLend {
         uint256 collateralDepositCount = iCollateral.get_collateral_deposit_count(msg.sender);
         uint256 borrowAmount = iBorrow.update_borrow_records (msg.sender, collateralDepositCount-1);
         iCollateral.update_borrowed_against_collateral (msg.sender, collateralDepositCount-1, true);
-        
         IERC20 token = IERC20 (iUSDCContractAddress);
         uint256 currentBalance = token.balanceOf(address (iDeposit));
         iDeposit.withdraw_to_borrower (token, msg.sender, borrowAmount, msg.sender, collateralDepositCount-1);
+        
         uint256 newBalance = token.balanceOf(address(iDeposit));
         if (newBalance > currentBalance - borrowAmount) {
             abi.encodeWithSelector (BalanceMismatchAfterOutgingTransferWhilBorrowingUSDC.selector).dynamic_revert ();

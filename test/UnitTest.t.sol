@@ -591,6 +591,26 @@ contract UnitTest is Test {
         assert (collateral.get_num_collateral_depositors () == NBORROWERS_TO_TEST);
     }
 
+
+    function test_borrow_state_update_single () public {
+        seed_deposit_pool ();
+        Actor storage borrower = borrowers [0]; 
+        uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor))/2;
+        execute_collateral_deposit (borrower.actor, collateralAmount);
+        uint256 borrowAmount = execute_borrow (borrower.actor);
+
+        (uint256 borrowerCount,
+        uint256 totalBorrowed,
+        uint256 borrowCount,
+        address borrowerAddress) = borrow.test_get_borrower_record_attributes (borrower.actor);
+        console.log ("====>", totalBorrowed, borrowAmount);
+
+        assert (borrowerCount == 1);
+        assert (totalBorrowed == borrowAmount);
+        assert (borrowCount == 1);
+        assert (borrowerAddress == borrower.actor);
+    }
+
     function execute_collateral_deposit 
     (
         address _borrower,
