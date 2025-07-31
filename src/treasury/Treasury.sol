@@ -2,7 +2,7 @@
 pragma solidity ^0.8.29;
 
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {ProtocolRewardInfo, MiscFundRecievedInfo} from "../shared/SharedStructures.sol";
+import {ProtocolRewardInfo, Fee, MiscFundRecievedInfo} from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
 import {iLend} from "../ILend.sol";
 
@@ -12,12 +12,14 @@ contract Treasury {
     event WETHWithdrawn(address indexed to, uint256 amount);
     event ERC20Withdrawn(address indexed token, address indexed to, uint256 amount);
     event NativeETHWithdrawn(address indexed to, uint256 amount);
+    event FeesDeposited(address indexed depositor, uint256 fees,  uint256 dateReceived);
 
     error OnlyTreasuryOwnerCanAccess (address user, address iTreasuryOwner);
     error TreasuryHasInsufficientBalance (uint256 requested, uint256 available);
 
     address public immutable iTreasuryOwner;
     ProtocolRewardInfo [] sProtocolRewardRecords;
+    Fee [] sDepositFees;
 
     iLend private facadeContract;
 
@@ -107,5 +109,25 @@ contract Treasury {
 
     function set_facade_contract (iLend _iLend) external {
         facadeContract = _iLend;
+    }
+
+    function update_fees_for_deposit 
+    (
+        address _depositor, 
+        uint256 _fees    
+    ) 
+    public {
+        sDepositFees.push 
+        (
+          Fee 
+          (  
+            {
+                amount: _fees,
+                provider: _depositor,
+                dateReceived: block.timestamp
+            }
+          )
+        );
+        emit FeesDeposited (_depositor, _fees, block.timestamp);
     }
 }

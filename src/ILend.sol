@@ -131,6 +131,8 @@ contract iLend {
 
     address private iUSDCContractAddress;
     address private iETHContractAddress;
+
+    uint256 private constant HUNDRED = 100;
     
     // Modifiers
     modifier only_owner() {
@@ -280,17 +282,29 @@ contract iLend {
         uint256 _lockupPeriod
     ) 
     external {
+        uint256 fees = (_amount * iParams.get_deposit_fee_parcentage ()) /HUNDRED;
         transfer_funds_from_external(
             IERC20(iUSDCContractAddress),
             msg.sender,
             address(iDeposit),
-            _amount,
+            _amount- fees,
+            DoesNotHaveEnoughUSDCWhileDepositing.selector,
+            DoesNotHaveEnoughUSDCAllowanceWhileDepositing.selector,
+            TransferFromFailedWhileDepositingUSDC.selector,
+            BalanceMismatchAfterIncomingTransferWhileDepositingUSDC.selector
+        );
+        transfer_funds_from_external(
+            IERC20(iUSDCContractAddress),
+            msg.sender,
+            address(iTreasury),
+            fees,
             DoesNotHaveEnoughUSDCWhileDepositing.selector,
             DoesNotHaveEnoughUSDCAllowanceWhileDepositing.selector,
             TransferFromFailedWhileDepositingUSDC.selector,
             BalanceMismatchAfterIncomingTransferWhileDepositingUSDC.selector
         );
         iDeposit.update_post_deposit (msg.sender, _amount, _lockupPeriod);
+        iTreasury.update_fees_for_deposit (msg.sender, fees);
         emit FundDepoistDone (
             msg.sender,
             _amount,

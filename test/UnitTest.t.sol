@@ -97,7 +97,7 @@ contract UnitTest is Test {
 
     function setUp() public virtual {
         params = new Params(false, false, false);
-        params.set_params();
+        set_params();
 
         priceFeed = AggregatorV3Interface(PricefeedManagerLib.get_price_feed_address());
         usdcAddress = NetworkConfigLib.get_usdc_contract_address();
@@ -175,6 +175,14 @@ contract UnitTest is Test {
             liquidators
         );
 
+    }
+
+    function set_params () internal {
+        params.set_deposit_params (100e6, 100_000_0e6, 0, 1 days, 365 days);
+        params.set_borrow_params (1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
+        params.set_liquidation_params (150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
+        params.set_oracle_params (address(this), 60 seconds, 18);
+        params.set_collateral_params (address(this), 1e18, 1000e18, 75, true);
     }
 
     function setup_facade_contract () internal {
@@ -477,10 +485,9 @@ contract UnitTest is Test {
             uint256 ethAmount = borrowerBalance0/2;
             //console.log ("====>", borrower.actor, borrowerBalance0);
             lendProtocol.deposit_collateral (ethAmount);
-            
-            uint256 borrowerBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor));
-            uint256 colBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
         vm.stopPrank ();
+        uint256 borrowerBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor));
+        uint256 colBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
         bool colInv = colBalance1 == colBalance0 + ethAmount;
         bool borInv = borrowerBalance1 == borrowerBalance0 - ethAmount;
         assert (colInv == true);
@@ -524,6 +531,11 @@ contract UnitTest is Test {
         assert (colInv == true);
         assert (borETHInv == true);
         assert (borUSDCInv == true);
+    }
+
+
+    function test_deposit_deposit_collateral_state_update () public {
+        
     }
 
     function seed_deposit_pool () public returns (uint256 totalDeposited){

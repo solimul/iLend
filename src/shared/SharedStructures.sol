@@ -173,4 +173,9 @@ struct Liquidator {
     LiquidationRecord [] liquidationRecords;
 }
 
+struct Fee {
+    uint256 amount;
+    address provider;
+    uint256 dateReceived;
+}
 

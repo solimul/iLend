@@ -124,13 +124,13 @@ contract Params {
         liquidationPaused = _liquidationPaused;
     }
 
-    function set_params() public {
-        set_deposit_params (100e6, 100_000_0e6, 5, 1 days, 365 days);
-        set_borrow_params (1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
-        set_liquidation_params (150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
-        set_oracle_params (address(this), 60 seconds, 18);
-        set_collateral_params (address(this), 1e18, 1000e18, 75, true);
-    }
+    // function set_params() public {
+    //     set_deposit_params (100e6, 100_000_0e6, 0, 1 days, 365 days);
+    //     set_borrow_params (1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
+    //     set_liquidation_params (150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
+    //     set_oracle_params (address(this), 60 seconds, 18);
+    //     set_collateral_params (address(this), 1e18, 1000e18, 75, true);
+    // }
 
     function getMinDeposit() public view returns (uint256) {
         return depositParams.minDepositAmount;
@@ -193,6 +193,10 @@ contract Params {
         return liquidationParams.liquidationThreshold;
     }
 
+    function get_deposit_fee_parcentage () public view returns (uint256) {
+        return depositParams.depositFeePercentage;
+    }
+
 
     function set_deposit_params(
         uint256 _minDepositAmount,
@@ -200,7 +204,7 @@ contract Params {
         uint256 _depositFeePercentage,
         uint256 _minLockupPeriod,
         uint256 _maxLockupPeriod
-    ) internal onlyOwner {
+    ) public onlyOwner {
         depositParams = DepositParams({
             minDepositAmount: _minDepositAmount,
             maxDepositAmount: _maxDepositAmount,
@@ -221,7 +225,7 @@ contract Params {
         uint256 _reserveFactor,
         uint256 _maxInterestRate,
         uint256 _minInterestRate
-    ) internal onlyOwner{
+    ) public onlyOwner{
         InterestRateParams memory _interestRate = InterestRateParams({
             baseRate: _baseRate, 
             reserveFactor: _reserveFactor, 
@@ -250,7 +254,7 @@ contract Params {
         uint256 _maxLiquidationAmount,
         uint256 _liquidationDiscountRate,
         string memory _liquidationBonusType
-    ) internal onlyOwner{
+    ) public onlyOwner{
         liquidationParams = LiquidationParams({
             liquidationThreshold: _liquidationThreshold,
             liquidationFee: _liquidationFee,
@@ -268,7 +272,7 @@ contract Params {
         address _oracleAddress,
         uint256 _heartbeat,
         uint256 _decimals
-    ) internal onlyOwner{
+    ) public onlyOwner{
         oracleParams = OracleParams({
             oracleAddress: _oracleAddress,
             heartbeat: _heartbeat,
@@ -283,7 +287,7 @@ contract Params {
         uint256 _maxCollateralAmount,
         uint256 _collateralFactor,
         bool _isSupported
-    ) internal onlyOwner{
+    ) public onlyOwner{
         CollateralParams memory _collateral = CollateralParams({
             asset: _asset,
             minCollateralAmount: _minCollateralAmount,
