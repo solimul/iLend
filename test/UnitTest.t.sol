@@ -478,14 +478,15 @@ contract UnitTest is Test {
         assert (totalDeposited + depBalance0 == depBalance1);
         
         Actor storage borrower = borrowers [0]; 
-        vm.startPrank (borrower.actor);
-            uint256 colBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
-            uint256 borrowerBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor));
-            
-            uint256 ethAmount = borrowerBalance0/2;
-            //console.log ("====>", borrower.actor, borrowerBalance0);
-            lendProtocol.deposit_collateral (ethAmount);
-        vm.stopPrank ();
+        uint256 colBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 borrowerBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor));
+        uint256 ethAmount = borrowerBalance0/2;
+        execute_collateral_deposit (borrower.actor, ethAmount);
+        // vm.startPrank (borrower.actor);
+
+        //     //console.log ("====>", borrower.actor, borrowerBalance0);
+        //     lendProtocol.deposit_collateral (ethAmount);
+        // vm.stopPrank ();
         uint256 borrowerBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor));
         uint256 colBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
         bool colInv = colBalance1 == colBalance0 + ethAmount;
@@ -506,15 +507,15 @@ contract UnitTest is Test {
         Actor storage borrower = borrowers [0]; 
         uint256 borrowerETHBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (address (borrower.actor)));
         uint256 borrowerUSDCBalance0 = IERC20 (usdcAddress).balanceOf (address (address (borrower.actor)));
-
-        vm.startPrank (borrower.actor);
-            uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor))/2;
-            uint256 colBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
-
-            lendProtocol.deposit_collateral (collateralAmount);    
-            uint256 borrowAmount = lendProtocol.borrow_usdc ();
-            
-        vm.stopPrank ();
+        uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor))/2;
+        uint256 colBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        
+        // vm.startPrank (borrower.actor);
+        //     lendProtocol.deposit_collateral (collateralAmount);    
+        //     uint256 borrowAmount = lendProtocol.borrow_usdc ();
+        // vm.stopPrank ();
+        execute_collateral_deposit (borrower.actor, collateralAmount);
+        uint256 borrowAmount = execute_borrow (borrower.actor);
 
         uint256 depBalance1 = IERC20 (usdcAddress).balanceOf (address (deposit));
         uint256 colBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
@@ -534,8 +535,42 @@ contract UnitTest is Test {
     }
 
 
-    function test_deposit_deposit_collateral_state_update () public {
-         
+    function test_deposit_collateral_state_update () public {
+        seed_deposit_pool ();
+        Actor storage borrower = borrowers [0]; 
+        (uint256 ta0, uint256 cwrCount0, bool ia0, uint256 dc0) = collateral.test_get_collateral_depositor_state (borrower.actor);
+        uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor))/2;
+        execute_collateral_deposit (borrower.actor, collateralAmount);
+        //uint256 borrowAmount = execute_collateral_deposit (borrower.actor);
+        (uint256 ta1, uint256 cwrCount1, bool ia1, uint256 dc1) = collateral.test_get_collateral_depositor_state (borrower.actor);
+        assert (ta1 == ta0  + collateralAmount);
+        assert (cwrCount0 == 0 && cwrCount1 == 0);
+        assert (ia0 == false && ia1 == true);
+        assert (dc0 == 0);
+        assert (dc1 == dc0 +1);
+    }
+
+
+    function execute_collateral_deposit 
+    (
+        address _borrower,
+        uint256 _colAmount 
+    ) 
+    private {
+        vm.startPrank (_borrower);
+            lendProtocol.deposit_collateral (_colAmount);    
+        vm.stopPrank ();
+    }
+
+    function execute_borrow
+    (
+        address _borrower
+    ) 
+    private
+    returns (uint256 borrowAmount) {
+        vm.startPrank (_borrower);
+            borrowAmount = lendProtocol.borrow_usdc ();
+        vm.stopPrank ();
     }
 
     function seed_deposit_pool () public returns (uint256 totalDeposited){

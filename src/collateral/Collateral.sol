@@ -327,4 +327,15 @@ contract Collateral is CollateralPool {
     function set_facade_contract (iLend _iLend) external {
         facadeContract = _iLend;
     }
+
+    function test_get_collateral_depositor_state (address _depositor) 
+    external
+    view
+    returns (uint256 ta, uint256 cwrCount, bool ia, uint256 dc) {
+        CollateralDepositor storage collateralDepositor = collateralDepositors[_depositor];
+        ta = collateralDepositor.totalAmount;
+        cwrCount = collateralDepositor.collateralWithdrawalRecord.length;
+        ia = collateralDepositor.isActive;
+        dc = collateralDepositor.depositCounts;
+    }
 }
