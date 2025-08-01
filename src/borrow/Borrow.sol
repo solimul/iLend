@@ -367,10 +367,15 @@ contract Borrow {
         address borrowerAddress
     ){
         borrowerCount = sBorrowersList.length;
-        BorrowerRecord storage borrower = borrowers[_borrower];
-        totalBorrowed = borrower.totalBorrowed;
-        borrowCount = borrower.borrowCount;
-        borrowerAddress = borrower.borrowerAddress;
+        borrowCount = 0;
+        totalBorrowed = 0 ;
+        borrowerAddress = address (0);
+        if (borrowerCount>0) {
+            BorrowerRecord storage borrower = borrowers[_borrower];
+            totalBorrowed = borrower.totalBorrowed;
+            borrowCount = borrower.borrowCount;
+            borrowerAddress = borrower.borrowerAddress;
+        }
     }
 
 }

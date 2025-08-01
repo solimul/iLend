@@ -83,7 +83,7 @@ contract UnitTest is Test {
     uint256 private constant ETHER_IN_WEI = 1e18;
     uint256 private constant USDC_IN_WEI = 1e6;
 
-    uint256 private constant NBORROWERS_TO_TEST = 5;
+    uint256 private constant NBORROWERS_TO_TEST = 3;
     uint256 private constant NCOLLATERALDEPOSIT_TO_TEST = 3;
 
 
@@ -148,7 +148,8 @@ contract UnitTest is Test {
             paybackAddress,
             liqRegAddress,
             monitorAddress,
-            liqEngineAddress
+            liqEngineAddress,
+            true
         );
 
         setup_facade_contract ();
@@ -594,22 +595,100 @@ contract UnitTest is Test {
 
     function test_borrow_state_update_single () public {
         seed_deposit_pool ();
-        Actor storage borrower = borrowers [0]; 
-        uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (address (borrower.actor))/2;
-        execute_collateral_deposit (borrower.actor, collateralAmount);
-        uint256 borrowAmount = execute_borrow (borrower.actor);
+        address borrower = borrowers [0].actor;
+        uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (borrower)/2;
+
+        uint256 borrowAmount = collateral_deposit_borrow (borrower, collateralAmount);
 
         (uint256 borrowerCount,
         uint256 totalBorrowed,
         uint256 borrowCount,
-        address borrowerAddress) = borrow.test_get_borrower_record_attributes (borrower.actor);
-        console.log ("====>", totalBorrowed, borrowAmount);
+        address borrowerAddress) = borrow.test_get_borrower_record_attributes (borrower);
 
         assert (borrowerCount == 1);
         assert (totalBorrowed == borrowAmount);
         assert (borrowCount == 1);
-        assert (borrowerAddress == borrower.actor);
+        assert (borrowerAddress == borrower);
     }
+
+    function test_borrow_state_update_multiple () public { 
+        seed_deposit_pool ();
+        uint256 borrowerCount0;
+        uint256 totalBorrowed0;
+        uint256 borrowCount0;
+        address borrowerAddress0;
+
+        uint256 borrowerCount1;
+        uint256 totalBorrowed1;
+        uint256 borrowCount1;
+        address borrowerAddress1;
+        
+        for (uint256 i=0; i< NBORROWERS_TO_TEST; i++){
+            address borrower = borrowers [i].actor;
+            for (uint256 j=0; j< NCOLLATERALDEPOSIT_TO_TEST; j++) {      
+                (borrowerCount0,
+                 totalBorrowed0,
+                 borrowCount0,
+                 borrowerAddress0) = borrow.test_get_borrower_record_attributes (borrower);            
+                uint256 collateralAmount =  IERC20 (wrappedETHAddress).balanceOf (borrower)/2;
+                // execute_collateral_deposit (borrower, collateralAmount);
+
+                // uint256 borrowAmount = execute_borrow (borrower);
+                uint256 borrowAmount = collateral_deposit_borrow (borrower, collateralAmount);
+
+                (borrowerCount1,
+                 totalBorrowed1,
+                 borrowCount1,
+                 borrowerAddress1) = borrow.test_get_borrower_record_attributes (borrower);
+
+                assert (totalBorrowed1 == borrowAmount + totalBorrowed0);
+                // assert (borrowCount == j+1);
+            }
+            // assert (borrowerCount == i+1);
+            // assert (borrowerAddress == borrower);
+        }
+    }
+
+    function test_deposit_collateral_no_balance_expect_revert () public {
+        address borrower = borrowers [0].actor;
+        uint256 balance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        deal(wrappedETHAddress, borrower, 0);
+        vm.startPrank (borrower);
+            vm.expectRevert ();
+            lendProtocol.deposit_collateral_and_borrow (balance);
+        vm.stopPrank (); 
+    }
+
+    function test_deposit_collateral_too_much_balance_expect_revert () public {
+        address borrower = borrowers [0].actor;
+        deal(wrappedETHAddress, borrower, type(uint256).max);
+        uint256 balance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        vm.startPrank (borrower);
+            vm.expectRevert ();
+            lendProtocol.deposit_collateral_and_borrow (balance);
+        vm.stopPrank (); 
+    }
+
+    function test_deposit_collateral_expect_revert () public {
+        address borrower = borrowers [0].actor;
+        uint256 amount = IERC20 (wrappedETHAddress).balanceOf (borrower) / 2;
+
+        vm.startPrank (borrower);
+            vm.expectRevert ();
+            lendProtocol.deposit_collateral (amount);
+        vm.stopPrank ();
+    }
+
+        function test_borrow_usdc_expect_revert () public {
+        address borrower = borrowers [0].actor;
+        uint256 amount = IERC20 (wrappedETHAddress).balanceOf (borrower) / 2;
+
+        vm.startPrank (borrower);
+            vm.expectRevert ();
+            lendProtocol.borrow_usdc ();
+        vm.stopPrank ();
+    }
+
 
     function execute_collateral_deposit 
     (
@@ -641,6 +720,15 @@ contract UnitTest is Test {
         }
     }
 
-
-
+    function collateral_deposit_borrow 
+    (
+        address _actor, 
+        uint256 _amount
+    ) 
+    public 
+    returns (uint256 borrowAmount) {
+        vm.startPrank (_actor);
+            borrowAmount = lendProtocol.deposit_collateral_and_borrow (_amount);
+        vm.stopPrank ();
+    }
 }

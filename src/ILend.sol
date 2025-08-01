@@ -21,6 +21,7 @@ import {RevertLib} from "./lib/RevertLib.sol";
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
  
+import {console} from "../lib/forge-std/src/Script.sol";
 
 contract iLend {
 
@@ -116,6 +117,8 @@ contract iLend {
         uint256 newBalance
     );
 
+    error ExternalAccessNotAllowed ();
+
 
     Params immutable private iParams;   
     address immutable private iOwner;
@@ -133,6 +136,8 @@ contract iLend {
     address private iETHContractAddress;
 
     uint256 private constant HUNDRED = 100;
+
+    bool private sTesting = true;
     
     // Modifiers
     modifier only_owner() {
@@ -195,7 +200,8 @@ contract iLend {
         address _payback,
         address _liquidationRegistry,
         address _monitor,
-        address _liquidationEngine
+        address _liquidationEngine,
+        bool testing
     ) {
         iOwner                = msg.sender;
 
@@ -216,6 +222,7 @@ contract iLend {
         iLiquidationEngine      = LiquidationEngine(_liquidationEngine);
 
         iCollateral.set_liquidation_engine(_liquidationEngine);
+        sTesting = testing;
     }    
 
 
@@ -360,14 +367,17 @@ contract iLend {
      * 
      * @param _amount The amount of ETH (or wrapped ETH-like token) to Deposit as collateral.
      */
-   function deposit_collateral 
+
+
+   function _deposit_collateral 
    (
+        address _depositor,
         uint256 _amount
    ) 
-   external {     
+   internal {    /** while deploying turn it to public */  
         transfer_funds_from_external(
             IERC20(iETHContractAddress),
-            msg.sender,
+            _depositor,
             address(iCollateral),
             _amount,
             DoesNotHaveEnoughETHWhileDepositingCollateral.selector,
@@ -377,35 +387,59 @@ contract iLend {
 
         iCollateral.update_collateral_records (msg.sender, _amount);
 
-
         emit CollateralDepositDone(
-            msg.sender,
+            _depositor,
             address(iCollateral),
             _amount,
             block.timestamp
         );
     }
 
-    function borrow_usdc () external returns (uint256) {
-        if (!iBorrow.borrower_exists (msg.sender))
-            iBorrow.add_new_borrower (msg.sender, 0, 0, 0, 0);
-        uint256 collateralDepositCount = iCollateral.get_collateral_deposit_count(msg.sender);
-        uint256 borrowAmount = iBorrow.update_borrow_records (msg.sender, collateralDepositCount-1);
-        iCollateral.update_borrowed_against_collateral (msg.sender, collateralDepositCount-1, true);
+    function deposit_collateral 
+    (
+        uint256 _amount
+    ) external {
+        if (sTesting == false)
+            _deposit_collateral (msg.sender, _amount);
+        else 
+            revert ExternalAccessNotAllowed ();
+    }
+
+    function borrow_usdc () external returns (uint256 borrowAmount){
+        if (sTesting == false)
+                borrowAmount = _borrow_usdc (msg.sender);
+        else
+            revert ExternalAccessNotAllowed ();
+    }
+
+    
+    function _borrow_usdc (address _borrower) internal returns (uint256) {
+        if (!iBorrow.borrower_exists (_borrower))
+            iBorrow.add_new_borrower (_borrower, 0, 0, 0, 0);
+        uint256 collateralDepositCount = iCollateral.get_collateral_deposit_count(_borrower);
+        uint256 borrowAmount = iBorrow.update_borrow_records (_borrower, collateralDepositCount-1);
+        iCollateral.update_borrowed_against_collateral (_borrower, collateralDepositCount-1, true);
         IERC20 token = IERC20 (iUSDCContractAddress);
         uint256 currentBalance = token.balanceOf(address (iDeposit));
-        iDeposit.withdraw_to_borrower (token, msg.sender, borrowAmount, msg.sender, collateralDepositCount-1);
+        iDeposit.withdraw_to_borrower (token, _borrower, borrowAmount, _borrower, collateralDepositCount-1);
         
         uint256 newBalance = token.balanceOf(address(iDeposit));
         if (newBalance > currentBalance - borrowAmount) {
             abi.encodeWithSelector (BalanceMismatchAfterOutgingTransferWhilBorrowingUSDC.selector).dynamic_revert ();
         }
         emit LendingDone(
-            msg.sender,
+            _borrower,
             borrowAmount,
             block.timestamp
         );
         return borrowAmount;
+    }
+
+    function deposit_collateral_and_borrow(uint256 _amount) 
+    external 
+    returns (uint256 borrowAmount) {
+        _deposit_collateral(msg.sender,_amount);
+        borrowAmount = _borrow_usdc(msg.sender);
     }
 
     /**
