@@ -2,7 +2,7 @@
 pragma solidity ^0.8.29;
 
 import {Params} from "../misc/Params.sol";
-import {PriceConverter} from "../helper/PriceConverter.sol";
+import {PriceConverterLib} from "../lib/PriceConverterLib.sol";
 import {Deposit} from "../deposit/Deposit.sol";
 import {Collateral} from "../collateral/Collateral.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
@@ -16,7 +16,7 @@ import {iLend} from "../ILend.sol";
 import {console} from "../../lib/forge-std/src/Script.sol";
 
 contract Borrow {
-    using PriceConverter for uint256;
+    using PriceConverterLib for uint256;
 
     error InvalidBorrowerContractAddress();
 

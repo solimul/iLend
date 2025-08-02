@@ -6,7 +6,7 @@ import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface
 import {console} from "../../lib/forge-std/src/Script.sol";
 
 
-library PriceConverter {
+library PriceConverterLib {
 
     error EtherAmountOverflowInWEI(uint256 amount);
     error USDCAmountOverflowInWEI(uint256 amount);

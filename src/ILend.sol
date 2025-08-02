@@ -5,7 +5,7 @@ import {Deposit} from "./deposit/Deposit.sol";
 import {Collateral} from "./collateral/Collateral.sol";
 import {Borrow} from "./borrow/Borrow.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
-import {PriceConverter} from "./helper/PriceConverter.sol";
+import {PriceConverterLib} from "../src/lib/PriceConverterLib.sol";
 import {PricefeedManagerLib} from "./lib/PricefeedManagerLib.sol";
 import {CollateralView, LiquidationReadyCollateral, RepaymentComponent} from "./shared/SharedStructures.sol";
 import {Treasury} from "./treasury/Treasury.sol";

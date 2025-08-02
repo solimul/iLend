@@ -26,7 +26,6 @@ import {Collateral} from "../collateral/Collateral.sol";
 **/
 
 contract Deposit {
-
     event DepositorPrincipalWithDrawalDone(
         address indexed depositPool,
         address indexed depositor,

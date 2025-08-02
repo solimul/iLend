@@ -2,7 +2,7 @@
 pragma solidity ^0.8.29;
 
 import {KeeperCompatibleInterface} from "../../lib/chainlink-brownie-contracts/contracts/src/v0.8/automation/interfaces/KeeperCompatibleInterface.sol";
-import {PriceConverter} from "../helper/PriceConverter.sol";
+import {PriceConverterLib} from "../lib/PriceConverterLib.sol";
 import {Collateral} from "../collateral/Collateral.sol";
 import {CollateralView, LiquidationReadyCollateral} from "../shared/SharedStructures.sol";
 import {Params} from "../misc/Params.sol";
@@ -41,7 +41,7 @@ contract Monitor is KeeperCompatibleInterface {
         uint256 postDiscountETHPrice,
         uint256 eventDateTime
     );
-    using PriceConverter for AggregatorV3Interface;
+    using PriceConverterLib for AggregatorV3Interface;
     uint256 private constant PERCENTAGE_CHANGE_THRESHOLD = 5;
     uint256 private constant BASIS_POINT = 10000;
     uint256 private constant HUNDRED = 100;

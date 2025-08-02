@@ -10,7 +10,7 @@ import {CollateralView,
         CollateralDepositor,
         DepletedCollateral} from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
-import {PriceConverter} from "../helper/PriceConverter.sol";
+import {PriceConverterLib} from "../lib/PriceConverterLib.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {iLend} from "../ILend.sol";
@@ -32,7 +32,7 @@ contract Collateral {
     error InvalidBorrowerContractAddress();
 
 
-    using PriceConverter for AggregatorV3Interface;
+    using PriceConverterLib for AggregatorV3Interface;
 
     event CollateralDeposited(
         address indexed depositor,

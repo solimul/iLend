@@ -38,10 +38,10 @@ import "../src/treasury/Treasury.sol";
 // Shared interface
 import {iLend} from "../src/ILend.sol";
 
-import {PriceConverter} from "../src/helper/PriceConverter.sol";
+import {PriceConverterLib} from "../src/lib/PriceConverterLib.sol";
 
 contract UnitTest is Test {
-    using PriceConverter for uint256;
+    using PriceConverterLib for uint256;
 
     Borrow private borrow;
     Collateral private collateral;

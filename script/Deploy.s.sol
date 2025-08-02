@@ -35,7 +35,7 @@ import "../src/treasury/Treasury.sol";
 // Shared interface
 import {iLend} from "../src/ILend.sol";
 
-import {PriceConverter} from "../src/helper/PriceConverter.sol";
+import {PriceConverterLib} from "../src/lib/PriceConverterLib.sol";
 
 
 /**
