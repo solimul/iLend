@@ -6,7 +6,6 @@ import {iLend} from "../ILend.sol";
 import {console} from "../../lib/forge-std/src/Script.sol";
 
 import {Params} from "../misc/Params.sol";
-import {DepositPool} from "../deposit/DepositPool.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Lender, 
         InterestEarned, 
@@ -26,7 +25,7 @@ import {Collateral} from "../collateral/Collateral.sol";
  * @dev This is a core component of the iLend protocol
 **/
 
-contract Deposit is DepositPool {
+contract Deposit {
 
     event DepositorPrincipalWithDrawalDone(
         address indexed depositPool,
@@ -96,6 +95,8 @@ contract Deposit is DepositPool {
     address private paybackContractAddress;
     address private borrowContractAddress;
     address private immutable iOwnerContract;
+    IERC20 private immutable iUSDCContract;
+
 
 
     /**
@@ -106,12 +107,12 @@ contract Deposit is DepositPool {
     constructor(address _paramsAddress, 
             address _usdcContractAddress, 
             address _tAddress,
-            address _collateralAddress) 
-            DepositPool(msg.sender, _usdcContractAddress) {
+            address _collateralAddress) {
         params = Params (_paramsAddress);
         depositorCounts = 0;
         transaction = Transaction (_tAddress);
         collateral = Collateral (_collateralAddress);
+        iUSDCContract = IERC20 (_usdcContractAddress);
         iOwnerContract = msg.sender;
         // Initialize the contract if needed
     }
@@ -193,8 +194,8 @@ contract Deposit is DepositPool {
      * @return IERC20 - the USDC contract address
      */
 
-    function get_usdc_contract () public view returns (IERC20) {
-        return usdc_contract;
+    function get_usdcContract () public view returns (IERC20) {
+        return iUSDCContract;
     }
 
     /**
@@ -212,7 +213,7 @@ contract Deposit is DepositPool {
      * @return uint256 - returns usdc balance of this deposit pool
      */
     function get_deposit_balance () public view returns (uint256) {
-        return (usdc_contract).balanceOf (address (this));
+        return (iUSDCContract).balanceOf (address (this));
     }
 
 
@@ -253,7 +254,7 @@ contract Deposit is DepositPool {
 
 
     function get_usdc_balance () public view returns (uint256) {
-        return usdc_contract.balanceOf(address(this));
+        return iUSDCContract.balanceOf(address(this));
     }
 
 
@@ -424,7 +425,7 @@ contract Deposit is DepositPool {
         update_principal_withdrawal (_depositorAddress, amount);
 
         // Transfer USDC back to the depositor
-        bool success = usdc_contract.transfer(_depositorAddress, amount);
+        bool success = iUSDCContract.transfer(_depositorAddress, amount);
         if (!success) {
             revert USDCTokenTransferFailed();
         }
@@ -434,7 +435,7 @@ contract Deposit is DepositPool {
             revert USDCTokenTransferAmountMismatch(old - amount, current);
         }
 
-        emit DepositorPrincipalWithDrawalDone(address(this), _depositorAddress, totalWithdrawable, amount, depositor.totalAmount, usdc_contract.balanceOf(address (this)), block.timestamp);
+        emit DepositorPrincipalWithDrawalDone(address(this), _depositorAddress, totalWithdrawable, amount, depositor.totalAmount, iUSDCContract.balanceOf(address (this)), block.timestamp);
     }
 
     function calculate_depositor_interest 
@@ -492,7 +493,7 @@ contract Deposit is DepositPool {
     existing_depositor (_depositorAddress) {
         uint256 totalInterestIncome = calculate_depositor_interest (_depositorAddress);
         
-        uint256 old = usdc_contract.balanceOf(address(this));
+        uint256 old = iUSDCContract.balanceOf(address(this));
         
         if (totalInterestIncome < amount) {
             revert InsufficientInterestIncome(totalInterestIncome, amount);
@@ -510,7 +511,7 @@ contract Deposit is DepositPool {
             revert USDCTokenTransferFailedSafeTransfer(address(this), _depositorAddress, amount);
         }
 
-        uint256 current = usdc_contract.balanceOf(address(this));
+        uint256 current = iUSDCContract.balanceOf(address(this));
         uint256 expected = old - amount;
         if (current != expected) {
             revert USDCTokenTransferAmountMismatch(expected, current);

@@ -12,11 +12,9 @@ import "../src/borrow/Borrow.sol";
 
 // Collateral module
 import "../src/collateral/Collateral.sol";
-import "../src/collateral/CollateralPool.sol";
 
 // Deposit module
 import "../src/deposit/Deposit.sol";
-import "../src/deposit/DepositPool.sol";
 
 // Liquidation module
 import "../src/liquidation/LiquidationEngine.sol";
@@ -66,9 +64,7 @@ contract DeployILend is Script {
 
     Borrow private borrow;
     Collateral private collateral;
-    CollateralPool private collateralPool;
     Deposit private deposit;
-    DepositPool private depositPool;
     LiquidationEngine private liquidationEngine;
     LiquidationRegistry private liquidationRegistry;
     Monitor private monitor;

@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.29;
 
-import {CollateralPool} from "./CollateralPool.sol";
 import {Params} from "../misc/Params.sol";
 import {Strings} from "../../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Borrow} from "../borrow/Borrow.sol";
@@ -19,7 +18,7 @@ import {console} from "../../lib/forge-std/src/Script.sol";
 
 import {LiquidationEngine} from "../liquidation/LiquidationEngine.sol";
 
-contract Collateral is CollateralPool {
+contract Collateral {
 
     error NotARegisteredLiquidator(address caller);
     error CollateralAlreadyLiquidated(address borrower, uint256 loanID);
@@ -59,13 +58,17 @@ contract Collateral is CollateralPool {
     address private facadeContractAddress;
     address immutable private iOwnerAddress;
 
+    IERC20 public immutable ethContract;
+
+
     constructor(address _paramsAddress, 
                 address _priceFeedAddress, 
                 address _tAddress,
-                address _ethContractAddress) CollateralPool (_priceFeedAddress, _ethContractAddress) {
+                address _ethContractAddress) {
         params = Params (_paramsAddress);
         transaction = Transaction (_tAddress);
         pricefeed = AggregatorV3Interface (_priceFeedAddress);
+        ethContract = IERC20(_ethContractAddress);
         iOwnerAddress = msg.sender;
     } 
 
