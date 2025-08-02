@@ -192,7 +192,7 @@ contract UnitTest is Test {
     function register_caller_contracts () internal {
         params.register_caller_contracts (lendProtocol);
         treasury.register_caller_contracts (lendProtocol);
-        borrow.register_caller_contracts(lendProtocol);
+        borrow.register_caller_contracts(address (lendProtocol));
         collateral.register_caller_contracts (address (lendProtocol));
         deposit.register_caller_contracts (address (lendProtocol), address (payback), address (borrow));
         payback.register_caller_contracts (lendProtocol);

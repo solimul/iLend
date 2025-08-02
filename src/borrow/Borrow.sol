@@ -32,6 +32,8 @@ contract Borrow {
 
     error InsufficientPoolLiquidity(uint256 requested, uint256 available);
     error CollateralAlreadyUsed(address borrower, uint256 collateralID);
+    error OnlyILendContractCanAccessThisFunction (address sender, address ilend);
+    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
 
 
     event NewBorrowerAdded(
@@ -69,7 +71,8 @@ contract Borrow {
 
     
     IERC20 private usdcContract;
-    iLend private facadeContract;
+    address private facadeContractAddress;
+    address private immutable iOwnerAddress;
 
 
     modifier only_existing_borrower(address _borrowerAddress) {
@@ -82,6 +85,20 @@ contract Borrow {
     modifier only_active_loan(address _borrowerAddress, uint256 _correspondingColletaralID) {
         if (borrowers[_borrowerAddress].borrows[_correspondingColletaralID].amount == 0) {
             revert NoActiveLoanForCollateral(_borrowerAddress, _correspondingColletaralID);
+        }
+        _;
+    }
+
+    modifier only_facade_contract(address _sender) {
+        if (_sender != facadeContractAddress) {
+            revert OnlyILendContractCanAccessThisFunction (_sender, facadeContractAddress);
+        }
+        _;
+    }
+
+    modifier only_owner_contract (address _sender) {
+        if (_sender != iOwnerAddress) {
+            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
         }
         _;
     }
@@ -138,41 +155,58 @@ contract Borrow {
         priceFeed = AggregatorV3Interface (_priceFeedAddress);
         usdcContract = IERC20(_usdcContractAddress);
         transaction = Transaction (_tAddress);
+        iOwnerAddress = msg.sender;
 
         //payable, because Treasury implements fallback
     }
 
-    function get_borrowed_amount (address _borrowerAddress, uint256 _correspondingColletaralID) 
-        external 
-        view 
-        only_existing_borrower(_borrowerAddress)         
-        returns (uint256) 
+    function get_borrowed_amount 
+    (
+        address _borrowerAddress, 
+        uint256 _correspondingColletaralID
+    ) 
+    external 
+    view 
+    only_existing_borrower(_borrowerAddress)         
+    returns (uint256) 
     {
         return borrowers[_borrowerAddress].borrows[_correspondingColletaralID].amount;    
     }
 
-    function get_borrowed_interest_rate (address _borrowerAddress, uint256 _correspondingColletaralID) 
-        external 
-        view 
-        only_existing_borrower(_borrowerAddress)         
-        returns (uint256) 
+    function get_borrowed_interest_rate 
+    (
+        address _borrowerAddress, 
+        uint256 _correspondingColletaralID
+    ) 
+    external 
+    view 
+    only_existing_borrower(_borrowerAddress)         
+    returns (uint256) 
     {
         return borrowers[_borrowerAddress].borrows[_correspondingColletaralID].interestRate;    
     }
 
-    function get_borrow_record (address _borrowersAddress, uint256 _loanID) public view returns (BorrowRecord memory) {
+    function get_borrow_record 
+    (
+        address _borrowersAddress, 
+        uint256 _loanID
+    ) 
+    public 
+    view 
+    returns (BorrowRecord memory) {
         BorrowRecord memory record = borrowers [_borrowersAddress].borrows [_loanID];
         return record;
     }
 
-    function get_interest_payable (
+    function get_interest_payable 
+    (
         address _borrowerAddress,
         uint256 _correspondingColletaralID
     ) 
-        external 
-        view 
-        only_existing_borrower(_borrowerAddress)         
-        returns (uint256) 
+    external 
+    view 
+    only_existing_borrower(_borrowerAddress)         
+    returns (uint256) 
     {
         BorrowRecord storage borrowRecord = borrowers[_borrowerAddress].borrows[_correspondingColletaralID];
         uint256 timeElapsed = block.timestamp - borrowRecord.borrowTime;
@@ -180,42 +214,51 @@ contract Borrow {
         return interestPayable;
     }
 
-    function get_protocol_reward (
+    function get_protocol_reward 
+    (
         address _borrowerAddress,
         uint256 _correspondingColletaralID
     ) 
-        external 
-        view 
-        only_existing_borrower(_borrowerAddress)         
-        returns (uint256) 
-    {
+    external 
+    view 
+    only_existing_borrower(_borrowerAddress)         
+    returns (uint256) {
         BorrowRecord storage borrowRecord = borrowers[_borrowerAddress].borrows[_correspondingColletaralID];
         uint256 timeElapsed = block.timestamp - borrowRecord.borrowTime;
         uint256 protocolReward = (borrowRecord.amount * params.get_reserve_factor() * timeElapsed) / (365 days * 100);
         return protocolReward;
     }
 
-    function calculate_interest_amount (BorrowerRecord storage _bRecord, 
-            BorrowRecord storage r) 
-        internal 
-        view 
+    function calculate_interest_amount 
+    (
+        BorrowerRecord storage _bRecord, 
+        BorrowRecord storage r
+    ) 
+    internal 
+    view 
         returns (uint256){
             return (r.interestRate * (_bRecord.totalBorrowed * (block.timestamp -  r.borrowTime))  / (365 days * 100));
     }
 
-    function calculate_protocol_reward  (BorrowerRecord storage _bRecord, 
-            BorrowRecord storage r) 
-        internal 
-        view 
-        returns (uint256) {
+    function calculate_protocol_reward  
+    (
+        BorrowerRecord storage _bRecord, 
+        BorrowRecord storage r
+    ) 
+    internal 
+    view 
+    returns (uint256) {
             return (params.get_reserve_factor() *  (_bRecord.totalBorrowed * (block.timestamp -  r.borrowTime))  / (365 days * 100));
     }
 
-    function calculate_repayment_components (address _borrowersAddress, 
-            uint256 _loanID) 
-            public 
-            view 
-            returns (RepaymentComponent memory){
+    function calculate_repayment_components 
+    (
+        address _borrowersAddress, 
+        uint256 _loanID
+    ) 
+    public 
+    view 
+    returns (RepaymentComponent memory){
         RepaymentComponent memory rep;
         BorrowerRecord storage _bRecord = borrowers [_borrowersAddress];
         BorrowRecord storage r = _bRecord.borrows [_loanID];
@@ -225,7 +268,10 @@ contract Borrow {
         return rep;
     }
 
-    function calculate_liquidity_to_borrow (address _borrowerAddress) 
+    function calculate_liquidity_to_borrow 
+    (
+        address _borrowerAddress
+    ) 
     public 
     view 
     only_existing_borrower (_borrowerAddress) 
@@ -245,8 +291,11 @@ contract Borrow {
         return  usdcValue; // Adjust based on your L2B logic
     }
 
-    function calculate_liquidity_to_borrow_for_collateral (address _borrowerAddress, 
-        uint256 _correspondingColletaralID) 
+    function calculate_liquidity_to_borrow_for_collateral 
+    (
+        address _borrowerAddress, 
+        uint256 _correspondingColletaralID
+    ) 
     public 
     view 
     only_existing_borrower (_borrowerAddress) 
@@ -263,12 +312,16 @@ contract Borrow {
     }
 
 
-    function add_new_borrower (address _borrowerAddress,
-    uint256 _totalCollateral,
-    uint256 _totalBorrowed,
-    uint256 _interestRate,
-    uint256 _l2b) 
-    external {
+    function add_new_borrower 
+    (
+        address _borrowerAddress,
+        uint256 _totalCollateral,
+        uint256 _totalBorrowed,
+        uint256 _interestRate,
+        uint256 _l2b
+    ) 
+    external
+    only_facade_contract(msg.sender) {
         if (borrower_exists(_borrowerAddress)) {
             revert BorrowerAlreadyExists(_borrowerAddress);
         }
@@ -289,11 +342,12 @@ contract Borrow {
     }
 
     function update_borrow_records 
-        (
+    (
             address _borrowerAddress,
             uint256 _correspondingColletaralID
-        ) 
+    ) 
     external 
+    only_facade_contract(msg.sender)
     only_existing_borrower (_borrowerAddress)
     returns (uint256) {
         // the deposit pull must have enough usdc to lend
@@ -350,8 +404,13 @@ contract Borrow {
         return record.amount == 0;  
     }
 
-    function register_caller_contracts (iLend _iLend) external {
-        facadeContract = _iLend;
+    function register_caller_contracts 
+    (
+        address _iLendAddress
+    ) 
+    external 
+    only_owner_contract (msg.sender){
+        facadeContractAddress = _iLendAddress;
     }
 
     function test_get_borrower_record_attributes
