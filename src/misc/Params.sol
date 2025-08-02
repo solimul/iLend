@@ -299,7 +299,7 @@ contract Params {
         emit CollateralParamsSetup(iOwner, _asset, _minCollateralAmount, _maxCollateralAmount, _collateralFactor, _isSupported);
     }
 
-    function set_facade_contract (iLend _iLend) external {
+    function register_caller_contracts (iLend _iLend) external {
         facadeContract = _iLend;
     }
 

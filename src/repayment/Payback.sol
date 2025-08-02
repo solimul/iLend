@@ -335,7 +335,7 @@ contract Payback {
         return rep;
     }
 
-    function set_facade_contract (iLend _iLend) external {
+    function register_caller_contracts (iLend _iLend) external {
         facadeContract = _iLend;
     }
 }

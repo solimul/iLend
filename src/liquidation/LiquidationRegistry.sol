@@ -141,7 +141,7 @@ contract LiquidationRegistry {
         return sLiquidationReadyBorrower2LoanIDs [_borrower];
     }
 
-    function set_facade_contract (iLend _iLend) external {
+    function register_caller_contracts (iLend _iLend) external {
         facadeContract = _iLend;
     }
 }

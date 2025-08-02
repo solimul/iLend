@@ -152,7 +152,7 @@ contract UnitTest is Test {
             true
         );
 
-        setup_facade_contract ();
+        register_caller_contracts ();
 
         setup_and_fund 
         (
@@ -189,16 +189,16 @@ contract UnitTest is Test {
         params.set_collateral_params (address(this), 1e18, 1000e18, 75, true);
     }
 
-    function setup_facade_contract () internal {
-        params.set_facade_contract (lendProtocol);
-        treasury.set_facade_contract (lendProtocol);
-        borrow.set_facade_contract(lendProtocol);
-        collateral.set_facade_contract (lendProtocol);
-        deposit.set_facade_contract (lendProtocol);
-        payback.set_facade_contract (lendProtocol);
-        liquidationRegistry.set_facade_contract (lendProtocol);
-        liquidationEngine.set_facade_contract (lendProtocol);
-        monitor.set_facade_contract (lendProtocol);
+    function register_caller_contracts () internal {
+        params.register_caller_contracts (lendProtocol);
+        treasury.register_caller_contracts (lendProtocol);
+        borrow.register_caller_contracts(lendProtocol);
+        collateral.register_caller_contracts (lendProtocol);
+        deposit.register_caller_contracts (address (lendProtocol), address (payback), address (borrow));
+        payback.register_caller_contracts (lendProtocol);
+        liquidationRegistry.register_caller_contracts (lendProtocol);
+        liquidationEngine.register_caller_contracts (lendProtocol);
+        monitor.register_caller_contracts (lendProtocol);
     }
 
     function setup_and_fund 
