@@ -14,7 +14,6 @@ import {Lender,
         DepositRecord, 
         Depositor} 
         from "../shared/SharedStructures.sol";
-import {Transaction} from "../misc/Transcation.sol";
 import {Collateral} from "../collateral/Collateral.sol";
 
 /** 
@@ -80,7 +79,6 @@ contract Deposit {
 
 
     Params private params;
-    Transaction private transaction;
     Collateral private collateral;
     
     mapping (address => Depositor) private depositors;
@@ -104,11 +102,9 @@ contract Deposit {
 
     constructor(address _paramsAddress, 
             address _usdcContractAddress, 
-            address _tAddress,
             address _collateralAddress) {
         params = Params (_paramsAddress);
         depositorCounts = 0;
-        transaction = Transaction (_tAddress);
         collateral = Collateral (_collateralAddress);
         iUSDCContract = IERC20 (_usdcContractAddress);
         iOwnerContract = msg.sender;
@@ -504,7 +500,7 @@ contract Deposit {
         
         update_interest_withdrawal(_depositorAddress, amount);
         // Transfer USDC back to the depositor
-        bool success = transaction.safe_transfer("USDC", address(this), _depositorAddress, amount);
+        bool success = IERC20 (iUSDCContract).transfer(_depositorAddress, amount);
         if (!success) {
             revert USDCTokenTransferFailedSafeTransfer(address(this), _depositorAddress, amount);
         }

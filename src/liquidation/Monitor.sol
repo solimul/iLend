@@ -12,6 +12,9 @@ import {iLend} from "../ILend.sol";
 
 
 contract Monitor is KeeperCompatibleInterface {
+
+    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
+
     /*  @param protocol                The iLend contract address
         @param borrowerAddress         The ID of the borrower
         @param loanID                  The identifier of the loan to be liquidated
@@ -53,8 +56,15 @@ contract Monitor is KeeperCompatibleInterface {
     Params private immutable iParams;
     LiquidationRegistry private immutable iLiquidationRegistry;
 
-    iLend private facadeContract;
+    address private facadeContractAddress;
+    address private immutable iOwnerAddress;
 
+    modifier only_owner_contract (address _sender) {
+        if (_sender != iOwnerAddress) {
+            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
+        }
+        _;
+    }
     
     /**
      * @notice Initializes the contract with addresses of dependent modules and records the initial ETH price.
@@ -79,6 +89,7 @@ contract Monitor is KeeperCompatibleInterface {
         iLendAddress = _iLendAddress;
         iParams = Params (_paramsAddress);
         iLiquidationRegistry = LiquidationRegistry (_liquidationQuryAddress);
+        iOwnerAddress = msg.sender;
     }
 
     /**
@@ -185,7 +196,12 @@ contract Monitor is KeeperCompatibleInterface {
         }
     }
 
-    function register_caller_contracts (iLend _iLend) external {
-        facadeContract = _iLend;
+    function register_caller_contracts 
+    (
+        address _iLendAddress
+    ) 
+    external
+    only_owner_contract (msg.sender) {
+        facadeContractAddress = _iLendAddress;
     }
 }

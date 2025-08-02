@@ -23,8 +23,6 @@ import "../src/liquidation/Monitor.sol";
 
 // Misc module
 import "../src/misc/Params.sol";
-import "../src/misc/ProtocolReward.sol";
-import "../src/misc/Transcation.sol";
 
 // Repayment module
 import "../src/repayment/Payback.sol";
@@ -69,8 +67,6 @@ contract DeployILend is Script {
     LiquidationRegistry private liquidationRegistry;
     Monitor private monitor;
     Params private params;
-    ProtocolReward private protocolReward;
-    Transaction private transaction;
     Payback private payback;
     Treasury private treasury;
     iLend private lendProtocol;
@@ -116,21 +112,19 @@ contract DeployILend is Script {
             usdcAddress = NetworkConfigLib.get_usdc_contract_address();
             wrappedETHAddress = NetworkConfigLib.get_usdc_contract_address();
 
-            transaction = new Transaction(usdcAddress, wrappedETHAddress);
-            address txAddress = address(transaction);
 
             treasury = new Treasury();
             address trAddress = address(treasury);
             address pAddress = address(params);
             address pfAddress = address(priceFeed);
 
-            collateral = new Collateral(pAddress, pfAddress, txAddress, wrappedETHAddress);
+            collateral = new Collateral(pAddress, pfAddress, wrappedETHAddress);
             address colAddress = address(collateral);
 
-            deposit = new Deposit(pAddress, usdcAddress, txAddress, colAddress);
+            deposit = new Deposit(pAddress, usdcAddress, colAddress);
             address depAddress = address(deposit);
 
-            borrow = new Borrow(pAddress, pfAddress, depAddress, colAddress, usdcAddress, txAddress);
+            borrow = new Borrow(pAddress, pfAddress, depAddress, colAddress, usdcAddress);
             address borrowAddress = address(borrow);
 
             payback = new Payback(borrowAddress, depAddress, trAddress, usdcAddress);
@@ -140,7 +134,7 @@ contract DeployILend is Script {
 
             monitor = new Monitor(pAddress, pfAddress, colAddress, address(this), liqRegAddress);
 
-            liquidationEngine = new LiquidationEngine(liqRegAddress, colAddress, depAddress, txAddress);
+            liquidationEngine = new LiquidationEngine(liqRegAddress, colAddress, depAddress,usdcAddress);
 
             address paybackAddress = address(payback);
             address monitorAddress = address(monitor);
@@ -161,6 +155,7 @@ contract DeployILend is Script {
                 liqEngineAddress,
                 false
             );
+            register_caller_contracts ();
         vm.stopBroadcast ();
 
     }
@@ -172,6 +167,18 @@ contract DeployILend is Script {
         params.set_liquidation_params (150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
         params.set_oracle_params (address(this), 60 seconds, 18);
         params.set_collateral_params (address(this), 1e18, 1000e18, 75, true);
+    }
+
+    function register_caller_contracts () internal {
+        params.register_caller_contracts (address (lendProtocol));
+        treasury.register_caller_contracts (address (lendProtocol), address (payback));
+        borrow.register_caller_contracts(address (lendProtocol));
+        collateral.register_caller_contracts (address (lendProtocol));
+        deposit.register_caller_contracts (address (lendProtocol), address (payback), address (borrow));
+        payback.register_caller_contracts (address (lendProtocol));
+        liquidationRegistry.register_caller_contracts (address (lendProtocol), address (monitor));
+        liquidationEngine.register_caller_contracts (address (lendProtocol));
+        monitor.register_caller_contracts (address (lendProtocol));
     }
 }
 

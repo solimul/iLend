@@ -5,7 +5,8 @@ import {iLend} from "../ILend.sol";
 
 
 contract Params {
-    
+    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
+
     event DepositParamsSetup (address indexed user, 
                               uint256 _minDepositAmount,
                               uint256 _maxDepositAmount,
@@ -107,10 +108,12 @@ contract Params {
     OracleParams public oracleParams;
     CollateralParams public collateralParams;
 
-    modifier onlyOwner() {
-        if (msg.sender != iOwner) {
+    address private facadeContractAddress;
+    address private immutable iOwnerAddress;
 
-            revert OnlyOwnerCanAccess(msg.sender, iOwner);
+    modifier only_owner_contract (address _sender) {
+        if (_sender != iOwnerAddress) {
+            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
         }
         _;
     }
@@ -118,10 +121,10 @@ contract Params {
             bool _depositPaused, 
             bool _borrowingPaused, 
             bool _liquidationPaused) {
-        iOwner = msg.sender;
         depositsPaused = _depositPaused;
         borrowingPaused = _borrowingPaused;
         liquidationPaused = _liquidationPaused;
+        iOwnerAddress = msg.sender;
     }
 
     // function set_params() public {
@@ -204,7 +207,7 @@ contract Params {
         uint256 _depositFeePercentage,
         uint256 _minLockupPeriod,
         uint256 _maxLockupPeriod
-    ) public onlyOwner {
+    ) public only_owner_contract (msg.sender) {
         depositParams = DepositParams({
             minDepositAmount: _minDepositAmount,
             maxDepositAmount: _maxDepositAmount,
@@ -225,7 +228,7 @@ contract Params {
         uint256 _reserveFactor,
         uint256 _maxInterestRate,
         uint256 _minInterestRate
-    ) public onlyOwner{
+    ) public only_owner_contract (msg.sender) {
         InterestRateParams memory _interestRate = InterestRateParams({
             baseRate: _baseRate, 
             reserveFactor: _reserveFactor, 
@@ -254,7 +257,7 @@ contract Params {
         uint256 _maxLiquidationAmount,
         uint256 _liquidationDiscountRate,
         string memory _liquidationBonusType
-    ) public onlyOwner{
+    ) public only_owner_contract (msg.sender) {
         liquidationParams = LiquidationParams({
             liquidationThreshold: _liquidationThreshold,
             liquidationFee: _liquidationFee,
@@ -272,7 +275,7 @@ contract Params {
         address _oracleAddress,
         uint256 _heartbeat,
         uint256 _decimals
-    ) public onlyOwner{
+    ) public only_owner_contract (msg.sender) {
         oracleParams = OracleParams({
             oracleAddress: _oracleAddress,
             heartbeat: _heartbeat,
@@ -287,7 +290,7 @@ contract Params {
         uint256 _maxCollateralAmount,
         uint256 _collateralFactor,
         bool _isSupported
-    ) public onlyOwner{
+    ) public only_owner_contract (msg.sender) {
         CollateralParams memory _collateral = CollateralParams({
             asset: _asset,
             minCollateralAmount: _minCollateralAmount,
@@ -299,8 +302,13 @@ contract Params {
         emit CollateralParamsSetup(iOwner, _asset, _minCollateralAmount, _maxCollateralAmount, _collateralFactor, _isSupported);
     }
 
-    function register_caller_contracts (iLend _iLend) external {
-        facadeContract = _iLend;
+    function register_caller_contracts 
+    (
+        address _iLendAddress
+    ) 
+    external
+    only_owner_contract (msg.sender) {
+        facadeContractAddress = _iLendAddress;
     }
 
 }

@@ -5,13 +5,20 @@ import {iLend} from "../ILend.sol";
 
 contract LiquidationRegistry {
 
+
+
     error BorrowerDoesNotHaveLiquidationReadyCollateral(address borrower);
+    error OnlyILendContractCanAccessThisFunction (address sender, address ilend);
+    error OnlyMonitorContractCanAccessThisFunction (address sender, address ilend);
+    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
 
     address[] private sLiquidationReadyList;
     mapping (address => uint256 []) private sLiquidationReadyBorrower2LoanIDs;
     mapping (address=>LiquidationReadyCollateral []) private sLiquidationReadyCollaterals;
     mapping (address=> LiquidationReadyCollateralLoanIDMap) private sAddressToLoanIDToCollateral;
-    iLend private facadeContract;
+    address private facadeContractAddress;
+    address private monitorContractAddress;
+    address private immutable iOwnerAddress;
 
     
     /**
@@ -21,12 +28,37 @@ contract LiquidationRegistry {
      * @param _borrower The address of the borrower being validated.
      */
 
-    modifier _borrowerExists (address _borrower) {
+    modifier borrower_exists (address _borrower) {
         if (sLiquidationReadyCollaterals [_borrower].length < 1)
             revert BorrowerDoesNotHaveLiquidationReadyCollateral(_borrower);
         _;
     }
+
+    modifier only_facade_contract(address _sender) {
+        if (_sender != facadeContractAddress) {
+            revert OnlyILendContractCanAccessThisFunction (_sender, facadeContractAddress);
+        }
+        _;
+    }
+
+    modifier only_monitor_contract(address _sender) {
+        if (_sender != monitorContractAddress) {
+            revert OnlyMonitorContractCanAccessThisFunction (_sender, monitorContractAddress);
+        }
+        _;
+    }
+
+    modifier only_owner_contract (address _sender) {
+        if (_sender != iOwnerAddress) {
+            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
+        }
+        _;
+    }
     
+    constructor () {
+        iOwnerAddress = msg.sender;
+    }
+
     /**
      * @notice Registers a collateral as liquidation-ready for a given borrower.
      * @dev Adds the provided `LiquidationReadyCollateral` to multiple tracking structures:
@@ -44,7 +76,8 @@ contract LiquidationRegistry {
         address _borrower,
         LiquidationReadyCollateral memory _collateral
     ) 
-    public {
+    external
+    only_monitor_contract (msg.sender) {
         sLiquidationReadyCollaterals [_borrower].push (_collateral);
         sLiquidationReadyList.push (_borrower);
         sLiquidationReadyBorrower2LoanIDs [_borrower].push (_collateral.cv.loanID);
@@ -64,7 +97,8 @@ contract LiquidationRegistry {
      */
 
     function reset_liquidation_ready_collaterals () 
-    public {
+    external
+    only_monitor_contract (msg.sender) {
         for (uint256 i=0; i< sLiquidationReadyList.length; i++) {
             address cAddress = sLiquidationReadyList [i];
             uint256[] storage loanIDs = sLiquidationReadyBorrower2LoanIDs[cAddress];
@@ -103,8 +137,9 @@ contract LiquidationRegistry {
     (
         address _borrower
     ) 
-    external view 
-    _borrowerExists (_borrower)
+    external 
+    view 
+    borrower_exists (_borrower)
     returns (LiquidationReadyCollateral [] memory) {
         return sLiquidationReadyCollaterals [_borrower];
     }
@@ -118,10 +153,15 @@ contract LiquidationRegistry {
      * @return A `LiquidationReadyCollateral` struct containing detailed liquidation information for the loan.
      */
 
-    function get_liquidation_collateral ( address _borrower,
-        uint256 _loanID) 
-    external view
-    _borrowerExists (_borrower) returns (LiquidationReadyCollateral memory){
+    function get_liquidation_collateral 
+    ( 
+        address _borrower,
+        uint256 _loanID
+    ) 
+    public 
+    view
+    borrower_exists (_borrower) 
+    returns (LiquidationReadyCollateral memory){
         LiquidationReadyCollateralLoanIDMap storage col = sAddressToLoanIDToCollateral [_borrower];
         return col.map [_loanID];
     }
@@ -134,14 +174,47 @@ contract LiquidationRegistry {
      * @return An array of loan IDs that are ready for liquidation.
      */
     function get_liquidation_ready_loanIDs 
-    (address _borrower) 
-    external view
-    _borrowerExists (_borrower)
+    (
+        address _borrower
+    ) 
+    external 
+    view
+    borrower_exists (_borrower)
     returns (uint256 [] memory) {
         return sLiquidationReadyBorrower2LoanIDs [_borrower];
     }
 
-    function register_caller_contracts (iLend _iLend) external {
-        facadeContract = _iLend;
+    function register_caller_contracts 
+    (
+        address _iLendAddress, 
+        address _monitorAddress
+    ) 
+    external
+    only_owner_contract (msg.sender) {
+        facadeContractAddress = _iLendAddress;
+        monitorContractAddress = _monitorAddress;
     }
+
+     /**
+     * @notice Updates the liquidation status of a specific collateral entry.
+     * @dev Fetches the `LiquidationReadyCollateral` from the registry and attempts to update 
+     * its `yetToBeLiquidated` field. However, since `col` is retrieved as memory, this update 
+     * does not persist. This function currently has **no effect** on the actual stored data.
+     * To persist changes, the function must modify storage directly.
+     * @param _borrower The address of the borrower whose collateral is being updated.
+     * @param _loanID The loan ID associated with the collateral.
+     * @param _status The new liquidation status to be set (`true` if still pending liquidation, `false` otherwise).
+     */
+
+    function set_liquidated_status 
+    (
+        address _borrower,
+        uint256 _loanID,
+        bool _status
+    )
+    external
+    only_facade_contract (msg.sender) {
+        LiquidationReadyCollateralLoanIDMap storage col = sAddressToLoanIDToCollateral [_borrower];
+        col.map [_loanID].yetToBeLiquidated = _status;
+    }   
 }

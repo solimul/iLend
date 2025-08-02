@@ -3,7 +3,6 @@ pragma solidity ^0.8.29;
 
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ProtocolRewardInfo, Fee, MiscFundRecievedInfo} from "../shared/SharedStructures.sol";
-import {Transaction} from "../misc/Transcation.sol";
 import {iLend} from "../ILend.sol";
 
 
@@ -16,27 +15,45 @@ contract Treasury {
 
     error OnlyTreasuryOwnerCanAccess (address user, address iTreasuryOwner);
     error TreasuryHasInsufficientBalance (uint256 requested, uint256 available);
+    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
+    error OnlyPaybackContractCanAccessThisFunction (address sender, address paybackContractAddress);
+    error OnlyILendContractCanAccessThisFunction (address sender, address facadeContractAddress);
 
-    address public immutable iTreasuryOwner;
+
     ProtocolRewardInfo [] sProtocolRewardRecords;
     Fee [] sDepositFees;
 
-    iLend private facadeContract;
 
     
-    modifier only_owner 
-    (
-        address _user
-    ){
-        if (_user != iTreasuryOwner) {
-            revert OnlyTreasuryOwnerCanAccess (_user, iTreasuryOwner);
+    address private facadeContractAddress;
+    address private immutable iOwnerAddress;
+    address private paybackContractAddress;
+
+
+    modifier only_owner_contract (address _sender) {
+        if (_sender != iOwnerAddress) {
+            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
+        }
+        _;
+    }
+
+    modifier only_facade_contract(address _sender) {
+        if (_sender != facadeContractAddress) {
+            revert OnlyILendContractCanAccessThisFunction (_sender, facadeContractAddress);
+        }
+        _;
+    }
+
+    modifier only_payback_contract (address _sender) {
+        if (_sender != paybackContractAddress) {
+            revert OnlyPaybackContractCanAccessThisFunction (_sender, paybackContractAddress);
         }
         _;
     }
 
 
     constructor () {
-        iTreasuryOwner = msg.sender;
+        iOwnerAddress = msg.sender;
     }
 
     receive() external payable {
@@ -53,7 +70,7 @@ contract Treasury {
         uint256 _amount
     ) 
     external 
-    only_owner (_to) {
+    only_owner_contract (msg.sender) {
         if (address(this).balance < _amount){
             revert TreasuryHasInsufficientBalance (_amount, address(this).balance);
         }
@@ -67,7 +84,7 @@ contract Treasury {
         uint256 amount
     ) 
     external 
-    only_owner (msg.sender) {
+    only_owner_contract (msg.sender) {
         require(address(this).balance >= amount, "Insufficient native ETH balance");
         to.transfer(amount);
         emit NativeETHWithdrawn(to, amount);
@@ -79,7 +96,8 @@ contract Treasury {
         address _from, 
         uint256 _loanID
     ) 
-    public 
+    external 
+    only_payback_contract (msg.sender)
     {
         sProtocolRewardRecords.push (ProtocolRewardInfo ({
             amount : _amount,
@@ -104,11 +122,18 @@ contract Treasury {
     }
 
     function get_treasury_address () external view returns (address) {
-        return iTreasuryOwner;
+        return iOwnerAddress;
     }
 
-    function register_caller_contracts (iLend _iLend) external {
-        facadeContract = _iLend;
+   function register_caller_contracts 
+    (
+        address _iLendAddress, 
+        address _paybackAddress
+    ) 
+    external 
+    only_owner_contract (msg.sender){
+        facadeContractAddress = _iLendAddress;
+        paybackContractAddress = _paybackAddress;
     }
 
     function update_fees_for_deposit 
@@ -116,7 +141,8 @@ contract Treasury {
         address _depositor, 
         uint256 _fees    
     ) 
-    public {
+    external
+    only_facade_contract (msg.sender) {
         sDepositFees.push 
         (
           Fee 

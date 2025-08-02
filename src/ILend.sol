@@ -132,8 +132,8 @@ contract iLend {
     LiquidationRegistry private iLiquidationRegistry;
     LiquidationEngine private iLiquidationEngine;
 
-    address private iUSDCContractAddress;
-    address private iETHContractAddress;
+    address public iUSDCContractAddress;
+    address public iETHContractAddress;
 
     uint256 private constant HUNDRED = 100;
 
@@ -615,7 +615,7 @@ contract iLend {
             revert BalanceMismatchAfterOutgoingETHTransferToLiquidator ();
         }
 
-        iLiquidationEngine.set_liquidated_status(_borrower, _loanID, true);
+        iLiquidationRegistry.set_liquidated_status(_borrower, _loanID, true);
 
         emit LiquidationUSDCReceived(
             msg.sender,

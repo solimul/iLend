@@ -11,6 +11,7 @@ import {iLend} from "../ILend.sol";
 contract Payback {
     
     error BorrowerDoesNotExist(address borrowerAddress);
+
     error RemainingAmountNotZeroAfterRepayment(
         address borrowerAddress, 
         uint256 loanID, 
@@ -58,13 +59,48 @@ contract Payback {
         uint256 oldBalance
     );
 
+    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
+    error OnlyILendContractCanAccessThisFunction (address sender, address owner);
+
     Borrow immutable private iBorrow;
     Deposit immutable private iDeposit;
     Treasury immutable private iTreasury;
     IERC20 immutable private iUSDC;
 
-    iLend private facadeContract;
+   address private facadeContractAddress;
+   address private immutable iOwnerAddress;
 
+    modifier only_owner_contract (address _sender) {
+        if (_sender != iOwnerAddress) {
+            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
+        }
+        _;
+    }
+
+    modifier only_facade_contract(address _sender) {
+        if (_sender != facadeContractAddress) {
+            revert OnlyILendContractCanAccessThisFunction (_sender, facadeContractAddress);
+        }
+        _;
+    }
+
+    /**
+     * @notice Ensures that the provided address belongs to an existing borrower.
+     * @dev Checks the existence of a borrower using the `iBorrow` contract. Reverts with 
+     * `BorrowerDoesNotExist` if the borrower is not registered.
+     * @param _borrowerAddress The address to verify as an existing borrower.
+    */
+
+
+    modifier only_existing_borrower
+    (
+        address _borrowerAddress
+    ) {
+        if (iBorrow.borrower_exists(_borrowerAddress) == false) {
+            revert BorrowerDoesNotExist(_borrowerAddress);
+        }
+        _;
+    }
 
     
     /**
@@ -89,25 +125,10 @@ contract Payback {
         iDeposit = Deposit (_dAddress);       
         iTreasury = Treasury (payable (_tAddress));
         iUSDC = IERC20 (_usdc);
+        iOwnerAddress = msg.sender;
     }
 
-    /**
-     * @notice Ensures that the provided address belongs to an existing borrower.
-     * @dev Checks the existence of a borrower using the `iBorrow` contract. Reverts with 
-     * `BorrowerDoesNotExist` if the borrower is not registered.
-     * @param _borrowerAddress The address to verify as an existing borrower.
-     */
-
-
-    modifier only_existing_borrower
-    (
-        address _borrowerAddress
-    ) {
-        if (iBorrow.borrower_exists(_borrowerAddress) == false) {
-            revert BorrowerDoesNotExist(_borrowerAddress);
-        }
-        _;
-    }
+   
 
     /**
      * @notice Updates the principal payback record for a specific deposit account.
@@ -124,7 +145,7 @@ contract Payback {
         address _funderAddress, 
         uint256 _id
     ) 
-    public 
+    internal 
     returns (uint256) {
         uint256 lentOutAmount = iDeposit.get_lentout_amount (_funderAddress, _id);
         uint256 old = iDeposit.get_usdc_balance();
@@ -294,6 +315,7 @@ contract Payback {
         uint256 amount
     ) 
     external 
+    only_facade_contract (msg.sender)
     only_existing_borrower(_borrowersAddress)
     returns (RepaymentComponent memory) {
         RepaymentComponent memory rep = iBorrow.calculate_repayment_components (_borrowersAddress, loanID);
@@ -335,8 +357,13 @@ contract Payback {
         return rep;
     }
 
-    function register_caller_contracts (iLend _iLend) external {
-        facadeContract = _iLend;
+    function register_caller_contracts 
+    (
+        address _iLendAddress
+    ) 
+    external
+    only_owner_contract (msg.sender) {
+        facadeContractAddress = _iLendAddress;
     }
 }
 

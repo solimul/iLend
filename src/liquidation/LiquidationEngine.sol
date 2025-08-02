@@ -7,8 +7,9 @@ import {Collateral} from "../collateral/Collateral.sol";
 import {Deposit} from "../deposit/Deposit.sol";
 import {Liquidator, LiquidationRecord, LiquidationReadyCollateralLoanIDMap} from "../shared/SharedStructures.sol";
 
-import {Transaction} from "../misc/Transcation.sol";
 import {iLend} from "../ILend.sol";
+import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 
 contract LiquidationEngine {
 
@@ -56,18 +57,33 @@ contract LiquidationEngine {
         uint256 requiredETH
     );
 
- 
+    error OnlyILendContractCanAccessThisFunction (address sender, address ilend);
+    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
 
     LiquidationRegistry private immutable iLiqReg;
     Collateral private immutable  iCollateral;
     Deposit private immutable iDeposit;
-    Transaction private immutable iTransaction;
     uint256 private constant HUNDRED = 100;
 
     address [] iLiquidatorsList;
     mapping (address => Liquidator) iLiquidatorsMap;
-    iLend private facadeContract;
+    address private facadeContractAddress;
+    IERC20 private usdcToken;
+    address private immutable iOwnerAddress;
 
+    modifier only_facade_contract(address _sender) {
+        if (_sender != facadeContractAddress) {
+            revert OnlyILendContractCanAccessThisFunction (_sender, facadeContractAddress);
+        }
+        _;
+    }
+
+    modifier only_owner_contract (address _sender) {
+        if (_sender != iOwnerAddress) {
+            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
+        }
+        _;
+    }
 
     /**
      * @notice Initializes the LiquidationEngine contract with required component contract addresses.
@@ -77,17 +93,17 @@ contract LiquidationEngine {
      * @param _liquidationRegistryAddress The address of the LiquidationRegistry contract.
      * @param _collateralAddress The address of the Collateral contract.
      * @param _depositAddress The address of the Deposit contract.
-     * @param _transactionAddress The address of the Transaction contract responsible for safe transfers.
      */
 
     constructor (address _liquidationRegistryAddress,
         address _collateralAddress,
         address _depositAddress,
-        address _transactionAddress) {
+        address _usdcAddress) {
         iLiqReg = LiquidationRegistry (_liquidationRegistryAddress);
         iCollateral = Collateral (_collateralAddress);
         iDeposit = Deposit (_depositAddress);
-        iTransaction = Transaction (_transactionAddress);
+        usdcToken = IERC20 (_usdcAddress);
+        iOwnerAddress = msg.sender;
     }
 
     /**
@@ -105,13 +121,14 @@ contract LiquidationEngine {
      */
 
 
-    function quote_liquidation (address _borrower, 
-        uint256 _loanID) 
-    public view returns 
+    function quote_liquidation 
     (
-        uint256 shortFallUSDC, 
-        uint256 ethToReceive
-    ) {
+        address _borrower, 
+        uint256 _loanID
+    ) 
+    public 
+    view 
+    returns (uint256 shortFallUSDC, uint256 ethToReceive) {
         LiquidationReadyCollateral memory col = iLiqReg.get_liquidation_collateral(_borrower, _loanID);
         shortFallUSDC = col.shortFallUSDC;
         uint256 bonus = HUNDRED + col.discountRate;
@@ -142,11 +159,14 @@ contract LiquidationEngine {
      * @param _ethRecieved The amount of discounted ETH received by the liquidator.
      */
 
-    function update_liquidation_records ( address _liquidator,
+    function update_liquidation_records 
+    ( 
+        address _liquidator,
         address _borrower,
         uint256 _loanID,
         uint256 _usdcAmount,
-        uint256 _ethRecieved) 
+        uint256 _ethRecieved
+    ) 
     internal {
         Liquidator storage liquidatorInfo = iLiquidatorsMap [_liquidator];
 
@@ -184,11 +204,15 @@ contract LiquidationEngine {
      */
 
 
-    function update_on_liquidation_deposit ( address _liquidator,
+    function update_on_liquidation_deposit 
+    (
+        address _liquidator,
         address _borrower,
         uint256 _loanID,
-        uint256 _usdcAmount) 
-    public
+        uint256 _usdcAmount
+    ) 
+    external 
+    only_facade_contract (msg.sender)
     returns (uint256)
     {
         (uint256 shortFallUSDC, uint256 ethToTransfer) = quote_liquidation (_borrower, _loanID);
@@ -200,11 +224,12 @@ contract LiquidationEngine {
                 _usdcAmount, 
                 shortFallUSDC
             );
-        if (_usdcAmount < iTransaction.get_balance ("USDC",_liquidator))
+        uint256 lBalance = usdcToken.balanceOf (address (_liquidator));
+        if (_usdcAmount < lBalance)
             revert LiquidatorDoesNotHaveEnoughUSDC(
                 _liquidator, 
                 _usdcAmount, 
-                iTransaction.get_balance ("USDC",_liquidator)
+                lBalance
             );
         uint256 collateralETH = iCollateral.get_collateral_ETH_by_record (_borrower, _loanID);
         if (ethToTransfer > collateralETH)
@@ -256,29 +281,12 @@ contract LiquidationEngine {
         return col.yetToBeLiquidated;
     }
 
-    /**
-     * @notice Updates the liquidation status of a specific collateral entry.
-     * @dev Fetches the `LiquidationReadyCollateral` from the registry and attempts to update 
-     * its `yetToBeLiquidated` field. However, since `col` is retrieved as memory, this update 
-     * does not persist. This function currently has **no effect** on the actual stored data.
-     * To persist changes, the function must modify storage directly.
-     * @param _borrower The address of the borrower whose collateral is being updated.
-     * @param _loanID The loan ID associated with the collateral.
-     * @param _status The new liquidation status to be set (`true` if still pending liquidation, `false` otherwise).
-     */
-
-    function set_liquidated_status 
+    function register_caller_contracts 
     (
-        address _borrower,
-        uint256 _loanID,
-        bool _status
-    )
-    public {
-        LiquidationReadyCollateral memory col = iLiqReg.get_liquidation_collateral(_borrower, _loanID);
-        col.yetToBeLiquidated = _status;
-    }   
-
-    function register_caller_contracts (iLend _iLend) external {
-        facadeContract = _iLend;
+        address _iLendContractAddress
+    ) 
+    external
+    only_owner_contract (msg.sender) {
+        facadeContractAddress = _iLendContractAddress;
     }
 }

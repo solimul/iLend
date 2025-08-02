@@ -8,10 +8,8 @@ import {Collateral} from "../collateral/Collateral.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Lender, InterestEarned} from "../shared/SharedStructures.sol";
-import {ProtocolReward} from "../misc/ProtocolReward.sol";
 import {Treasury} from "../treasury/Treasury.sol";
 import {RepaymentComponent, BorrowRecord, BorrowerRecord} from "../shared/SharedStructures.sol";
-import {Transaction} from "../misc/Transcation.sol";
 import {iLend} from "../ILend.sol";
 import {console} from "../../lib/forge-std/src/Script.sol";
 
@@ -67,7 +65,6 @@ contract Borrow {
     Deposit private depositPool;
     Collateral private collateralPool;
     Treasury private treasury;
-    Transaction private transaction;
 
     
     IERC20 private usdcContract;
@@ -146,15 +143,14 @@ contract Borrow {
             address _priceFeedAddress, 
             address _depositContractAddress, 
             address _collateralContractAddress,
-            address _usdcContractAddress,
-            address _tAddress) {
+            address _usdcContractAddress
+    ) {
         // Initialize any necessary parameters or state variables
         params = Params (_paramsAddress);
         depositPool = Deposit (_depositContractAddress);
         collateralPool = Collateral (_collateralContractAddress);
         priceFeed = AggregatorV3Interface (_priceFeedAddress);
         usdcContract = IERC20(_usdcContractAddress);
-        transaction = Transaction (_tAddress);
         iOwnerAddress = msg.sender;
 
         //payable, because Treasury implements fallback

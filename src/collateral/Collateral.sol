@@ -9,7 +9,6 @@ import {CollateralView,
         CollateralDepositRecord,
         CollateralDepositor,
         DepletedCollateral} from "../shared/SharedStructures.sol";
-import {Transaction} from "../misc/Transcation.sol";
 import {PriceConverterLib} from "../lib/PriceConverterLib.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -49,7 +48,6 @@ contract Collateral {
 
     Params private params;
     Borrow private borrow;
-    Transaction private transaction;
     LiquidationEngine private liquidationEngine;
     AggregatorV3Interface private pricefeed;
   
@@ -63,10 +61,8 @@ contract Collateral {
 
     constructor(address _paramsAddress, 
                 address _priceFeedAddress, 
-                address _tAddress,
                 address _ethContractAddress) {
         params = Params (_paramsAddress);
-        transaction = Transaction (_tAddress);
         pricefeed = AggregatorV3Interface (_priceFeedAddress);
         ethContract = IERC20(_ethContractAddress);
         iOwnerAddress = msg.sender;
