@@ -399,14 +399,14 @@ contract iLend {
     (
         uint256 _amount
     ) external {
-        if (sTesting == false)
+        if (sTesting == true)
             _deposit_collateral (msg.sender, _amount);
         else 
             revert ExternalAccessNotAllowed ();
     }
 
     function borrow_usdc () external returns (uint256 borrowAmount){
-        if (sTesting == false)
+        if (sTesting == true)
                 borrowAmount = _borrow_usdc (msg.sender);
         else
             revert ExternalAccessNotAllowed ();

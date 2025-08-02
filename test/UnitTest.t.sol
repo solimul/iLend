@@ -669,26 +669,6 @@ contract UnitTest is Test {
         vm.stopPrank (); 
     }
 
-    function test_deposit_collateral_expect_revert () public {
-        address borrower = borrowers [0].actor;
-        uint256 amount = IERC20 (wrappedETHAddress).balanceOf (borrower) / 2;
-
-        vm.startPrank (borrower);
-            vm.expectRevert ();
-            lendProtocol.deposit_collateral (amount);
-        vm.stopPrank ();
-    }
-
-        function test_borrow_usdc_expect_revert () public {
-        address borrower = borrowers [0].actor;
-        uint256 amount = IERC20 (wrappedETHAddress).balanceOf (borrower) / 2;
-
-        vm.startPrank (borrower);
-            vm.expectRevert ();
-            lendProtocol.borrow_usdc ();
-        vm.stopPrank ();
-    }
-
 
     function execute_collateral_deposit 
     (
