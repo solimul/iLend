@@ -74,7 +74,7 @@ contract Monitor is KeeperCompatibleInterface {
             address _iLendAddress,
             address _liquidationQuryAddress) {
         iPriceFeed = AggregatorV3Interface (_priceFeedAddress);
-        sLastETHPrice = iPriceFeed.getPrice ();
+        sLastETHPrice = iPriceFeed.get_price ();
         iCollateral = Collateral (_collateral);
         iLendAddress = _iLendAddress;
         iParams = Params (_paramsAddress);
@@ -101,7 +101,7 @@ contract Monitor is KeeperCompatibleInterface {
     override
     returns (bool upkeepNeeded, bytes memory /*performData*/) {
         upkeepNeeded = false;
-        uint256 currentETHPrice = iPriceFeed.getPrice();
+        uint256 currentETHPrice = iPriceFeed.get_price();
         int256 priceDiff = int256 (currentETHPrice - sLastETHPrice);
         if (priceDiff < 0){
             uint256 absPriceDiff = uint256 (priceDiff * (-1));
@@ -141,7 +141,7 @@ contract Monitor is KeeperCompatibleInterface {
                 CollateralView memory cv = depletedCollaterals [j];
                 uint256 lqTh = iParams.getLiquidationThreshold ();
                 uint256 discountRate = iParams.getLiquidationDiscountRate ();
-                uint256 currentRate = iPriceFeed.getPrice ();
+                uint256 currentRate = iPriceFeed.get_price ();
 
                 uint256 currentCollateralValue = currentRate * cv.depositAmount * HUNDRED;
                 uint256 currentValueToBorrow = currentCollateralValue / cv.totalUSDCBorrowed; 

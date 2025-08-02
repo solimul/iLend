@@ -15,7 +15,6 @@ import {Lender,
         Depositor} 
         from "../shared/SharedStructures.sol";
 import {Transaction} from "../misc/Transcation.sol";
-import {InvariantsLib} from "../lib/InvariantsLib.sol";
 import {Collateral} from "../collateral/Collateral.sol";
 
 /** 

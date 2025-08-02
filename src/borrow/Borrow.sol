@@ -283,7 +283,7 @@ contract Borrow {
             if (!collateralPool.is_collateral_available(_borrowerAddress, i)){ 
                 uint256 collateralL2B = collateralPool.get_collateralL2B_by_record(_borrowerAddress, i);
                 uint256 collateralETH = collateralPool.get_collateral_ETH_by_record (_borrowerAddress, i);
-                uint256 collateralETHToUSDC = collateralETH.ethToUSD(priceFeed);
+                uint256 collateralETHToUSDC = collateralETH.eth_to_USDC(priceFeed);
                 uint256 adjustedUsdcValue = (collateralETHToUSDC * collateralL2B) / 100;
                 usdcValue += adjustedUsdcValue;
             }
@@ -302,8 +302,8 @@ contract Borrow {
     returns (uint256) {
         uint256 collateralL2B = collateralPool.get_collateralL2B_by_record(_borrowerAddress, _correspondingColletaralID);
         uint256 collateralETH = collateralPool.get_collateral_ETH_by_record (_borrowerAddress, _correspondingColletaralID);
-        collateralETH = collateralETH.convertWEIToETH(); // WEI to Ether
-        uint256 collateralETHToUSDC = collateralETH.ethToUSDWEI(priceFeed);
+        collateralETH = collateralETH.convert_WEI_to_ETH(); // WEI to Ether
+        uint256 collateralETHToUSDC = collateralETH.eth_to_USD_WEI(priceFeed);
         return (collateralETHToUSDC * collateralL2B) / 100; // Adjust based on your L2B logic
     }
 

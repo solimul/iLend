@@ -246,7 +246,7 @@ contract Collateral {
                     depositAmount: record.amount,
                     depositDate: record.depositTime,
                     hasBorrowedAgainst: record.hasBorrowedAgainst,
-                    rate: pricefeed.getPrice (),
+                    rate: pricefeed.get_price (),
                     l2b: record.l2b,
                     totalUSDCBorrowed: borrow.get_borrowed_amount (_depositor, i),
                     totalCollateralDepost: collateralDepositor.totalAmount,
@@ -272,7 +272,7 @@ contract Collateral {
         uint256 n = depositor.depositCounts;
         CollateralView [] memory cViews = get_collateral_depositor_info (_depositor);
         uint256 cnt = 0;
-        uint256 currentRate = pricefeed.getPrice();
+        uint256 currentRate = pricefeed.get_price();
         uint256 lqThreshold = params.getLiquidationThreshold ();
 
         for (uint256 i=0; i < n; i++){

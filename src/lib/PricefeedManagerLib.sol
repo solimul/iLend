@@ -25,6 +25,9 @@ library PricefeedManagerLib {
     uint256 constant MAINNET_CHAIN_ID = 1;
     uint256 constant ANVIL_CHAIN_ID = 31337;
 
+    address constant SEPOLIA_ETH_PRICEFEED = 0x694AA1769357215DE4FAC081bf1f309aDC325306;
+    address constant MAINNET_ETH_PRICEFEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+
 
     function get_price_feed_address () internal returns (address) {
         if (block.chainid == SEPOLIA_CHAIN_ID)
@@ -38,7 +41,7 @@ library PricefeedManagerLib {
     }
 
     function get_sepolia_eth_price_feed () private pure returns (address) {
-        return 0x694AA1769357215DE4FAC081bf1f309aDC325306;
+        return SEPOLIA_ETH_PRICEFEED;
     }
 
     /* 
@@ -62,6 +65,6 @@ library PricefeedManagerLib {
 
     function get_mainnet_eth_price_feed () private pure returns (address) {
         // grab it from https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=6
-        return 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+        return MAINNET_ETH_PRICEFEED;
     }
 }
