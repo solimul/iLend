@@ -1,10 +1,185 @@
-Compiler run failed:
+Compiling 13 files with Solc 0.8.29
+Solc 0.8.29 finished in 10.45s
+Compiler run successful with warnings:
 Warning (3420): Source file does not specify required compiler version! Consider adding "pragma solidity ^0.8.29;"
 --> src/lib/RevertLib.sol
 
-Error (7576): Undeclared identifier. Did you mean "_paybackAddress"?
-   --> src/deposit/Deposit.sol:619:9:
+Warning (6321): Unnamed return variable can remain unassigned. Add an explicit return with value to all non-reverting code paths or name the variable.
+   --> src/liquidation/Monitor.sol:102:33:
     |
-619 |         paybackAddress = _paybackAddress;
-    |         ^^^^^^^^^^^^^^
+102 |     returns (bool upkeepNeeded, bytes memory /*performData*/) {
+    |                                 ^^^^^^^^^^^^
 
+Warning (2018): Function state mutability can be restricted to view
+   --> src/borrow/Borrow.sol:357:5:
+    |
+357 |     function test_get_borrower_record_attributes
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> src/liquidation/LiquidationEngine.sol:270:5:
+    |
+270 |     function set_liquidated_status 
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> src/collateral/Collateral.sol:360:5:
+    |
+360 |     function is_collateral_deposted 
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 18 tests for test/UnitTest.t.sol:UnitTest
+[PASS] test_borrow_balance_change() (gas: 2336873)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_borrow_state_update_multiple() (gas: 5698885)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_borrow_state_update_single() (gas: 2327643)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_collateral_balance_change() (gas: 1866901)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_collateral_counts_consistency() (gas: 1225745)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+  borrower : 0  record:  0
+  borrower : 0  record:  1
+  borrower : 0  record:  2
+  borrower : 1  record:  0
+  borrower : 1  record:  1
+  borrower : 1  record:  2
+  borrower : 2  record:  0
+  borrower : 2  record:  1
+  borrower : 2  record:  2
+
+[PASS] test_collateral_record_state_change_multiple() (gas: 1219598)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+  borrower : 0  record:  0
+  borrower : 0  record:  1
+  borrower : 0  record:  2
+  borrower : 1  record:  0
+  borrower : 1  record:  1
+  borrower : 1  record:  2
+  borrower : 2  record:  0
+  borrower : 2  record:  1
+  borrower : 2  record:  2
+
+[PASS] test_collateral_state_change_on_deposit() (gas: 1867410)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_deposit_balance_change() (gas: 430907)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_deposit_balance_change_all_funders() (gas: 1584934)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_deposit_collateral_no_balance_expect_revert() (gas: 113048)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_deposit_collateral_too_much_balance_expect_revert() (gas: 150136)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_deposit_record_multiple() (gas: 2140667)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_deposit_record_single() (gas: 432325)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_deposit_state_multi_funders() (gas: 1481725)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_deposit_state_multiple() (gas: 2187317)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+  Iteration 0
+    ta  0 : 5000000000
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  false : true
+    dc  0 : 1
+  Iteration 1
+    ta  5000000000 : 7500000000
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  1 : 2
+  Iteration 2
+    ta  7500000000 : 8750000000
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  2 : 3
+  Iteration 3
+    ta  8750000000 : 9375000000
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  3 : 4
+  Iteration 4
+    ta  9375000000 : 9687500000
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  4 : 5
+  Iteration 5
+    ta  9687500000 : 9843750000
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  5 : 6
+  Iteration 6
+    ta  9843750000 : 9921875000
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  6 : 7
+  Iteration 7
+    ta  9921875000 : 9960937500
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  7 : 8
+  Iteration 8
+    ta  9960937500 : 9980468750
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  8 : 9
+  Iteration 9
+    ta  9980468750 : 9990234375
+    iwr 0 : 0
+    pwr 0 : 0
+    ia  true : true
+    dc  9 : 10
+
+[PASS] test_deposit_state_single() (gas: 435796)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_init_borrower_balances() (gas: 76179)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+[PASS] test_init_funder_balances() (gas: 75724)
+Logs:
+  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
+
+Suite result: ok. 18 passed; 0 failed; 0 skipped; finished in 31.03ms (67.06ms CPU time)
+
+Ran 1 test suite in 91.43ms (31.03ms CPU time): 18 tests passed, 0 failed, 0 skipped (18 total tests)
