@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.29;
+pragma solidity 0.8.30;
 
 import {KeeperCompatibleInterface} from "../../lib/chainlink-brownie-contracts/contracts/src/v0.8/automation/interfaces/KeeperCompatibleInterface.sol";
 import {PriceConverterLib} from "../lib/PriceConverterLib.sol";

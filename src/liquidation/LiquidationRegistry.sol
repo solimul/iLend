@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.29;
+pragma solidity 0.8.30;
 import {LiquidationReadyCollateral, LiquidationReadyCollateralLoanIDMap} from "../shared/SharedStructures.sol";
 import {iLend} from "../ILend.sol";
 

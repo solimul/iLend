@@ -1,5 +1,5 @@
 //SPDX-License-Idetifier:MIT
-pragma solidity ^0.8.18;
+pragma solidity 0.8.30;
 
 /*
 1. Deploy a mock price feed (local Anvil chain):

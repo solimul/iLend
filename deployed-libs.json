@@ -1,0 +1,6 @@
+{
+  "PricefeedManagerLib": "0xcbaDbEacD48bc4EC28B7357050A127692E6d8A8D",
+  "PriceConverterLib": "0xeF1056dc10Cb1DAFacB6D73850611030a19B403E",
+  "RevertLib": "0xe04735d7fDCfa1e4De8C2D07Ce81763e89574633",
+  "NetworkConfigLib": "0x90bB10BE20b2375BB2eC3D337b569A37b3c5c8FB"
+}

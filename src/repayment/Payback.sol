@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.29;
+pragma solidity 0.8.30;
 import {Borrow} from "../borrow/Borrow.sol";
 import {Deposit} from "../deposit/Deposit.sol";
 import {Treasury} from "../treasury/Treasury.sol";

@@ -1,3 +1,5 @@
+//SPDX-License-Idetifier:MIT
+pragma solidity 0.8.30;
 library RevertLib {
     /// @notice Reverts execution, returning `payload` as the revert data
     /// @param _payload ABI‐encoded selector+arguments

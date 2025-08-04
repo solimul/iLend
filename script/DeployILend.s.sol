@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.29;
+pragma solidity 0.8.30;
 
 import {Script} from "forge-std/Script.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
@@ -33,8 +33,10 @@ import "../src/treasury/Treasury.sol";
 // Shared interface
 import {iLend} from "../src/ILend.sol";
 
+import {RevertLib} from "../src/lib/RevertLib.sol";
+import {PricefeedManagerLib} from "../src/lib/PricefeedManagerLib.sol";
 import {PriceConverterLib} from "../src/lib/PriceConverterLib.sol";
-
+import {NetworkConfigLib} from "../src/lib/NetworkConfigLib.sol";
 
 /**
   + running in anvil
@@ -57,6 +59,11 @@ import {PriceConverterLib} from "../src/lib/PriceConverterLib.sol";
 
  */
 contract DeployILend is Script { 
+
+    using RevertLib for uint256;
+    using PriceConverterLib for uint256;
+    using PricefeedManagerLib for AggregatorV3Interface;
+
 
     error UnsupportedNetwork ();
 
@@ -106,6 +113,7 @@ contract DeployILend is Script {
         uint256 deployerPrivateKey = get_private_key ();
         vm.startBroadcast (deployerPrivateKey);
             params = new Params(false, false, false);
+            vm.label(address(params), "Params");
             set_params();
 
             priceFeed = AggregatorV3Interface(PricefeedManagerLib.get_price_feed_address());
@@ -114,25 +122,35 @@ contract DeployILend is Script {
 
 
             treasury = new Treasury();
+            vm.label(address(treasury), "Treasury");
+
             address trAddress = address(treasury);
             address pAddress = address(params);
             address pfAddress = address(priceFeed);
 
             collateral = new Collateral(pAddress, pfAddress, wrappedETHAddress);
+            vm.label(address(collateral), "Collateral");
+
             address colAddress = address(collateral);
 
             deposit = new Deposit(pAddress, usdcAddress, colAddress);
+            vm.label(address(deposit), "Deposit");
+
             address depAddress = address(deposit);
 
             borrow = new Borrow(pAddress, pfAddress, depAddress, colAddress, usdcAddress);
+            vm.label(address(borrow), "Borrow");
             address borrowAddress = address(borrow);
 
             payback = new Payback(borrowAddress, depAddress, trAddress, usdcAddress);
+            vm.label(address(payback), "Payback");
 
             liquidationRegistry = new LiquidationRegistry();
             address liqRegAddress = address(liquidationRegistry);
 
             monitor = new Monitor(pAddress, pfAddress, colAddress, address(this), liqRegAddress);
+            vm.label(address(monitor), "Monitor");
+
 
             liquidationEngine = new LiquidationEngine(liqRegAddress, colAddress, depAddress,usdcAddress);
 
@@ -155,6 +173,17 @@ contract DeployILend is Script {
                 liqEngineAddress,
                 false
             );
+            vm.label(address(lendProtocol), "iLend");
+            console.log("Deployed Params at:", address(params));
+            console.log("Deployed Treasury at:", address(treasury));
+            console.log("Deployed Collateral at:", address(collateral));
+            console.log("Deployed Deposit at:", address(deposit));
+            console.log("Deployed Borrow at:", address(borrow));
+            console.log("Deployed Payback at:", address(payback));
+            console.log("Deployed LiquidationRegistry at:", address(liquidationRegistry));
+            console.log("Deployed Monitor at:", address(monitor));
+            console.log("Deployed LiquidationEngine at:", address(liquidationEngine));
+            console.log("Deployed iLend (Facade Contract) at:", address(lendProtocol));
             register_caller_contracts ();
         vm.stopBroadcast ();
 

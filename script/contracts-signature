@@ -1,0 +1,10 @@
+Params               ()
+Deposit              (Params, USDC, Collateral)
+Collateral           (Params, PriceFeed, ETH)
+Borrow               (Params, PriceFeed, Deposit, Collateral, Deposit, USDC)
+Monitor              (Params, PriceFeed, Collateral, Payback, Deposit, Borrow, Collateral, LiquidationRegistry, LiquidationEngine)
+LiquidationRegistry  ()
+LiquidationEngine    (LiquidationRegistry, Monitor, Collateral, Treasury)
+Payback              (Params, Borrow, Collateral, Deposit, Treasury)
+Treasury             (Params, USDC)
+pAddress, pfAddress, colAddress, address(this), liqRegAddress
