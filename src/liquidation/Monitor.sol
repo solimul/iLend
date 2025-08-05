@@ -30,7 +30,6 @@ contract Monitor is KeeperCompatibleInterface {
         @param eventDateTime            Time when the event was created.
     */
     event LiquidationOpportunity(
-        address indexed protocol,
         address indexed borrower,
         uint256 indexed loanID,
         uint256 depositAmount,
@@ -52,7 +51,6 @@ contract Monitor is KeeperCompatibleInterface {
     uint256 private sLastETHPrice;
     AggregatorV3Interface private immutable iPriceFeed;
     Collateral private immutable iCollateral;
-    address private immutable iLendAddress;
     Params private immutable iParams;
     LiquidationRegistry private immutable iLiquidationRegistry;
 
@@ -73,7 +71,6 @@ contract Monitor is KeeperCompatibleInterface {
      * @param _paramsAddress The address of the Params contract containing protocol-level parameters.
      * @param _priceFeedAddress The address of the ETH price feed contract.
      * @param _collateral The address of the Collateral contract used to fetch depositor collateral info.
-     * @param _iLendAddress The address of the main lending contract (used in events).
      * @param _liquidationQuryAddress The address of the LiquidationRegistry contract to store liquidatable collaterals.
      */
 
@@ -81,12 +78,10 @@ contract Monitor is KeeperCompatibleInterface {
     constructor (address _paramsAddress, 
             address _priceFeedAddress, 
             address _collateral, 
-            address _iLendAddress,
             address _liquidationQuryAddress) {
         iPriceFeed = AggregatorV3Interface (_priceFeedAddress);
         sLastETHPrice = iPriceFeed.get_price ();
         iCollateral = Collateral (_collateral);
-        iLendAddress = _iLendAddress;
         iParams = Params (_paramsAddress);
         iLiquidationRegistry = LiquidationRegistry (_liquidationQuryAddress);
         iOwnerAddress = msg.sender;
@@ -178,7 +173,6 @@ contract Monitor is KeeperCompatibleInterface {
 
                 emit LiquidationOpportunity 
                     (
-                        iLendAddress,
                         dAddress,
                         cv.loanID,
                         cv.depositAmount,

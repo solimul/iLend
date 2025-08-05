@@ -1,185 +1,68 @@
-Compiling 13 files with Solc 0.8.29
-Solc 0.8.29 finished in 10.59s
-Compiler run successful with warnings:
-Warning (3420): Source file does not specify required compiler version! Consider adding "pragma solidity ^0.8.29;"
---> src/lib/RevertLib.sol
+Verifying contracts on Sepolia Etherscan...
+bash ./verify.sh TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ 11155111 DeployILend.s.sol 0xc5a4c4c62cfd98df6a0fc08aeb0873d2872c19480941f463ae407f28a5194e9f 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238 0xdd13E55209Fd76AfE204dBda4007C227904f0a81 0x694AA1769357215DE4FAC081bf1f309aDC325306 "Params:" "Treasury:" "Collateral:PriceConverterLib" "Deposit:" "Borrow:PriceConverterLib" "Payback:" "LiquidationRegistry:" "Monitor:PriceConverterLib" "LiquidationEngine:" "iLend:RevertLib"
+Verifying LiquidationEngine...
+xx0xf7f5228a7c39e5026c827e463c8fd194e07ed9d4yy
+pp0xf7f5228a7c39e5026c827e463c8fd194e07ed9d4qq
+Running: forge verify-contract 0xf7f5228a7c39e5026c827e463c8fd194e07ed9d4 src/liquidationengine/LiquidationEngine.sol:LiquidationEngine --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch --constructor-args 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Start verifying contract `0xf7F5228a7C39e5026C827E463c8Fd194E07ED9d4` deployed on sepolia
+Constructor args: 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Verifying Params...
+xx0x05e08bd84ab383427b9d593a11742723b1c2f134yy
+pp0x05e08bd84ab383427b9d593a11742723b1c2f134qq
+Running: forge verify-contract 0x05e08bd84ab383427b9d593a11742723b1c2f134 src/params/Params.sol:Params --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch
+Start verifying contract `0x05E08Bd84Ab383427b9d593a11742723B1c2f134` deployed on sepolia
+Verifying Collateral...
+xx0x8a74294b3ff3f38532b19b3189c696a0451c0ddfyy
+pp0x8a74294b3ff3f38532b19b3189c696a0451c0ddfqq
+Running: forge verify-contract 0x8a74294b3ff3f38532b19b3189c696a0451c0ddf src/collateral/Collateral.sol:Collateral --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch --constructor-args 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134000000000000000000000000694aa1769357215de4fac081bf1f309adc325306000000000000000000000000dd13e55209fd76afe204dbda4007c227904f0a81
+Start verifying contract `0x8a74294B3ff3f38532b19B3189c696a0451C0dDF` deployed on sepolia
+Constructor args: 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134000000000000000000000000694aa1769357215de4fac081bf1f309adc325306000000000000000000000000dd13e55209fd76afe204dbda4007c227904f0a81
 
-Warning (6321): Unnamed return variable can remain unassigned. Add an explicit return with value to all non-reverting code paths or name the variable.
-   --> src/liquidation/Monitor.sol:102:33:
-    |
-102 |     returns (bool upkeepNeeded, bytes memory /*performData*/) {
-    |                                 ^^^^^^^^^^^^
+Contract [src/collateral/Collateral.sol:Collateral] "0x8a74294B3ff3f38532b19B3189c696a0451C0dDF" is already verified. Skipping verification.
+Verifying Treasury...
+xx0xddce14b8e4a0a07c172d11858d8edd4ab9fa9935yy
+pp0xddce14b8e4a0a07c172d11858d8edd4ab9fa9935qq
+Running: forge verify-contract 0xddce14b8e4a0a07c172d11858d8edd4ab9fa9935 src/treasury/Treasury.sol:Treasury --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch
+Start verifying contract `0xDDce14b8e4a0a07c172d11858D8EDD4AB9Fa9935` deployed on sepolia
 
-Warning (2018): Function state mutability can be restricted to view
-   --> src/borrow/Borrow.sol:416:5:
-    |
-416 |     function test_get_borrower_record_attributes
-    |     ^ (Relevant source part starts here and spans across multiple lines).
+Contract [src/treasury/Treasury.sol:Treasury] "0xDDce14b8e4a0a07c172d11858D8EDD4AB9Fa9935" is already verified. Skipping verification.
+Verifying LiquidationRegistry...
+xx0xe3c2a5db512295e12513f0c4b8cdd3199b27b4c7yy
+pp0xe3c2a5db512295e12513f0c4b8cdd3199b27b4c7qq
+Running: forge verify-contract 0xe3c2a5db512295e12513f0c4b8cdd3199b27b4c7 src/liquidationregistry/LiquidationRegistry.sol:LiquidationRegistry --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch --constructor-args 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Start verifying contract `0xE3c2a5db512295e12513F0C4B8CDd3199B27B4c7` deployed on sepolia
+Constructor args: 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Verifying Payback...
+xx0x49a48847e66f52744b9af0067700a4580c968ddfyy
+pp0x49a48847e66f52744b9af0067700a4580c968ddfqq
+Running: forge verify-contract 0x49a48847e66f52744b9af0067700a4580c968ddf src/payback/Payback.sol:Payback --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch --constructor-args 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Start verifying contract `0x49a48847e66f52744b9AF0067700a4580C968DdF` deployed on sepolia
+Constructor args: 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Verifying iLend...
+xx0xcda862d62f52b2fb5839bb80a867697d63d2d415yy
+pp0xcda862d62f52b2fb5839bb80a867697d63d2d415qq
+Running: forge verify-contract 0xcda862d62f52b2fb5839bb80a867697d63d2d415 src/ilend/iLend.sol:iLend --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch --constructor-args 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f1340000000000000000000000007a7e4222aa4e3d1682b4ad6ba37c68af5c0c84140000000000000000000000008a74294b3ff3f38532b19b3189c696a0451c0ddf0000000000000000000000008e7fa0aa12594db949157edca922f66cc25ab195000000000000000000000000ddce14b8e4a0a07c172d11858d8edd4ab9fa993500000000000000000000000049a48847e66f52744b9af0067700a4580c968ddf000000000000000000000000f7f5228a7c39e5026c827e463c8fd194e07ed9d4000000000000000000000000d5a83bd73410788e308c29476e175697ab0ae9a4
+Start verifying contract `0xcdA862d62f52B2fB5839bb80a867697D63D2d415` deployed on sepolia
+Constructor args: 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f1340000000000000000000000007a7e4222aa4e3d1682b4ad6ba37c68af5c0c84140000000000000000000000008a74294b3ff3f38532b19b3189c696a0451c0ddf0000000000000000000000008e7fa0aa12594db949157edca922f66cc25ab195000000000000000000000000ddce14b8e4a0a07c172d11858d8edd4ab9fa993500000000000000000000000049a48847e66f52744b9af0067700a4580c968ddf000000000000000000000000f7f5228a7c39e5026c827e463c8fd194e07ed9d4000000000000000000000000d5a83bd73410788e308c29476e175697ab0ae9a4
+Verifying Monitor...
+xx0xd5a83bd73410788e308c29476e175697ab0ae9a4yy
+pp0xd5a83bd73410788e308c29476e175697ab0ae9a4qq
+Running: forge verify-contract 0xd5a83bd73410788e308c29476e175697ab0ae9a4 src/monitor/Monitor.sol:Monitor --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch --constructor-args 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Start verifying contract `0xd5a83bd73410788e308C29476E175697ab0aE9A4` deployed on sepolia
+Constructor args: 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Verifying Borrow...
+xx0x8e7fa0aa12594db949157edca922f66cc25ab195yy
+pp0x8e7fa0aa12594db949157edca922f66cc25ab195qq
+Running: forge verify-contract 0x8e7fa0aa12594db949157edca922f66cc25ab195 src/borrow/Borrow.sol:Borrow --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch --constructor-args 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Start verifying contract `0x8e7FA0AA12594db949157edcA922F66Cc25aB195` deployed on sepolia
+Constructor args: 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
 
-Warning (2018): Function state mutability can be restricted to view
-   --> src/liquidation/LiquidationEngine.sol:270:5:
-    |
-270 |     function set_liquidated_status 
-    |     ^ (Relevant source part starts here and spans across multiple lines).
+Contract [src/borrow/Borrow.sol:Borrow] "0x8e7FA0AA12594db949157edcA922F66Cc25aB195" is already verified. Skipping verification.
+Verifying Deposit...
+xx0x7a7e4222aa4e3d1682b4ad6ba37c68af5c0c8414yy
+pp0x7a7e4222aa4e3d1682b4ad6ba37c68af5c0c8414qq
+Running: forge verify-contract 0x7a7e4222aa4e3d1682b4ad6ba37c68af5c0c8414 src/deposit/Deposit.sol:Deposit --etherscan-api-key TC2ICV8GXTZTI8XACVKMJRVGUF4P7VUIEZ --chain-id 11155111 --verifier etherscan --watch --constructor-args 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
+Start verifying contract `0x7a7E4222Aa4E3D1682b4aD6BA37c68Af5c0c8414` deployed on sepolia
+Constructor args: 0x00000000000000000000000005e08bd84ab383427b9d593a11742723b1c2f134
 
-Warning (2018): Function state mutability can be restricted to view
-   --> src/collateral/Collateral.sol:360:5:
-    |
-360 |     function is_collateral_deposted 
-    |     ^ (Relevant source part starts here and spans across multiple lines).
-
-
-Ran 18 tests for test/UnitTest.t.sol:UnitTest
-[PASS] test_borrow_balance_change() (gas: 2339167)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_borrow_state_update_multiple() (gas: 5702649)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_borrow_state_update_single() (gas: 2329937)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_collateral_balance_change() (gas: 1866901)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_collateral_counts_consistency() (gas: 1225745)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-  borrower : 0  record:  0
-  borrower : 0  record:  1
-  borrower : 0  record:  2
-  borrower : 1  record:  0
-  borrower : 1  record:  1
-  borrower : 1  record:  2
-  borrower : 2  record:  0
-  borrower : 2  record:  1
-  borrower : 2  record:  2
-
-[PASS] test_collateral_record_state_change_multiple() (gas: 1219598)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-  borrower : 0  record:  0
-  borrower : 0  record:  1
-  borrower : 0  record:  2
-  borrower : 1  record:  0
-  borrower : 1  record:  1
-  borrower : 1  record:  2
-  borrower : 2  record:  0
-  borrower : 2  record:  1
-  borrower : 2  record:  2
-
-[PASS] test_collateral_state_change_on_deposit() (gas: 1867410)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_deposit_balance_change() (gas: 430907)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_deposit_balance_change_all_funders() (gas: 1584934)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_deposit_collateral_no_balance_expect_revert() (gas: 113048)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_deposit_collateral_too_much_balance_expect_revert() (gas: 150136)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_deposit_record_multiple() (gas: 2140667)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_deposit_record_single() (gas: 432325)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_deposit_state_multi_funders() (gas: 1481725)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_deposit_state_multiple() (gas: 2187317)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-  Iteration 0
-    ta  0 : 5000000000
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  false : true
-    dc  0 : 1
-  Iteration 1
-    ta  5000000000 : 7500000000
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  1 : 2
-  Iteration 2
-    ta  7500000000 : 8750000000
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  2 : 3
-  Iteration 3
-    ta  8750000000 : 9375000000
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  3 : 4
-  Iteration 4
-    ta  9375000000 : 9687500000
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  4 : 5
-  Iteration 5
-    ta  9687500000 : 9843750000
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  5 : 6
-  Iteration 6
-    ta  9843750000 : 9921875000
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  6 : 7
-  Iteration 7
-    ta  9921875000 : 9960937500
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  7 : 8
-  Iteration 8
-    ta  9960937500 : 9980468750
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  8 : 9
-  Iteration 9
-    ta  9980468750 : 9990234375
-    iwr 0 : 0
-    pwr 0 : 0
-    ia  true : true
-    dc  9 : 10
-
-[PASS] test_deposit_state_single() (gas: 435796)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_init_borrower_balances() (gas: 76179)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-[PASS] test_init_funder_balances() (gas: 75724)
-Logs:
-  register_caller_contracts 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7
-
-Suite result: ok. 18 passed; 0 failed; 0 skipped; finished in 25.17ms (30.76ms CPU time)
-
-Ran 1 test suite in 33.50ms (25.17ms CPU time): 18 tests passed, 0 failed, 0 skipped (18 total tests)
+Contract [src/deposit/Deposit.sol:Deposit] "0x7a7E4222Aa4E3D1682b4aD6BA37c68Af5c0c8414" is already verified. Skipping verification.

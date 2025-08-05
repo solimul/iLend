@@ -118,7 +118,7 @@ contract DeployILend is Script {
 
             priceFeed = AggregatorV3Interface(PricefeedManagerLib.get_price_feed_address());
             usdcAddress = NetworkConfigLib.get_usdc_contract_address();
-            wrappedETHAddress = NetworkConfigLib.get_usdc_contract_address();
+            wrappedETHAddress = NetworkConfigLib.get_eth_contract_address();
 
 
             treasury = new Treasury();
@@ -148,7 +148,7 @@ contract DeployILend is Script {
             liquidationRegistry = new LiquidationRegistry();
             address liqRegAddress = address(liquidationRegistry);
 
-            monitor = new Monitor(pAddress, pfAddress, colAddress, address(this), liqRegAddress);
+            monitor = new Monitor(pAddress, pfAddress, colAddress, liqRegAddress);
             vm.label(address(monitor), "Monitor");
 
 

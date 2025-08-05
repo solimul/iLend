@@ -1,118 +1,91 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
 ETHERSCAN_API_KEY="$1"
 CHAIN_ID="$2"
-DEPLOY_SCRIPT="$3"
+DEPLOYMENT_SCRIPT="$3"
 PRIVATE_KEY="$4"
-USDC_CONTRACT_ADDR="$5"
-ETH_CONTRACT_ADDR="$6"         
+USDC="$5"
+ETH="$6"
+PRICE_FEED="$7"
+shift 7
+MAPPING=("$@")
 
-if [[ -z "$ETHERSCAN_API_KEY" || -z "$CHAIN_ID" || -z "$DEPLOY_SCRIPT" || -z "$PRIVATE_KEY" ]]; then
-  echo "Usage: $0 <ETHERSCAN_API_KEY> <CHAIN_ID> <DEPLOY_SCRIPT> <PRIVATE_KEY>"
+BROADCAST_FILE="broadcast/$DEPLOYMENT_SCRIPT/$CHAIN_ID/run-latest.json"
+
+if [[ ! -f "$BROADCAST_FILE" ]]; then
+  echo "Broadcast file not found: $BROADCAST_FILE"
   exit 1
 fi
 
-BROADCAST="broadcast/${DEPLOY_SCRIPT}/${CHAIN_ID}/run-latest.json"
+# Dynamically parse deployed libraries
+declare -A DEPLOYED_LIBS
+while IFS="=" read -r name address; do
+  DEPLOYED_LIBS["$name"]="$address"
+done < <(jq -r '.transactions[] | select(.contractName | endswith("Lib")) | "\(.contractName)=\(.contractAddress)"' "$BROADCAST_FILE")
+
+# Parse CONTRACT_TO_LIBS map
+declare -A CONTRACT_TO_LIBS
+for entry in "${MAPPING[@]}"; do
+  contract="${entry%%:*}"
+  libs="${entry#*:}"
+  CONTRACT_TO_LIBS["$contract"]="$libs"
+done
 
 get_address() {
-  jq -r ".transactions[] | select(.contractName == \"$1\") | .contractAddress" "$BROADCAST" | tail -1
+  local contract_name="$1"
+  jq -r --arg name "$contract_name" '.transactions | reverse | map(select(.contractName == $name)) | .[0].contractAddress' "$BROADCAST_FILE"
 }
 
-forge_verify() {
-  local CONTRACT="$1"
-  local CONTRACT_PATH="$2"
-  local ARG_TYPES="$3"
-  shift 3
-  local ADDR_ARGS=("$@")
 
-  local ADDRESS
-  ADDRESS=$(get_address "$CONTRACT")
-  if [[ -z "$ADDRESS" ]]; then
-    echo "Could not find address for $CONTRACT"
-    return
-  fi
-
-  echo "Verifying $CONTRACT at $ADDRESS..."
-
-  if [[ -n "$ARG_TYPES" ]]; then
-    local ENCODED_ARGS
-    ENCODED_ARGS=$(cast abi-encode "constructor($ARG_TYPES)" "${ADDR_ARGS[@]}")
-    forge verify-contract "$ADDRESS" "$CONTRACT_PATH:$CONTRACT" \
-      --constructor-args "$ENCODED_ARGS" \
-      --etherscan-api-key "$ETHERSCAN_API_KEY" \
-      --chain-id "$CHAIN_ID" \
-      --verifier etherscan \
-      --num-of-optimizations 200 \
-      --watch
-  else
-    forge verify-contract "$ADDRESS" "$CONTRACT_PATH:$CONTRACT" \
-      --etherscan-api-key "$ETHERSCAN_API_KEY" \
-      --chain-id "$CHAIN_ID" \
-      --verifier etherscan \
-      --num-of-optimizations 200 \
-      --watch
-  fi
+build_libraries_flag() {
+  local contract="$1"
+  local lib_string="${CONTRACT_TO_LIBS[$contract]}"
+  local libs_flag=""
+  IFS=',' read -ra libs <<< "$lib_string"
+  for lib in "${libs[@]}"; do
+    if [[ -n "$lib" && -n "${DEPLOYED_LIBS[$lib]:-}" ]]; then
+      libs_flag+="${libs_flag:+,}src/lib/${lib}.sol:${lib}:${DEPLOYED_LIBS[$lib]}"
+    fi
+  done
+  [[ -n "$libs_flag" ]] && echo "--libraries $libs_flag"
 }
 
-DEPLOYER_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY")
+encode_constructor_args() {
+  local contract="$1"
+  case "$contract" in
+    Collateral)
+      cast abi-encode "constructor(address,address,address)"             "$(get_address Params)" "$PRICE_FEED" "$ETH"
+      ;;
+    Borrow|Deposit|Payback|Monitor|LiquidationEngine|LiquidationRegistry)
+      cast abi-encode "constructor(address)" "$(get_address Params)"
+      ;;
+    iLend)
+      cast abi-encode "constructor(address,address,address,address,address,address,address,address)"             "$(get_address Params)"             "$(get_address Deposit)"             "$(get_address Collateral)"             "$(get_address Borrow)"             "$(get_address Treasury)"             "$(get_address Payback)"             "$(get_address LiquidationEngine)"             "$(get_address Monitor)"
+      ;;
+    *)
+      echo ""  # No constructor args
+      ;;
+  esac
+}
 
-# ==== Contract Verifications ====
+for contract in "${!CONTRACT_TO_LIBS[@]}"; do
+  echo "Verifying $contract..."
+  address=$(get_address "$contract")
+    echo "xx$address"yy
 
-forge_verify Params src/misc/Params.sol "bool,bool,bool" \
-  false false false
+  [[ -z "$address" || "$address" == "null" ]] && echo "Address not found for $contract" && continue
 
-forge_verify Treasury src/treasury/Treasury.sol ""
+  args=$(encode_constructor_args "$contract")
+  echo "pp$address"qq
+  lib_flag=$(build_libraries_flag "$contract")
 
-forge_verify Collateral src/collateral/Collateral.sol "address,address,address" \
-  "$(get_address Params)" \
-  "$ETH_CONTRACT_ADDR" \
-  "$(get_address Treasury)"
+  cmd=(forge verify-contract "$address" "src/${contract,,}/${contract}.sol:$contract"
+       --etherscan-api-key "$ETHERSCAN_API_KEY"
+       --chain-id "$CHAIN_ID"
+       --verifier etherscan
+       --watch)
 
-forge_verify Deposit src/deposit/Deposit.sol "address,address,address" \
-  "$(get_address Params)" \
-  "$USDC_CONTRACT_ADDR" \
-  "$(get_address Collateral)"
+  [[ -n "$args" ]] && cmd+=(--constructor-args "$args")
+[[ -n "$lib_flag" ]] && cmd+=(--libraries "$lib_flag")
 
-forge_verify Borrow src/borrow/Borrow.sol "address,address,address,address,address" \
-  "$(get_address Params)" \
-  "$(get_address AggregatorV3Interface)" \
-  "$(get_address Deposit)" \
-  "$(get_address Collateral)" \
-  "$(get_address USDC_CONTRACT_ADDR)"
-
-forge_verify Payback src/repayment/Payback.sol "address,address,address,address" \
-  "$(get_address Borrow)" \
-  "$(get_address Deposit)" \
-  "$(get_address Treasury)" \
-  "$(get_address USDC_CONTRACT_ADDR)"
-
-forge_verify LiquidationRegistry src/liquidation/LiquidationRegistry.sol ""
-
-forge_verify Monitor src/liquidation/Monitor.sol "address,address,address,address,address" \
-  "$(get_address Params)" \
-  "$(get_address AggregatorV3Interface)" \
-  "$(get_address Collateral)" \
-  "$DEPLOYER_ADDRESS" \
-  "$(get_address LiquidationRegistry)"
-
-forge_verify LiquidationEngine src/liquidation/LiquidationEngine.sol "address,address,address,address" \
-  "$(get_address LiquidationRegistry)" \
-  "$(get_address Collateral)" \
-  "$(get_address Deposit)" \
-  "$(get_address USDC_CONTRACT_ADDR)"
-
-forge_verify iLend src/ILend.sol "address,address,address,address,address,address,address,address,address,address,address,address,bool" \
-  "$(get_address Params)" \
-  "$(get_address AggregatorV3Interface)" \
-  "$(get_address USDC_CONTRACT_ADDR)" \
-  "$(get_address USDC_CONTRACT_ADDR)" \
-  "$(get_address Treasury)" \
-  "$(get_address Collateral)" \
-  "$(get_address Deposit)" \
-  "$(get_address Borrow)" \
-  "$(get_address Payback)" \
-  "$(get_address LiquidationRegistry)" \
-  "$(get_address Monitor)" \
-  "$(get_address LiquidationEngine)" \
-  false
+  echo "Running: ${cmd[*]}"
+  "${cmd[@]}"
+done
