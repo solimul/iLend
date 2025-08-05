@@ -66,6 +66,19 @@ encode_constructor_args() {
   esac
 }
 
+declare -A CONTRACT_TO_PATH=(
+  [Collateral]="src/collateral/Collateral.sol"
+  [Borrow]="src/borrow/Borrow.sol"
+  [Deposit]="src/deposit/Deposit.sol"
+  [Payback]="src/repayment/Payback.sol"
+  [Monitor]="src/liquidation/Monitor.sol"
+  [LiquidationEngine]="src/liquidation/LiquidationEngine.sol"
+  [LiquidationRegistry]="src/liquidation/LiquidationRegistry.sol"
+  [Params]="src/misc/Params.sol"
+  [Treasury]="src/treasury/Treasury.sol"
+  [iLend]="src/ILend.sol"
+)
+
 for contract in "${!CONTRACT_TO_LIBS[@]}"; do
   echo "Verifying $contract..."
   address=$(get_address "$contract")
@@ -76,8 +89,8 @@ for contract in "${!CONTRACT_TO_LIBS[@]}"; do
   args=$(encode_constructor_args "$contract")
   echo "pp$address"qq
   lib_flag=$(build_libraries_flag "$contract")
-
-  cmd=(forge verify-contract "$address" "src/${contract,,}/${contract}.sol:$contract"
+  echo ttt${CONTRACT_TO_PATH[$contract]}rrr
+  cmd=(forge verify-contract "$address" "${CONTRACT_TO_PATH[$contract]}:$contract"
        --etherscan-api-key "$ETHERSCAN_API_KEY"
        --chain-id "$CHAIN_ID"
        --verifier etherscan
@@ -88,4 +101,5 @@ for contract in "${!CONTRACT_TO_LIBS[@]}"; do
 
   echo "Running: ${cmd[*]}"
   "${cmd[@]}"
+  sleep 2 
 done
