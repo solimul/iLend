@@ -660,6 +660,38 @@ contract UnitTest is Test {
     }
 
 
+    /**
+     * 
+     * Testing Monitor Contract
+     */
+
+    function test_check_upkeep_returns_false () 
+    public 
+    view {
+        (bool upkeep, ) = monitor.checkUpkeep ("") ;
+        assert (upkeep == false);
+    }
+
+    function test_check_upkeep_returns_true () 
+    public {
+        monitor.set_dummy_init_price_eth ();
+        (bool upkeep, ) = monitor.checkUpkeep ("") ;
+        assert (upkeep == true);
+    }
+
+    function test_perform_upkeep () 
+    public {
+        monitor.set_dummy_init_price_eth ();
+        (bool upkeep, ) = monitor.checkUpkeep ("") ;
+        
+        assert (upkeep == true);
+    }
+
+    /**
+     * 
+     * Helper Functions
+     */
+    
     function execute_collateral_deposit 
     (
         address _borrower,
@@ -701,4 +733,6 @@ contract UnitTest is Test {
             borrowAmount = lendProtocol.deposit_collateral_and_borrow (_amount);
         vm.stopPrank ();
     }
+
+    
 }

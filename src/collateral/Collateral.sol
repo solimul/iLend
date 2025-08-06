@@ -259,7 +259,8 @@ contract Collateral {
 
     function get_depeleted_collaterals 
     (
-        address _depositor
+        address _depositor,
+        uint256 _currentRate
     )
     public 
     view 
@@ -268,7 +269,7 @@ contract Collateral {
         uint256 n = depositor.depositCounts;
         CollateralView [] memory cViews = get_collateral_depositor_info (_depositor);
         uint256 cnt = 0;
-        uint256 currentRate = pricefeed.get_price();
+        uint256 currentRate = _currentRate;
         uint256 lqThreshold = params.getLiquidationThreshold ();
 
         for (uint256 i=0; i < n; i++){

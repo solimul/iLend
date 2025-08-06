@@ -82,14 +82,11 @@ declare -A CONTRACT_TO_PATH=(
 for contract in "${!CONTRACT_TO_LIBS[@]}"; do
   echo "Verifying $contract..."
   address=$(get_address "$contract")
-    echo "xx$address"yy
 
   [[ -z "$address" || "$address" == "null" ]] && echo "Address not found for $contract" && continue
 
   args=$(encode_constructor_args "$contract")
-  echo "pp$address"qq
   lib_flag=$(build_libraries_flag "$contract")
-  echo ttt${CONTRACT_TO_PATH[$contract]}rrr
   cmd=(forge verify-contract "$address" "${CONTRACT_TO_PATH[$contract]}:$contract"
        --etherscan-api-key "$ETHERSCAN_API_KEY"
        --chain-id "$CHAIN_ID"
@@ -97,7 +94,7 @@ for contract in "${!CONTRACT_TO_LIBS[@]}"; do
        --watch)
 
   [[ -n "$args" ]] && cmd+=(--constructor-args "$args")
-[[ -n "$lib_flag" ]] && cmd+=(--libraries "$lib_flag")
+  [[ -n "$lib_flag" ]] && cmd+=(--libraries "$lib_flag")
 
   echo "Running: ${cmd[*]}"
   "${cmd[@]}"

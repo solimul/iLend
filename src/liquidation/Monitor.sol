@@ -9,11 +9,19 @@ import {Params} from "../misc/Params.sol";
 import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface.sol";
 import {LiquidationRegistry} from "../liquidation/LiquidationRegistry.sol";
 import {iLend} from "../ILend.sol";
+import {console} from "../../lib/forge-std/src/Script.sol";
 
+
+/**
+ * register Monitor as an upkeep at https://automation.chain.link/sepolia 
+ *
+ *  
+ */
 
 contract Monitor is KeeperCompatibleInterface {
 
     error OnlyOwnerCanAccessThisFunction (address sender, address owner);
+    error InvalidAccessRequest ();
 
     /*  @param protocol                The iLend contract address
         @param borrowerAddress         The ID of the borrower
@@ -44,9 +52,11 @@ contract Monitor is KeeperCompatibleInterface {
         uint256 eventDateTime
     );
     using PriceConverterLib for AggregatorV3Interface;
-    uint256 private constant PERCENTAGE_CHANGE_THRESHOLD = 5;
+    uint256 private constant PERCENTAGE_CHANGE_THRESHOLD = 1;
     uint256 private constant BASIS_POINT = 10000;
     uint256 private constant HUNDRED = 100;
+    uint256 private constant DUMMY_INIT_PRICE = 2200e18;
+    uint256 private constant ETH_WEI = 1e18;
 
     uint256 private sLastETHPrice;
     AggregatorV3Interface private immutable iPriceFeed;
@@ -57,7 +67,10 @@ contract Monitor is KeeperCompatibleInterface {
     address private facadeContractAddress;
     address private immutable iOwnerAddress;
 
-    modifier only_owner_contract (address _sender) {
+    modifier only_owner_contract 
+    (
+        address _sender
+    ) {
         if (_sender != iOwnerAddress) {
             revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
         }
@@ -75,10 +88,13 @@ contract Monitor is KeeperCompatibleInterface {
      */
 
 
-    constructor (address _paramsAddress, 
-            address _priceFeedAddress, 
-            address _collateral, 
-            address _liquidationQuryAddress) {
+    constructor 
+    (
+        address _paramsAddress, 
+        address _priceFeedAddress, 
+        address _collateral, 
+        address _liquidationQuryAddress
+    ) {
         iPriceFeed = AggregatorV3Interface (_priceFeedAddress);
         sLastETHPrice = iPriceFeed.get_price ();
         iCollateral = Collateral (_collateral);
@@ -101,21 +117,26 @@ contract Monitor is KeeperCompatibleInterface {
      */
    
 
-    function checkUpkeep (bytes calldata /*checkData*/) 
+    function checkUpkeep 
+    (
+        bytes calldata /*checkData*/
+    ) 
     external 
     view 
     override
     returns (bool upkeepNeeded, bytes memory /*performData*/) {
         upkeepNeeded = false;
         uint256 currentETHPrice = iPriceFeed.get_price();
-        int256 priceDiff = int256 (currentETHPrice - sLastETHPrice);
-        if (priceDiff < 0){
-            uint256 absPriceDiff = uint256 (priceDiff * (-1));
-            uint256 percentageChange = (absPriceDiff / sLastETHPrice) * 1000;
-            upkeepNeeded = percentageChange > PERCENTAGE_CHANGE_THRESHOLD;
-        } else if (priceDiff > 0){
-            upkeepNeeded = false;
-        }
+
+        int256 priceDiff = int256(currentETHPrice) - int256(sLastETHPrice);
+        uint256 absPriceDiff = priceDiff >= 0 
+            ? 0
+            : uint256(-priceDiff);
+  
+
+        uint256 percentageChange = (absPriceDiff *100) / sLastETHPrice;
+        
+        upkeepNeeded = percentageChange > PERCENTAGE_CHANGE_THRESHOLD;
     }
 
     /**
@@ -135,25 +156,30 @@ contract Monitor is KeeperCompatibleInterface {
      * - `postDiscountETHPrice`: ETH price after applying liquidation discount.
      */
 
-    function performUpkeep (bytes calldata /**/) 
-    external override
+    function performUpkeep 
+    (
+        bytes calldata /**/
+    ) 
+    external 
+    override
     {
         address [] memory addresses = iCollateral.get_collateral_depositor_addresses ();
         iLiquidationRegistry.reset_liquidation_ready_collaterals ();
         for (uint i=0; i< addresses.length; i++) {
             address dAddress = addresses [i];
-            CollateralView [] memory depletedCollaterals = iCollateral.get_depeleted_collaterals (dAddress);
+            uint256 currentRate = iPriceFeed.get_price ();
+            uint256 currentRateUSDC = currentRate / ETH_WEI;
+            uint256 lqTh = iParams.getLiquidationThreshold ();
+            uint256 discountRate = iParams.getLiquidationDiscountRate ();
+
+            CollateralView [] memory depletedCollaterals 
+                = iCollateral.get_depeleted_collaterals (dAddress, currentRate);
             for (uint256 j=0; j<depletedCollaterals.length;j++) {
                 CollateralView memory cv = depletedCollaterals [j];
-                uint256 lqTh = iParams.getLiquidationThreshold ();
-                uint256 discountRate = iParams.getLiquidationDiscountRate ();
-                uint256 currentRate = iPriceFeed.get_price ();
-
-                uint256 currentCollateralValue = currentRate * cv.depositAmount * HUNDRED;
+                uint256 currentCollateralValue = currentRate * cv.depositAmount;
                 uint256 currentValueToBorrow = currentCollateralValue / cv.totalUSDCBorrowed; 
-
                 uint256 requiredCollateralForMeetingThreshold = cv.totalUSDCBorrowed * lqTh;
-                uint256 shortFallUSD = (currentCollateralValue/HUNDRED) - requiredCollateralForMeetingThreshold;
+                uint256 shortFallUSD = currentCollateralValue - requiredCollateralForMeetingThreshold;
                 shortFallUSD = shortFallUSD <0? 0 : shortFallUSD;
                 
                 uint256 liquidableETH = shortFallUSD / currentRate;
@@ -198,4 +224,11 @@ contract Monitor is KeeperCompatibleInterface {
     only_owner_contract (msg.sender) {
         facadeContractAddress = _iLendAddress;
     }
+
+    function set_dummy_init_price_eth () public {
+        if (msg.sender != iOwnerAddress)
+            revert InvalidAccessRequest ();
+        sLastETHPrice = DUMMY_INIT_PRICE;
+    }
 }
+
