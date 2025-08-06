@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {KeeperCompatibleInterface} from "../../lib/chainlink-brownie-contracts/contracts/src/v0.8/automation/interfaces/KeeperCompatibleInterface.sol";
+import {KeeperCompatibleInterface} from
+    "../../lib/chainlink-brownie-contracts/contracts/src/v0.8/automation/interfaces/KeeperCompatibleInterface.sol";
 import {PriceConverterLib} from "../lib/PriceConverterLib.sol";
 import {Collateral} from "../collateral/Collateral.sol";
 import {CollateralView, LiquidationReadyCollateral} from "../shared/SharedStructures.sol";
@@ -11,17 +12,14 @@ import {LiquidationRegistry} from "../liquidation/LiquidationRegistry.sol";
 import {iLend} from "../ILend.sol";
 import {console} from "../../lib/forge-std/src/Script.sol";
 
-
 /**
- * register Monitor as an upkeep at https://automation.chain.link/sepolia 
+ * register Monitor as an upkeep at https://automation.chain.link/sepolia
  *
- *  
+ *
  */
-
 contract Monitor is KeeperCompatibleInterface {
-
-    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
-    error InvalidAccessRequest ();
+    error OnlyOwnerCanAccessThisFunction(address sender, address owner);
+    error InvalidAccessRequest();
 
     /*  @param protocol                The iLend contract address
         @param borrowerAddress         The ID of the borrower
@@ -51,7 +49,9 @@ contract Monitor is KeeperCompatibleInterface {
         uint256 postDiscountETHPrice,
         uint256 eventDateTime
     );
+
     using PriceConverterLib for AggregatorV3Interface;
+
     uint256 private constant PERCENTAGE_CHANGE_THRESHOLD = 1;
     uint256 private constant BASIS_POINT = 10000;
     uint256 private constant HUNDRED = 100;
@@ -67,47 +67,41 @@ contract Monitor is KeeperCompatibleInterface {
     address private facadeContractAddress;
     address private immutable iOwnerAddress;
 
-    modifier only_owner_contract 
-    (
-        address _sender
-    ) {
+    modifier only_owner_contract(address _sender) {
         if (_sender != iOwnerAddress) {
-            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
+            revert OnlyOwnerCanAccessThisFunction(_sender, iOwnerAddress);
         }
         _;
     }
-    
+
     /**
      * @notice Initializes the contract with addresses of dependent modules and records the initial ETH price.
-     * @dev Sets up references to external contracts and captures the latest ETH price at deployment time 
+     * @dev Sets up references to external contracts and captures the latest ETH price at deployment time
      * for future comparison in upkeep checks.
      * @param _paramsAddress The address of the Params contract containing protocol-level parameters.
      * @param _priceFeedAddress The address of the ETH price feed contract.
      * @param _collateral The address of the Collateral contract used to fetch depositor collateral info.
      * @param _liquidationQuryAddress The address of the LiquidationRegistry contract to store liquidatable collaterals.
      */
-
-
-    constructor 
-    (
-        address _paramsAddress, 
-        address _priceFeedAddress, 
-        address _collateral, 
+    constructor(
+        address _paramsAddress,
+        address _priceFeedAddress,
+        address _collateral,
         address _liquidationQuryAddress
     ) {
-        iPriceFeed = AggregatorV3Interface (_priceFeedAddress);
-        sLastETHPrice = iPriceFeed.get_price ();
-        iCollateral = Collateral (_collateral);
-        iParams = Params (_paramsAddress);
-        iLiquidationRegistry = LiquidationRegistry (_liquidationQuryAddress);
+        iPriceFeed = AggregatorV3Interface(_priceFeedAddress);
+        sLastETHPrice = iPriceFeed.get_price();
+        iCollateral = Collateral(_collateral);
+        iParams = Params(_paramsAddress);
+        iLiquidationRegistry = LiquidationRegistry(_liquidationQuryAddress);
         iOwnerAddress = msg.sender;
     }
 
     /**
      * @notice Checks whether `performUpkeep` should be triggered based on ETH price movement.
      * @dev This function is called by Chainlink Automation nodes to determine if upkeep is needed.
-     * It compares the current ETH price from the price feed with the last recorded price 
-     * (`sLastETHPrice`) and calculates the percentage change. If the price has dropped more than 
+     * It compares the current ETH price from the price feed with the last recorded price
+     * (`sLastETHPrice`) and calculates the percentage change. If the price has dropped more than
      * a predefined threshold (`PERCENTAGE_CHANGE_THRESHOLD`), upkeep is marked as needed.
      *
      * Price increase does not trigger upkeep.
@@ -115,27 +109,20 @@ contract Monitor is KeeperCompatibleInterface {
      * @return upkeepNeeded A boolean indicating whether `performUpkeep` should be executed.
      * @return performData Placeholder for additional data (not used).
      */
-   
-
-    function checkUpkeep 
-    (
-        bytes calldata /*checkData*/
-    ) 
-    external 
-    view 
-    override
-    returns (bool upkeepNeeded, bytes memory /*performData*/) {
+    function checkUpkeep(bytes calldata /*checkData*/ )
+        external
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory /*performData*/ )
+    {
         upkeepNeeded = false;
         uint256 currentETHPrice = iPriceFeed.get_price();
 
         int256 priceDiff = int256(currentETHPrice) - int256(sLastETHPrice);
-        uint256 absPriceDiff = priceDiff >= 0 
-            ? 0
-            : uint256(-priceDiff);
-  
+        uint256 absPriceDiff = priceDiff >= 0 ? 0 : uint256(-priceDiff);
 
-        uint256 percentageChange = (absPriceDiff *100) / sLastETHPrice;
-        
+        uint256 percentageChange = (absPriceDiff * 100) / sLastETHPrice;
+
         upkeepNeeded = percentageChange > PERCENTAGE_CHANGE_THRESHOLD;
     }
 
@@ -144,7 +131,7 @@ contract Monitor is KeeperCompatibleInterface {
      * @dev This function is intended to be called by Chainlink Automation (Keepers).
      * It loops through all collateral depositors and evaluates their depleted collaterals.
      * If a collateral's value falls below the liquidation threshold, it calculates the liquidation
-     * parameters (such as shortfall, discounted ETH value) and registers the collateral in the 
+     * parameters (such as shortfall, discounted ETH value) and registers the collateral in the
      * `iLiquidationRegistry` for liquidation.
      *
      * Emits a `LiquidationOpportunity` event for each undercollateralized loan detected.
@@ -155,36 +142,28 @@ contract Monitor is KeeperCompatibleInterface {
      * - `liquidableETH`: amount of ETH eligible for liquidation based on shortfall and ETH price.
      * - `postDiscountETHPrice`: ETH price after applying liquidation discount.
      */
-
-    function performUpkeep 
-    (
-        bytes calldata /**/
-    ) 
-    external 
-    override
-    {
-        address [] memory addresses = iCollateral.get_collateral_depositor_addresses ();
-        iLiquidationRegistry.reset_liquidation_ready_collaterals ();
-        for (uint i=0; i< addresses.length; i++) {
-            address dAddress = addresses [i];
-            uint256 currentRate = iPriceFeed.get_price ();
+    function performUpkeep(bytes calldata /**/ ) external override {
+        address[] memory addresses = iCollateral.get_collateral_depositor_addresses();
+        iLiquidationRegistry.reset_liquidation_ready_collaterals();
+        for (uint256 i = 0; i < addresses.length; i++) {
+            address dAddress = addresses[i];
+            uint256 currentRate = iPriceFeed.get_price();
             uint256 currentRateUSDC = currentRate / ETH_WEI;
-            uint256 lqTh = iParams.getLiquidationThreshold ();
-            uint256 discountRate = iParams.getLiquidationDiscountRate ();
+            uint256 lqTh = iParams.getLiquidationThreshold();
+            uint256 discountRate = iParams.getLiquidationDiscountRate();
 
-            CollateralView [] memory depletedCollaterals 
-                = iCollateral.get_depeleted_collaterals (dAddress, currentRate);
-            for (uint256 j=0; j<depletedCollaterals.length;j++) {
-                CollateralView memory cv = depletedCollaterals [j];
+            CollateralView[] memory depletedCollaterals = iCollateral.get_depeleted_collaterals(dAddress, currentRate);
+            for (uint256 j = 0; j < depletedCollaterals.length; j++) {
+                CollateralView memory cv = depletedCollaterals[j];
                 uint256 currentCollateralValue = currentRate * cv.depositAmount;
-                uint256 currentValueToBorrow = currentCollateralValue / cv.totalUSDCBorrowed; 
+                uint256 currentValueToBorrow = currentCollateralValue / cv.totalUSDCBorrowed;
                 uint256 requiredCollateralForMeetingThreshold = cv.totalUSDCBorrowed * lqTh;
                 uint256 shortFallUSD = currentCollateralValue - requiredCollateralForMeetingThreshold;
-                shortFallUSD = shortFallUSD <0? 0 : shortFallUSD;
-                
+                shortFallUSD = shortFallUSD < 0 ? 0 : shortFallUSD;
+
                 uint256 liquidableETH = shortFallUSD / currentRate;
-                uint256 postDiscountETHPrice = (currentRate * (HUNDRED - discountRate))/HUNDRED; 
-                LiquidationReadyCollateral memory col = LiquidationReadyCollateral ({
+                uint256 postDiscountETHPrice = (currentRate * (HUNDRED - discountRate)) / HUNDRED;
+                LiquidationReadyCollateral memory col = LiquidationReadyCollateral({
                     discountRate: discountRate,
                     currentValueToBorrow: currentValueToBorrow,
                     shortFallUSDC: shortFallUSD,
@@ -197,38 +176,32 @@ contract Monitor is KeeperCompatibleInterface {
 
                 iLiquidationRegistry.add_collateral_as_liquidation_ready(dAddress, col);
 
-                emit LiquidationOpportunity 
-                    (
-                        dAddress,
-                        cv.loanID,
-                        cv.depositAmount,
-                        cv.totalUSDCBorrowed,
-                        cv.totalCollateralDepost,
-                        discountRate,
-                        currentValueToBorrow,
-                        shortFallUSD,
-                        liquidableETH,
-                        currentRate,
-                        postDiscountETHPrice,
-                        block.timestamp
-                    );
+                emit LiquidationOpportunity(
+                    dAddress,
+                    cv.loanID,
+                    cv.depositAmount,
+                    cv.totalUSDCBorrowed,
+                    cv.totalCollateralDepost,
+                    discountRate,
+                    currentValueToBorrow,
+                    shortFallUSD,
+                    liquidableETH,
+                    currentRate,
+                    postDiscountETHPrice,
+                    block.timestamp
+                );
             }
         }
     }
 
-    function register_caller_contracts 
-    (
-        address _iLendAddress
-    ) 
-    external
-    only_owner_contract (msg.sender) {
+    function register_caller_contracts(address _iLendAddress) external only_owner_contract(msg.sender) {
         facadeContractAddress = _iLendAddress;
     }
 
-    function set_dummy_init_price_eth () public {
-        if (msg.sender != iOwnerAddress)
-            revert InvalidAccessRequest ();
+    function set_dummy_init_price_eth() public {
+        if (msg.sender != iOwnerAddress) {
+            revert InvalidAccessRequest();
+        }
         sLastETHPrice = DUMMY_INIT_PRICE;
     }
 }
-

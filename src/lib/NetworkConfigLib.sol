@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 
 /**
  * @dev Interface for the ERC20 standard as defined in the EIP.
- * IERC20 provides function signatures for common token operations 
+ * IERC20 provides function signatures for common token operations
  * like transfer, approve, and allowance, but does not implement any logic.
  * Used to interact with any compliant ERC20 token.
  */
@@ -11,7 +11,6 @@ import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IER
 import {MockERC20} from "../../mocks/MockERC20.sol";
 
 library NetworkConfigLib {
-
     uint256 constant SEPOLIA_CHAIN_ID = 11155111;
     uint256 constant MAINNET_CHAIN_ID = 1;
     uint256 constant ANVIL_CHAIN_ID = 31337;
@@ -22,13 +21,16 @@ library NetworkConfigLib {
     address constant SEPOLIA_ETH_CONTRACT = 0xdd13E55209Fd76AfE204dBda4007C227904f0a81;
     address constant MAINNET_ETH_CONTRACT = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    function get_usdc_contract_address () internal returns (address) {
-        if (block.chainid == ANVIL_CHAIN_ID) { // test-net 
+    function get_usdc_contract_address() internal returns (address) {
+        if (block.chainid == ANVIL_CHAIN_ID) {
+            // test-net
             return address(new MockERC20("Mock USDC", "mUSDC"));
-        } else if (block.chainid == SEPOLIA_CHAIN_ID) {  // sepolia
+        } else if (block.chainid == SEPOLIA_CHAIN_ID) {
+            // sepolia
             // https://sepolia.etherscan.io/token/0x1c7d4b196cb0c7b01d743fbc6116a902379c7238
             return SEPOLIA_USDC_CONTRACT; // sepolia USDC
-        }else if (block.chainid == MAINNET_CHAIN_ID) {           // Ethereum mainnet USDC
+        } else if (block.chainid == MAINNET_CHAIN_ID) {
+            // Ethereum mainnet USDC
             // https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
             return MAINNET_USDC_CONTRACT;
         } else {
@@ -36,13 +38,16 @@ library NetworkConfigLib {
         }
     }
 
-    function get_eth_contract_address () internal returns (address) {
-        if (block.chainid == ANVIL_CHAIN_ID) { // test-net 
+    function get_eth_contract_address() internal returns (address) {
+        if (block.chainid == ANVIL_CHAIN_ID) {
+            // test-net
             return address(new MockERC20("Mock ETH", "mETH"));
-        } else if (block.chainid == SEPOLIA_CHAIN_ID) {  // sepolia
-            //https://sepolia.etherscan.io/address/0xdd13E55209Fd76AfE204dBda4007C227904f0a81            
+        } else if (block.chainid == SEPOLIA_CHAIN_ID) {
+            // sepolia
+            //https://sepolia.etherscan.io/address/0xdd13E55209Fd76AfE204dBda4007C227904f0a81
             return SEPOLIA_ETH_CONTRACT; // sepolia weth
-        }else if (block.chainid == MAINNET_CHAIN_ID) {           // Ethereum mainnet
+        } else if (block.chainid == MAINNET_CHAIN_ID) {
+            // Ethereum mainnet
             // https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
             return MAINNET_ETH_CONTRACT; // weth
         } else {

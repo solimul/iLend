@@ -7,22 +7,23 @@ import {console} from "../../lib/forge-std/src/Script.sol";
 
 import {Params} from "../misc/Params.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {Lender, 
-        InterestEarned, 
-        PrincipalWithdrawalRecord,
-        InterestWithdrawalRecord, 
-        DepositRecord, 
-        Depositor} 
-        from "../shared/SharedStructures.sol";
+import {
+    Lender,
+    InterestEarned,
+    PrincipalWithdrawalRecord,
+    InterestWithdrawalRecord,
+    DepositRecord,
+    Depositor
+} from "../shared/SharedStructures.sol";
 import {Collateral} from "../collateral/Collateral.sol";
 
-/** 
- * @title Deposit Contract - handle usdc depostsits 
+/**
+ * @title Deposit Contract - handle usdc depostsits
  * @author Md Solimul Chowdhury
  * @notice This contract allows users to deposit USDC into the iLend protocol,
  * @dev This is a core component of the iLend protocol
-**/
-
+ *
+ */
 contract Deposit {
     event DepositorPrincipalWithDrawalDone(
         address indexed depositPool,
@@ -42,7 +43,7 @@ contract Deposit {
         uint256 remainingBalanceForDepositor,
         uint256 poolBalance,
         uint256 timestamp
-    ); 
+    );
 
     error DepositorBalanceTooLow(address depositor, uint256 balance, uint256 required);
     error PoolBalanceTooLow(uint256 poolBalance, uint256 required);
@@ -58,8 +59,8 @@ contract Deposit {
     error InsufficientInterestIncome(uint256 available, uint256 requested);
     // PoolBalanceTooLow already declared
 
-    error USDCTokenTransferFailedSafeTransfer (address from, address to, uint256 amount);
-    error USDCTokenTransferAmountMismatchParams (uint256 expected, uint256 actual);
+    error USDCTokenTransferFailedSafeTransfer(address from, address to, uint256 amount);
+    error USDCTokenTransferAmountMismatchParams(uint256 expected, uint256 actual);
 
     error InvalidRecipientAddress();
     error RecipientNotBorrower(address expected, address actual);
@@ -72,16 +73,15 @@ contract Deposit {
     error DepositTooLarge(uint256 provided, uint256 maximum);
     error LockupPeriodTooShort(uint256 provided, uint256 minimum);
     error LockupPeriodTooLong(uint256 provided, uint256 maximum);
-    error OnlyILendContractCanAccessThisFunction (address sender, address ilend);
-    error OnlyPaybackContractCanAccessThisFunction (address sender, address paybackContractAddress);
-    error OnlyBorrowContractCanAccessThisFunction (address sender, address borrowContractAddress);
-    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
-
+    error OnlyILendContractCanAccessThisFunction(address sender, address ilend);
+    error OnlyPaybackContractCanAccessThisFunction(address sender, address paybackContractAddress);
+    error OnlyBorrowContractCanAccessThisFunction(address sender, address borrowContractAddress);
+    error OnlyOwnerCanAccessThisFunction(address sender, address owner);
 
     Params private params;
     Collateral private collateral;
-    
-    mapping (address => Depositor) private depositors;
+
+    mapping(address => Depositor) private depositors;
     address[] private depositorAddresses;
     uint256 private depositorCounts;
 
@@ -93,72 +93,62 @@ contract Deposit {
     address private immutable iOwnerContract;
     IERC20 private immutable iUSDCContract;
 
-
-
     /**
      * @notice Initializes the contract with default values
      * @dev Constructor runs only once on deployment
      */
-
-    constructor(address _paramsAddress, 
-            address _usdcContractAddress, 
-            address _collateralAddress) {
-        params = Params (_paramsAddress);
+    constructor(address _paramsAddress, address _usdcContractAddress, address _collateralAddress) {
+        params = Params(_paramsAddress);
         depositorCounts = 0;
-        collateral = Collateral (_collateralAddress);
-        iUSDCContract = IERC20 (_usdcContractAddress);
+        collateral = Collateral(_collateralAddress);
+        iUSDCContract = IERC20(_usdcContractAddress);
         iOwnerContract = msg.sender;
         // Initialize the contract if needed
     }
 
-     /**
+    /**
      * @notice this modifier checks if the depositor exists
      */
-    
     modifier only_facade_contract(address _sender) {
         if (_sender != facadeContractAddress) {
-            revert OnlyILendContractCanAccessThisFunction (_sender, facadeContractAddress);
+            revert OnlyILendContractCanAccessThisFunction(_sender, facadeContractAddress);
         }
         _;
     }
 
-    modifier only_payback_contract (address _sender) {
+    modifier only_payback_contract(address _sender) {
         if (_sender != paybackContractAddress) {
-            revert OnlyPaybackContractCanAccessThisFunction (_sender, paybackContractAddress);
+            revert OnlyPaybackContractCanAccessThisFunction(_sender, paybackContractAddress);
         }
         _;
     }
 
-    modifier only_borrow_contract (address _sender) {
+    modifier only_borrow_contract(address _sender) {
         if (_sender != borrowContractAddress) {
-            revert OnlyBorrowContractCanAccessThisFunction (_sender, borrowContractAddress);
+            revert OnlyBorrowContractCanAccessThisFunction(_sender, borrowContractAddress);
         }
         _;
     }
 
-    modifier only_owner_contract (address _sender) {
+    modifier only_owner_contract(address _sender) {
         if (_sender != iOwnerContract) {
-            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerContract);
+            revert OnlyOwnerCanAccessThisFunction(_sender, iOwnerContract);
         }
         _;
     }
 
-
-
-    modifier existing_depositor (address depositor_address) {
+    modifier existing_depositor(address depositor_address) {
         if (!depositors[depositor_address].isActive) {
             revert NotAnActiveDepositor(depositor_address);
         }
         _;
     }
 
-      /**
-     * @notice this modifier checks if the deposit amount 
+    /**
+     * @notice this modifier checks if the deposit amount
      * and lockup period are within the allowed limits
      */
-
-    modifier deposit_check (uint256 amount, 
-            uint256 lockupPeriod) {
+    modifier deposit_check(uint256 amount, uint256 lockupPeriod) {
         uint256 minDeposit = params.getMinDeposit();
         if (amount < minDeposit) {
             revert DepositTooSmall(amount, minDeposit);
@@ -182,13 +172,11 @@ contract Deposit {
         _;
     }
 
-
     /**
      * @notice this function returns the USDC contract address
      * @return IERC20 - the USDC contract address
      */
-
-    function get_usdcContract () public view returns (IERC20) {
+    function get_usdcContract() public view returns (IERC20) {
         return iUSDCContract;
     }
 
@@ -201,65 +189,46 @@ contract Deposit {
     //     return poolBalance;
     // }
 
-
     /**
      * @notice this function returns the balance of the deposit pool
      * @return uint256 - returns usdc balance of this deposit pool
      */
-    function get_deposit_balance () public view returns (uint256) {
-        return (iUSDCContract).balanceOf (address (this));
+    function get_deposit_balance() public view returns (uint256) {
+        return (iUSDCContract).balanceOf(address(this));
     }
-
 
     /**
      * @notice this function get_deposit_record returns the deposit record of a depositor
      * @return uint256 returns the deposit record of a depositor
      */
-    function get_deposit_record 
-    (
-        address _depositorAddress, 
-        uint256 id
-    ) 
-    internal 
-    existing_depositor (_depositorAddress) 
-    view 
-    returns (DepositRecord storage) {
-        Depositor storage depositor = depositors [_depositorAddress];
-        DepositRecord storage record = depositor.deposits [id];   
+    function get_deposit_record(address _depositorAddress, uint256 id)
+        internal
+        view
+        existing_depositor(_depositorAddress)
+        returns (DepositRecord storage)
+    {
+        Depositor storage depositor = depositors[_depositorAddress];
+        DepositRecord storage record = depositor.deposits[id];
         return record;
     }
-
 
     /**
      * @notice this function returns the total amount lent out by a depositor
      * @return uint256 - the total amount lent out by the depositor
      */
-    function get_lentout_amount 
-    (
-        address _depositorAddress, 
-        uint256 _id
-    )
-    public  
-    view 
-    returns (uint256) {
-        DepositRecord storage record = get_deposit_record (_depositorAddress, _id);
+    function get_lentout_amount(address _depositorAddress, uint256 _id) public view returns (uint256) {
+        DepositRecord storage record = get_deposit_record(_depositorAddress, _id);
         return record.amount - record.availableToLend;
     }
 
-
-    function get_usdc_balance () public view returns (uint256) {
+    function get_usdc_balance() public view returns (uint256) {
         return iUSDCContract.balanceOf(address(this));
     }
 
-
-    function update_post_deposit 
-    (
-        address _depositorAddress, 
-        uint256 _amount, 
-        uint256 _lockupPeriod
-    ) 
-    external 
-    only_facade_contract (msg.sender){
+    function update_post_deposit(address _depositorAddress, uint256 _amount, uint256 _lockupPeriod)
+        external
+        only_facade_contract(msg.sender)
+    {
         Depositor storage depositor = depositors[_depositorAddress];
         depositor.totalAmount += _amount;
         uint256 currentTime = block.timestamp;
@@ -272,8 +241,6 @@ contract Deposit {
         record.availableToLend = _amount;
         depositor.deposits[depositor.depositCounts] = record;
 
-
-
         depositor.isActive = true;
         if (depositor.depositCounts == 0) {
             // If this is the first deposit, add the depositor to the list
@@ -285,113 +252,85 @@ contract Deposit {
         totalAvailableToLend += _amount;
     }
 
-    function update_principal_payback_record 
-        ( 
-            address _depositorAddress, 
-            uint256 _depositID
-        ) 
-    external
-    only_payback_contract (msg.sender) {    
+    function update_principal_payback_record(address _depositorAddress, uint256 _depositID)
+        external
+        only_payback_contract(msg.sender)
+    {
         DepositRecord storage record = get_deposit_record(_depositorAddress, _depositID);
-        record.availableToLend += get_lentout_amount (_depositorAddress, _depositID);
+        record.availableToLend += get_lentout_amount(_depositorAddress, _depositID);
     }
 
-    function update_interest_payback_record 
-    (
-        address _borrowerAddress, 
-        uint256 _loanID, 
-        address _depositorAddress, 
-        uint256 _depositID, 
-        uint256 _totalInterest, 
-        uint256 _totalLent, 
+    function update_interest_payback_record(
+        address _borrowerAddress,
+        uint256 _loanID,
+        address _depositorAddress,
+        uint256 _depositID,
+        uint256 _totalInterest,
+        uint256 _totalLent,
         uint256 lentFromThisDepositAccount
-    ) 
-    external
-    only_payback_contract(msg.sender) 
-    returns (uint256) {
-        
+    ) external only_payback_contract(msg.sender) returns (uint256) {
         DepositRecord storage record = get_deposit_record(_depositorAddress, _depositID);
         uint256 interestShare = (lentFromThisDepositAccount * _totalInterest) / _totalLent;
-        record.interestEarned.push (InterestEarned({
-            from: _borrowerAddress,
-            loanID: _loanID,
-            interestReceived:  interestShare,
-            dateReceived: block.timestamp
-        }));
+        record.interestEarned.push(
+            InterestEarned({
+                from: _borrowerAddress,
+                loanID: _loanID,
+                interestReceived: interestShare,
+                dateReceived: block.timestamp
+            })
+        );
         return interestShare;
     }
 
-    function update_lentout_amount 
-    ( 
-        uint256 _amount
-    ) 
-    external
-    only_borrow_contract (msg.sender){
+    function update_lentout_amount(uint256 _amount) external only_borrow_contract(msg.sender) {
         totalAvailableToLend -= _amount;
     }
 
-    function update_principal_withdrawal 
-    (
-        address _depositorAddress, 
-        uint256 amount
-    ) 
-    internal {
+    function update_principal_withdrawal(address _depositorAddress, uint256 amount) internal {
         Depositor storage depositor = depositors[_depositorAddress];
         depositor.totalAmount -= amount;
         // Record the withdrawal
-        depositor.principalWithdrawalRecords.push(PrincipalWithdrawalRecord({
-            amountWithdrawn: amount,
-            withdrawTime: block.timestamp
-        }));
+        depositor.principalWithdrawalRecords.push(
+            PrincipalWithdrawalRecord({amountWithdrawn: amount, withdrawTime: block.timestamp})
+        );
     }
 
-    function update_interest_withdrawal 
-    (
-        address _depositorAddress, 
-        uint256 amount
-    ) 
-    internal {
+    function update_interest_withdrawal(address _depositorAddress, uint256 amount) internal {
         Depositor storage depositor = depositors[_depositorAddress];
         totalAvailableToLend -= amount;
         // Record the interest withdrawal
         uint256 currentTime = block.timestamp;
-        depositor.interestWithdrawalRecords.push(InterestWithdrawalRecord({
-            amountWithdrawn: amount,
-            withdrawTime: currentTime
-        }));
+        depositor.interestWithdrawalRecords.push(
+            InterestWithdrawalRecord({amountWithdrawn: amount, withdrawTime: currentTime})
+        );
     }
 
-
-    // function deposit_funds (address _depositor_address, 
-    //         uint256 _amount, 
-    //         uint256 _lockupPeriod) 
-    //         external 
+    // function deposit_funds (address _depositor_address,
+    //         uint256 _amount,
+    //         uint256 _lockupPeriod)
+    //         external
     //         deposit_check (_amount,_lockupPeriod) {
-        
+
     //     //uint256 old = get_usdc_balance();
-        
+
     //     // bool success = deposit_usdc (_depositor_address, _amount); // Call to DepositPool to handle USDC transfe
-        
-    //     // if (!success) 
+
+    //     // if (!success)
     //     //     revert("Deposit failed: USDC transfer unsuccessful in deposit_funds ()");
-        
+
     //     // uint256 current = get_usdc_balance();
 
     //     // require (current - old == _amount, "Deposit amount mismatch");
-        
+
     //     update_post_deposit (_depositor_address, _amount, _lockupPeriod);
-  
+
     // }
 
-
-    function withdraw_deposit 
-    (
-        address _depositorAddress, 
-        uint256 amount
-    ) 
-    external 
-    existing_depositor (_depositorAddress)
-    only_facade_contract (msg.sender) {
+    function withdraw_deposit(address _depositorAddress, uint256 amount)
+        external
+        existing_depositor(_depositorAddress)
+        only_facade_contract(msg.sender)
+    {
         Depositor storage depositor = depositors[msg.sender];
         if (depositor.totalAmount < amount) {
             revert DepositorBalanceTooLow(msg.sender, depositor.totalAmount, amount);
@@ -401,7 +340,6 @@ contract Deposit {
         if (old < amount) {
             revert PoolBalanceTooLow(old, amount);
         }
-
 
         uint256 totalWithdrawable = 0;
         for (uint256 i = 0; i < depositor.depositCounts; i++) {
@@ -416,7 +354,7 @@ contract Deposit {
         }
 
         // Update the depositor's total amount
-        update_principal_withdrawal (_depositorAddress, amount);
+        update_principal_withdrawal(_depositorAddress, amount);
 
         // Transfer USDC back to the depositor
         bool success = iUSDCContract.transfer(_depositorAddress, amount);
@@ -429,15 +367,18 @@ contract Deposit {
             revert USDCTokenTransferAmountMismatch(old - amount, current);
         }
 
-        emit DepositorPrincipalWithDrawalDone(address(this), _depositorAddress, totalWithdrawable, amount, depositor.totalAmount, iUSDCContract.balanceOf(address (this)), block.timestamp);
+        emit DepositorPrincipalWithDrawalDone(
+            address(this),
+            _depositorAddress,
+            totalWithdrawable,
+            amount,
+            depositor.totalAmount,
+            iUSDCContract.balanceOf(address(this)),
+            block.timestamp
+        );
     }
 
-    function calculate_depositor_interest 
-    (
-        address _depositorAddress
-    ) 
-    internal 
-    returns (uint256 totalInterestIncome) {
+    function calculate_depositor_interest(address _depositorAddress) internal returns (uint256 totalInterestIncome) {
         uint256 currentTime = block.timestamp;
         Depositor storage depositor = depositors[_depositorAddress];
         if (!depositor.isActive) {
@@ -447,7 +388,7 @@ contract Deposit {
         for (uint256 i = 0; i < depositor.depositCounts; i++) {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
-                uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
+                uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord; // interest is calculated since last withdrawal
                 uint256 interest = (record.amount * params.get_base_interest_rate() * timeDelta) / (365 days * 100);
                 totalInterestIncome += interest;
                 record.lastInterestWithdrawTimeForRecord = currentTime;
@@ -456,10 +397,7 @@ contract Deposit {
         return totalInterestIncome;
     }
 
-    function preview_depositor_interest  (address _depositorAddress) 
-    public 
-    view 
-    returns (uint256 totalInterestIncome) {
+    function preview_depositor_interest(address _depositorAddress) public view returns (uint256 totalInterestIncome) {
         uint256 currentTime = block.timestamp;
         Depositor storage depositor = depositors[_depositorAddress];
         if (!depositor.isActive) {
@@ -469,7 +407,7 @@ contract Deposit {
         for (uint256 i = 0; i < depositor.depositCounts; i++) {
             DepositRecord storage record = depositor.deposits[i];
             if (block.timestamp >= record.depositTime + record.lockupPeriod) {
-                uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord;  // interest is calculated since last withdrawal
+                uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord; // interest is calculated since last withdrawal
                 uint256 interest = (record.amount * params.get_base_interest_rate() * timeDelta) / (365 days * 100);
                 totalInterestIncome += interest;
             }
@@ -477,18 +415,15 @@ contract Deposit {
         return totalInterestIncome;
     }
 
-    function withdraw_interest 
-    (
-        address _depositorAddress, 
-        uint256 amount
-    ) 
-    external 
-    only_facade_contract (msg.sender)
-    existing_depositor (_depositorAddress) {
-        uint256 totalInterestIncome = calculate_depositor_interest (_depositorAddress);
-        
+    function withdraw_interest(address _depositorAddress, uint256 amount)
+        external
+        only_facade_contract(msg.sender)
+        existing_depositor(_depositorAddress)
+    {
+        uint256 totalInterestIncome = calculate_depositor_interest(_depositorAddress);
+
         uint256 old = iUSDCContract.balanceOf(address(this));
-        
+
         if (totalInterestIncome < amount) {
             revert InsufficientInterestIncome(totalInterestIncome, amount);
         }
@@ -497,10 +432,9 @@ contract Deposit {
             revert PoolBalanceTooLow(old, amount);
         }
 
-        
         update_interest_withdrawal(_depositorAddress, amount);
         // Transfer USDC back to the depositor
-        bool success = IERC20 (iUSDCContract).transfer(_depositorAddress, amount);
+        bool success = IERC20(iUSDCContract).transfer(_depositorAddress, amount);
         if (!success) {
             revert USDCTokenTransferFailedSafeTransfer(address(this), _depositorAddress, amount);
         }
@@ -511,16 +445,16 @@ contract Deposit {
             revert USDCTokenTransferAmountMismatch(expected, current);
         }
 
-        
         //emit DepositorInterestWithDrawalDone (address(this), _depositorAddress, totalInterestIncome, amount, depositor.totalAmount, poolBalance, block.timestamp);
     }
 
-   function match_update_lenders (uint256 _amount)
-    external
-    only_borrow_contract (msg.sender)
-    returns (Lender[] memory) {
+    function match_update_lenders(uint256 _amount)
+        external
+        only_borrow_contract(msg.sender)
+        returns (Lender[] memory)
+    {
         uint256 len = depositorAddresses.length;
-        Lender[] memory tempLenders = new Lender[](len); 
+        Lender[] memory tempLenders = new Lender[](len);
         Lender memory lender;
 
         uint256 fund = 0;
@@ -543,12 +477,9 @@ contract Deposit {
                 uint256 availableToLend = dRecord.availableToLend;
                 if (availableToLend > 0) {
                     tepmIDs[nDeposits++] = j;
-                    uint256 remaining = _amount- fund;
+                    uint256 remaining = _amount - fund;
 
-                    uint256 lentAmount = 
-                        remaining > availableToLend
-                        ? availableToLend
-                        : remaining;
+                    uint256 lentAmount = remaining > availableToLend ? availableToLend : remaining;
 
                     fund += lentAmount;
                     totalLent += lentAmount;
@@ -567,11 +498,7 @@ contract Deposit {
                     ids[k] = tepmIDs[k];
                 }
 
-                lender = Lender({
-                    lender: depositorAddresses[i],
-                    depositAccountIDs: ids,
-                    totalLent:totalLent
-                });
+                lender = Lender({lender: depositorAddresses[i], depositAccountIDs: ids, totalLent: totalLent});
 
                 tempLenders[matchedLendersCount++] = lender;
             }
@@ -588,17 +515,11 @@ contract Deposit {
         return lenders;
     }
 
-    function withdraw_to_borrower 
-    (
-        IERC20 _token, 
-        address _to, 
-        uint256 _amount,
-        address _borrower,
-        uint256 _collateralID
-    ) 
-    external 
-    only_facade_contract (msg.sender)
-    returns (bool) { 
+    function withdraw_to_borrower(IERC20 _token, address _to, uint256 _amount, address _borrower, uint256 _collateralID)
+        external
+        only_facade_contract(msg.sender)
+        returns (bool)
+    {
         if (_to == address(0)) {
             revert InvalidRecipientAddress();
         }
@@ -619,71 +540,67 @@ contract Deposit {
         return ok;
     }
 
-    function register_caller_contracts 
-    (
-        address _iLendAddress, 
-        address _paybackAddress,
-        address _borrowAddress
-    ) 
-    external 
-    only_owner_contract (msg.sender){
+    function register_caller_contracts(address _iLendAddress, address _paybackAddress, address _borrowAddress)
+        external
+        only_owner_contract(msg.sender)
+    {
         facadeContractAddress = _iLendAddress;
         paybackContractAddress = _paybackAddress;
         borrowContractAddress = _borrowAddress;
     }
 
-    /**uint256 totalAmount;
-    mapping (uint256 => DepositRecord) deposits; // Maps deposit index to DepositRecord
-    InterestWithdrawalRecord [] interestWithdrawalRecords;
-    PrincipalWithdrawalRecord [] principalWithdrawalRecords;
-    bool isActive;
-    uint256 depositCounts; // To keep track of the number of deposits */
-
-    function test_get_depositor_deposit_attributes 
-    (
-        address _depositor
-    ) 
-    public
-    view
-    returns (uint256, uint256, uint256, bool, uint256) {
+    /**
+     * uint256 totalAmount;
+     * mapping (uint256 => DepositRecord) deposits; // Maps deposit index to DepositRecord
+     * InterestWithdrawalRecord [] interestWithdrawalRecords;
+     * PrincipalWithdrawalRecord [] principalWithdrawalRecords;
+     * bool isActive;
+     * uint256 depositCounts; // To keep track of the number of deposits
+     */
+    function test_get_depositor_deposit_attributes(address _depositor)
+        public
+        view
+        returns (uint256, uint256, uint256, bool, uint256)
+    {
         Depositor storage depositor = depositors[_depositor];
-        if (!depositors[_depositor].isActive)
-            return (0,0,0,false, 0);
-        return (depositor.totalAmount, 
-                depositor.interestWithdrawalRecords.length,
-                depositor.principalWithdrawalRecords.length,
-                depositor.isActive,
-                depositor.depositCounts);
+        if (!depositors[_depositor].isActive) {
+            return (0, 0, 0, false, 0);
+        }
+        return (
+            depositor.totalAmount,
+            depositor.interestWithdrawalRecords.length,
+            depositor.principalWithdrawalRecords.length,
+            depositor.isActive,
+            depositor.depositCounts
+        );
     }
 
-    /** struct DepositRecord {
-    uint256 amount;
-    uint256 depositTime;
-    uint256 lockupPeriod;
-    uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
-    uint256 availableToLend;
-    InterestEarned [] interestEarned;
-}
-    **/
-
-    function test_get_depositor_deposit_record_attributes 
-    (
-        address _depositor,
-        uint256 _recordID
-    ) 
-    public
-    view
-    returns (uint256, uint256, uint256, uint256 ) {
+    /**
+     * struct DepositRecord {
+     * uint256 amount;
+     * uint256 depositTime;
+     * uint256 lockupPeriod;
+     * uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
+     * uint256 availableToLend;
+     * InterestEarned [] interestEarned;
+     * }
+     *
+     */
+    function test_get_depositor_deposit_record_attributes(address _depositor, uint256 _recordID)
+        public
+        view
+        returns (uint256, uint256, uint256, uint256)
+    {
         Depositor storage depositor = depositors[_depositor];
-        DepositRecord memory depositRecord = depositor.deposits [_recordID];
-        if (!depositors[_depositor].isActive)
+        DepositRecord memory depositRecord = depositor.deposits[_recordID];
+        if (!depositors[_depositor].isActive) {
             return (0, 0, 0, 0);
-        return (depositRecord.amount, 
-                depositRecord.lockupPeriod,
-                depositRecord.availableToLend,
-                depositRecord.interestEarned.length);
+        }
+        return (
+            depositRecord.amount,
+            depositRecord.lockupPeriod,
+            depositRecord.availableToLend,
+            depositRecord.interestEarned.length
+        );
     }
-
-    
-
 }

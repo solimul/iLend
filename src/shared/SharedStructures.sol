@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-/** 
+/**
  * Depost structures
- * **/
-
+ * *
+ */
 struct PrincipalWithdrawalRecord {
     uint256 amountWithdrawn;
     uint256 withdrawTime;
@@ -21,25 +21,22 @@ struct DepositRecord {
     uint256 lockupPeriod;
     uint256 lastInterestWithdrawTimeForRecord; // Time of the last interest withdrawal
     uint256 availableToLend;
-    InterestEarned [] interestEarned;
+    InterestEarned[] interestEarned;
 }
 
 struct Depositor {
     uint256 totalAmount;
-    mapping (uint256 => DepositRecord) deposits; // Maps deposit index to DepositRecord
-    InterestWithdrawalRecord [] interestWithdrawalRecords;
-    PrincipalWithdrawalRecord [] principalWithdrawalRecords;
+    mapping(uint256 => DepositRecord) deposits; // Maps deposit index to DepositRecord
+    InterestWithdrawalRecord[] interestWithdrawalRecords;
+    PrincipalWithdrawalRecord[] principalWithdrawalRecords;
     bool isActive;
     uint256 depositCounts; // To keep track of the number of deposits
 }
 
-
-
-/** 
+/**
  * Borrow structures
- * **/
-
-
+ * *
+ */
 struct RepaymentComponent {
     uint256 pAmount;
     uint256 iAmount;
@@ -51,11 +48,9 @@ struct BorrowRecord {
     uint256 amount;
     uint256 borrowTime;
     uint256 interestRate;
-    uint256 l2b; 
-    Lender [] lenders;
+    uint256 l2b;
+    Lender[] lenders;
 }
-
-
 
 struct BorrowerRecord {
     address borrowerAddress;
@@ -64,10 +59,10 @@ struct BorrowerRecord {
     uint256 borrowCount; // To keep track of the number of borrows
 }
 
-/** 
+/**
  * Collateral structures
- * **/
-
+ * *
+ */
 struct CollateralWithdrawalRecord {
     uint256 amountWithdrawn;
     uint256 withdrawTime;
@@ -82,8 +77,8 @@ struct CollateralDepositRecord {
 
 struct CollateralDepositor {
     uint256 totalAmount;
-    mapping (uint256 => CollateralDepositRecord) collateralDepositRecords;
-    CollateralWithdrawalRecord [] collateralWithdrawalRecord;
+    mapping(uint256 => CollateralDepositRecord) collateralDepositRecords;
+    CollateralWithdrawalRecord[] collateralWithdrawalRecord;
     bool isActive;
     uint256 depositCounts; // To keep track of the number of deposits
 }
@@ -109,16 +104,17 @@ struct DepletedCollateral {
     uint256 _collateralID;
     uint256 currentL2B;
     uint256 currentPrice;
-    uint256 availableCollateral;    
+    uint256 availableCollateral;
 }
-/** 
+/**
  * Lending and Interest Structres
- * **/
+ * *
+ */
 
 struct Lender {
-   address lender;
-   uint256 [] depositAccountIDs;
-   uint256 totalLent;
+    address lender;
+    uint256[] depositAccountIDs;
+    uint256 totalLent;
 }
 
 struct InterestEarned {
@@ -141,9 +137,9 @@ struct MiscFundRecievedInfo {
     uint256 dateReceived;
 }
 
-
-/** Liquidation */
-
+/**
+ * Liquidation
+ */
 struct LiquidationReadyCollateral {
     uint256 discountRate;
     uint256 currentValueToBorrow;
@@ -156,7 +152,7 @@ struct LiquidationReadyCollateral {
 }
 
 struct LiquidationReadyCollateralLoanIDMap {
-    mapping (uint256=>LiquidationReadyCollateral) map;
+    mapping(uint256 => LiquidationReadyCollateral) map;
 }
 
 struct LiquidationRecord {
@@ -170,7 +166,7 @@ struct Liquidator {
     address liquidator;
     uint256 totalLiquidatProvided;
     uint256 totalDiscountedAssetReceived;
-    LiquidationRecord [] liquidationRecords;
+    LiquidationRecord[] liquidationRecords;
 }
 
 struct Fee {
@@ -178,4 +174,3 @@ struct Fee {
     address provider;
     uint256 dateReceived;
 }
-

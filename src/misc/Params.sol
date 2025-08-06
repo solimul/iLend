@@ -3,46 +3,50 @@ pragma solidity 0.8.30;
 
 import {iLend} from "../ILend.sol";
 
-
 contract Params {
-    error OnlyOwnerCanAccessThisFunction (address sender, address owner);
+    error OnlyOwnerCanAccessThisFunction(address sender, address owner);
 
-    event DepositParamsSetup (address indexed user, 
-                              uint256 _minDepositAmount,
-                              uint256 _maxDepositAmount,
-                              uint256 _depositFee,
-                              uint256 _minLockupPeriod,
-                              uint256 _maxLockupPeriod);
+    event DepositParamsSetup(
+        address indexed user,
+        uint256 _minDepositAmount,
+        uint256 _maxDepositAmount,
+        uint256 _depositFee,
+        uint256 _minLockupPeriod,
+        uint256 _maxLockupPeriod
+    );
 
-    event BorrowParamsSetup (address indexed user,
-                              uint256 _minBorrowAmount,
-                              uint256 _maxBorrowAmount,
-                              uint256 _borrowFee,
-                              uint256 _minRepaymentPeriod,
-                              uint256 _maxRepaymentPeriod,
-                              uint256 _baseRate,
-                              uint256 _reserveFactor,
-                              uint256 _maxInterestRate,
-                              uint256 _minInterestRate);
-    event LiquidationParamsSetup (address indexed user,
-                                  uint256 _liquidationThreshold,
-                                  uint256 _liquidationFee,
-                                  uint256 _minLiquidationThreshold,
-                                  uint256 _maxLiquidationThreshold,
-                                  uint256 _minLiquidationAmount,
-                                  uint256 _maxLiquidationAmount,
-                                  uint256 _liquidationDiscountRate,
-                                  string _liquidationBonusType);
-    event OracleParamsSetup (address indexed user,
-                             address _oracleAddress,
-                             uint256 _heartbeat,
-                             uint256 _decimals);
-    event CollateralParamsSetup (address indexed _user,
-                                 address indexed _asset,
-                                 uint256 _minCollateralAmount,
-                                 uint256 _maxCollateralAmount,
-                                 uint256 _collateralFactor,
-                                 bool _isSupported);
+    event BorrowParamsSetup(
+        address indexed user,
+        uint256 _minBorrowAmount,
+        uint256 _maxBorrowAmount,
+        uint256 _borrowFee,
+        uint256 _minRepaymentPeriod,
+        uint256 _maxRepaymentPeriod,
+        uint256 _baseRate,
+        uint256 _reserveFactor,
+        uint256 _maxInterestRate,
+        uint256 _minInterestRate
+    );
+    event LiquidationParamsSetup(
+        address indexed user,
+        uint256 _liquidationThreshold,
+        uint256 _liquidationFee,
+        uint256 _minLiquidationThreshold,
+        uint256 _maxLiquidationThreshold,
+        uint256 _minLiquidationAmount,
+        uint256 _maxLiquidationAmount,
+        uint256 _liquidationDiscountRate,
+        string _liquidationBonusType
+    );
+    event OracleParamsSetup(address indexed user, address _oracleAddress, uint256 _heartbeat, uint256 _decimals);
+    event CollateralParamsSetup(
+        address indexed _user,
+        address indexed _asset,
+        uint256 _minCollateralAmount,
+        uint256 _maxCollateralAmount,
+        uint256 _collateralFactor,
+        bool _isSupported
+    );
 
     address public immutable iOwner;
     iLend private facadeContract;
@@ -69,8 +73,8 @@ contract Params {
         uint256 maxBorrowAmount;
         uint256 borrowFee;
         uint256 minRepaymentPeriod;
-        uint256 maxRepaymentPeriod; 
-        InterestRateParams interestRate;  
+        uint256 maxRepaymentPeriod;
+        InterestRateParams interestRate;
     }
 
     struct LiquidationParams {
@@ -85,9 +89,9 @@ contract Params {
     }
 
     struct OracleParams {
-        address oracleAddress;  // e.g., Chainlink feed address
-        uint256 heartbeat;      // max age for valid price
-        uint256 decimals;       // oracle decimal places
+        address oracleAddress; // e.g., Chainlink feed address
+        uint256 heartbeat; // max age for valid price
+        uint256 decimals; // oracle decimal places
     }
 
     struct CollateralParams {
@@ -111,16 +115,14 @@ contract Params {
     address private facadeContractAddress;
     address private immutable iOwnerAddress;
 
-    modifier only_owner_contract (address _sender) {
+    modifier only_owner_contract(address _sender) {
         if (_sender != iOwnerAddress) {
-            revert OnlyOwnerCanAccessThisFunction (_sender, iOwnerAddress);
+            revert OnlyOwnerCanAccessThisFunction(_sender, iOwnerAddress);
         }
         _;
     }
-    constructor( 
-            bool _depositPaused, 
-            bool _borrowingPaused, 
-            bool _liquidationPaused) {
+
+    constructor(bool _depositPaused, bool _borrowingPaused, bool _liquidationPaused) {
         depositsPaused = _depositPaused;
         borrowingPaused = _borrowingPaused;
         liquidationPaused = _liquidationPaused;
@@ -146,17 +148,19 @@ contract Params {
     function getMinLockupPeriod() public view returns (uint256) {
         return depositParams.minLockupPeriod;
     }
+
     function getMaxLockupPeriod() public view returns (uint256) {
         return depositParams.maxLockupPeriod;
     }
 
-
     function get_max_collateral_amount() public view returns (uint256) {
         return collateralParams.maxCollateralAmount;
     }
+
     function get_min_collateral_amount() public view returns (uint256) {
         return collateralParams.minCollateralAmount;
     }
+
     function get_l2b() public view returns (uint256) {
         return collateralParams.l2b;
     }
@@ -164,42 +168,50 @@ contract Params {
     function get_base_interest_rate() public view returns (uint256) {
         return borrowParams.interestRate.baseRate;
     }
+
     function get_reserve_factor() public view returns (uint256) {
         return borrowParams.interestRate.reserveFactor;
     }
+
     function getMaxInterestRate() public view returns (uint256) {
         return borrowParams.interestRate.maxInterestRate;
     }
+
     function getMinInterestRate() public view returns (uint256) {
         return borrowParams.interestRate.minInterestRate;
     }
+
     function getMinBorrowAmount() public view returns (uint256) {
         return borrowParams.minBorrowAmount;
     }
+
     function getMaxBorrowAmount() public view returns (uint256) {
         return borrowParams.maxBorrowAmount;
     }
+
     function getBorrowFee() public view returns (uint256) {
         return borrowParams.borrowFee;
     }
+
     function getMinRepaymentPeriod() public view returns (uint256) {
         return borrowParams.minRepaymentPeriod;
     }
+
     function getMaxRepaymentPeriod() public view returns (uint256) {
         return borrowParams.maxRepaymentPeriod;
     }
+
     function getLiquidationDiscountRate() public view returns (uint256) {
         return liquidationParams.liquidationDiscountRate;
     }
 
-       function getLiquidationThreshold() public view returns (uint256) {
+    function getLiquidationThreshold() public view returns (uint256) {
         return liquidationParams.liquidationThreshold;
     }
 
-    function get_deposit_fee_parcentage () public view returns (uint256) {
+    function get_deposit_fee_parcentage() public view returns (uint256) {
         return depositParams.depositFeePercentage;
     }
-
 
     function set_deposit_params(
         uint256 _minDepositAmount,
@@ -207,7 +219,7 @@ contract Params {
         uint256 _depositFeePercentage,
         uint256 _minLockupPeriod,
         uint256 _maxLockupPeriod
-    ) public only_owner_contract (msg.sender) {
+    ) public only_owner_contract(msg.sender) {
         depositParams = DepositParams({
             minDepositAmount: _minDepositAmount,
             maxDepositAmount: _maxDepositAmount,
@@ -215,7 +227,9 @@ contract Params {
             minLockupPeriod: _minLockupPeriod,
             maxLockupPeriod: _maxLockupPeriod
         });
-        emit DepositParamsSetup(iOwner, _minDepositAmount, _maxDepositAmount, _depositFeePercentage, _minLockupPeriod, _maxLockupPeriod);
+        emit DepositParamsSetup(
+            iOwner, _minDepositAmount, _maxDepositAmount, _depositFeePercentage, _minLockupPeriod, _maxLockupPeriod
+        );
     }
 
     function set_borrow_params(
@@ -228,12 +242,12 @@ contract Params {
         uint256 _reserveFactor,
         uint256 _maxInterestRate,
         uint256 _minInterestRate
-    ) public only_owner_contract (msg.sender) {
+    ) public only_owner_contract(msg.sender) {
         InterestRateParams memory _interestRate = InterestRateParams({
-            baseRate: _baseRate, 
-            reserveFactor: _reserveFactor, 
-            maxInterestRate: _maxInterestRate, 
-            minInterestRate: _minInterestRate 
+            baseRate: _baseRate,
+            reserveFactor: _reserveFactor,
+            maxInterestRate: _maxInterestRate,
+            minInterestRate: _minInterestRate
         });
 
         borrowParams = BorrowParams({
@@ -245,7 +259,18 @@ contract Params {
             interestRate: _interestRate
         });
 
-        emit BorrowParamsSetup(iOwner, _minBorrowAmount, _maxBorrowAmount, _borrowFee, _minRepaymentPeriod, _maxRepaymentPeriod, _baseRate, _reserveFactor, _maxInterestRate, _minInterestRate);
+        emit BorrowParamsSetup(
+            iOwner,
+            _minBorrowAmount,
+            _maxBorrowAmount,
+            _borrowFee,
+            _minRepaymentPeriod,
+            _maxRepaymentPeriod,
+            _baseRate,
+            _reserveFactor,
+            _maxInterestRate,
+            _minInterestRate
+        );
     }
 
     function set_liquidation_params(
@@ -257,7 +282,7 @@ contract Params {
         uint256 _maxLiquidationAmount,
         uint256 _liquidationDiscountRate,
         string memory _liquidationBonusType
-    ) public only_owner_contract (msg.sender) {
+    ) public only_owner_contract(msg.sender) {
         liquidationParams = LiquidationParams({
             liquidationThreshold: _liquidationThreshold,
             liquidationFee: _liquidationFee,
@@ -268,29 +293,34 @@ contract Params {
             liquidationDiscountRate: _liquidationDiscountRate,
             liqudationBonusType: _liquidationBonusType
         });
-        emit LiquidationParamsSetup(iOwner, _liquidationThreshold, _liquidationFee, _minLiquidationThreshold, _maxLiquidationThreshold, _minLiquidationAmount, _maxLiquidationAmount, _liquidationDiscountRate, _liquidationBonusType);
+        emit LiquidationParamsSetup(
+            iOwner,
+            _liquidationThreshold,
+            _liquidationFee,
+            _minLiquidationThreshold,
+            _maxLiquidationThreshold,
+            _minLiquidationAmount,
+            _maxLiquidationAmount,
+            _liquidationDiscountRate,
+            _liquidationBonusType
+        );
     }
 
-    function set_oracle_params(
-        address _oracleAddress,
-        uint256 _heartbeat,
-        uint256 _decimals
-    ) public only_owner_contract (msg.sender) {
-        oracleParams = OracleParams({
-            oracleAddress: _oracleAddress,
-            heartbeat: _heartbeat,
-            decimals: _decimals
-        });
+    function set_oracle_params(address _oracleAddress, uint256 _heartbeat, uint256 _decimals)
+        public
+        only_owner_contract(msg.sender)
+    {
+        oracleParams = OracleParams({oracleAddress: _oracleAddress, heartbeat: _heartbeat, decimals: _decimals});
         emit OracleParamsSetup(iOwner, _oracleAddress, _heartbeat, _decimals);
     }
 
-    function set_collateral_params (
+    function set_collateral_params(
         address _asset,
         uint256 _minCollateralAmount,
         uint256 _maxCollateralAmount,
         uint256 _collateralFactor,
         bool _isSupported
-    ) public only_owner_contract (msg.sender) {
+    ) public only_owner_contract(msg.sender) {
         CollateralParams memory _collateral = CollateralParams({
             asset: _asset,
             minCollateralAmount: _minCollateralAmount,
@@ -299,16 +329,12 @@ contract Params {
             isSupported: _isSupported
         });
         collateralParams = _collateral;
-        emit CollateralParamsSetup(iOwner, _asset, _minCollateralAmount, _maxCollateralAmount, _collateralFactor, _isSupported);
+        emit CollateralParamsSetup(
+            iOwner, _asset, _minCollateralAmount, _maxCollateralAmount, _collateralFactor, _isSupported
+        );
     }
 
-    function register_caller_contracts 
-    (
-        address _iLendAddress
-    ) 
-    external
-    only_owner_contract (msg.sender) {
+    function register_caller_contracts(address _iLendAddress) external only_owner_contract(msg.sender) {
         facadeContractAddress = _iLendAddress;
     }
-
 }
