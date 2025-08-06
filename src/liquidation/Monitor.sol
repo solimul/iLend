@@ -56,15 +56,18 @@ contract Monitor is KeeperCompatibleInterface {
     uint256 private constant BASIS_POINT = 10000;
     uint256 private constant HUNDRED = 100;
     uint256 private constant DUMMY_INIT_PRICE = 2200e18;
-    uint256 private constant DUMMY_CURRENT_PRICE_PERCENTAGE = 90;
+    uint256 private constant DUMMY_CURRENT_PRICE_PERCENTAGE = 72;
     uint256 private constant ETH_WEI = 1e18;
     uint256 private constant USDC_WEI = 1e6;
+    uint256 private constant TIME_THRESHOLD = 1 days;
 
     uint256 private sLastETHPrice;
     AggregatorV3Interface private immutable iPriceFeed;
     Collateral private immutable iCollateral;
     Params private immutable iParams;
     LiquidationRegistry private immutable iLiquidationRegistry;
+    uint256 private sLastCheckTimestamp;
+
 
     address private facadeContractAddress;
     address private immutable iOwnerAddress;
@@ -99,6 +102,7 @@ contract Monitor is KeeperCompatibleInterface {
         iParams = Params(_paramsAddress);
         iLiquidationRegistry = LiquidationRegistry(_liquidationQuryAddress);
         iOwnerAddress = msg.sender;
+        sLastCheckTimestamp = block.timestamp;
     }
 
     /**
@@ -119,16 +123,85 @@ contract Monitor is KeeperCompatibleInterface {
         override
         returns (bool upkeepNeeded, bytes memory /*performData*/ )
     {
+        
         upkeepNeeded = false;
-        uint256 currentETHPrice = iPriceFeed.get_price();
+        if (has_time_threshold_reached ()) {
+            uint256 currentETHPrice = iPriceFeed.get_price();
 
-        int256 priceDiff = int256(currentETHPrice) - int256(sLastETHPrice);
-        uint256 absPriceDiff = priceDiff >= 0 ? 0 : uint256(-priceDiff);
+            int256 priceDiff = int256(currentETHPrice) - int256(sLastETHPrice);
+            uint256 absPriceDiff = priceDiff >= 0 ? 0 : uint256(-priceDiff);
 
-        uint256 percentageChange = (absPriceDiff * 100) / sLastETHPrice;
-
-        upkeepNeeded = percentageChange > PERCENTAGE_CHANGE_THRESHOLD;
+            uint256 percentageChange = (absPriceDiff * 100) / sLastETHPrice;
+            upkeepNeeded = percentageChange > PERCENTAGE_CHANGE_THRESHOLD;
+        }
     }
+
+/**@notice Computes key liquidation metrics for a collateralized position.
+     @dev
+    - `cvu` is the USD value of the deposited ETH collateral (`rateWei/1e18 * depositAmount/1e18`).  
+    - `v2b` is the collateral-to-debt ratio as a percentage:  
+        • `>100` ⇒ over-collateralized  
+        • `<100` ⇒ under-collateralized  
+    - `req` is the USD collateral required to satisfy the threshold (`borrowedUSDC`).  
+    - `sf` is the USD shortfall (zero if no shortfall).  
+    - `le` is the amount of ETH (in wei) liquidatable to cover `sf`.  
+    - `dp` is the ETH price after applying a discount of `discBP` basis points.
+    @param v        A `CollateralView` containing `depositAmount` (wei) and `totalUSDCBorrowed` (USDC-wei).
+    @param rateWei  Current ETH price in USDC-wei per ETH (USDC × 1e6 per 1e18 wei).
+    @param discBP   Liquidation discount rate, in basis points (e.g. 500 = 5%).
+    @return v2b     Collateral-to-borrow ratio as a percent (cvu × 100 / borrowedUSDC).
+    @return sf      USD shortfall (max(req – cvu, 0)).
+    @return le      ETH (wei) liquidatable to cover `sf` (sf / ( rateWei / 1e18 ) ).
+    @return dp      Discounted ETH price ( rateWei/1e18 × (100 – discBP) / 100 ).
+ **/
+function calculate_liquidation_parameters(
+        CollateralView memory v,
+        uint256 rateWei,   // ETH price in USDC with 18 decimals (e.g., 1450 * 1e18)
+        uint256 discBP    // Discount in basis points (e.g., 500 for 5%)
+    )
+    internal
+    pure
+    returns (
+        uint256 v2b,   // Value-to-borrow ratio (percentage)
+        uint256 sf,    // Shortfall in USDC
+        uint256 le,    // Liquidatable ETH (in wei)
+        uint256 dp     // Post-discount ETH price in USDC
+    )
+    {
+        uint256 r  = rateWei / ETH_WEI;                // ETH price in USDC (e.g., 1450)
+        uint256 da = v.depositAmount / ETH_WEI;        // Collateral in ETH (e.g., 5)
+        uint256 ub = v.totalUSDCBorrowed / USDC_WEI;   // Borrowed USDC (e.g., 7500)
+
+        uint256 cvu = r * da;                                  // Collateral value in USDC
+                                                    // e.g., 1450 * 5 = 7250
+
+        v2b = (cvu * HUNDRED) / ub;                    // Value-to-borrow ratio (%)
+                                                    // e.g., (7250 * 100) / 7500 = 96.66
+
+        uint256 req = ub;                                      // Required = borrowed (since LTV is 75%)
+                                                    // e.g., 7500
+
+        int256 diff = int256(req) - int256(cvu);       // Shortfall
+                                                    // e.g., 7500 - 7250 = 250
+
+        sf = diff > 0 ? uint256(diff) : 0;             // Only positive shortfall
+                                                   // e.g., 250 
+
+      
+        le =  (sf  * ETH_WEI / r) ;                       // Liquidatable ETH (in wei)
+        sf = sf * USDC_WEI;
+        req = req * USDC_WEI;
+        cvu = cvu * USDC_WEI;                                            // e.g., 
+                                                    // (250 * 1e18) / 1450 
+                                                    // = 172413793103448275862 WEI
+                                                    // ≈ 0.17241 ETH
+
+        dp = ((r * (HUNDRED - discBP)) * USDC_WEI) / HUNDRED;                   // Discounted ETH price
+                                                    // e.g., (1450 * 95) * 1e6 ≈ 1377 USDC  ≈ 1377e6 WEI 
+    }
+
+
+
 
     /**
      * @notice Identifies undercollateralized loans and marks them as eligible for liquidation.
@@ -147,33 +220,29 @@ contract Monitor is KeeperCompatibleInterface {
      * - `postDiscountETHPrice`: ETH price after applying liquidation discount.
      */
     function performUpkeep(bytes calldata /**/ ) external override {
+        sLastCheckTimestamp = block.timestamp;
+        sLastETHPrice = iPriceFeed.get_price();
         address[] memory addresses = iCollateral.get_collateral_depositor_addresses();
         iLiquidationRegistry.reset_liquidation_ready_collaterals();
         uint256 currentRate = sTesting == true ? get_dummy_current_price () :iPriceFeed.get_price();            
-        uint256 lqTh = iParams.getLiquidationThreshold();
         uint256 discountRate = iParams.getLiquidationDiscountRate();
         for (uint256 i = 0; i < addresses.length; i++) {
             address dAddress = addresses[i];
-            // console.log (sTesting);
-            // console.log (currentRate, iPriceFeed.get_price());
-            // console.log (lqTh);
-            // console.log (discountRate);
-
             CollateralView[] memory depletedCollaterals = iCollateral.get_depeleted_collaterals(dAddress, currentRate);
             console.log (depletedCollaterals[0].depositAmount);
             for (uint256 j = 0; j < depletedCollaterals.length; j++) {
                 CollateralView memory cv = depletedCollaterals[j];
 
+                ( 
+                    uint256 currentValueToBorrow,
+                    uint256 shortFallUSD,
+                    uint256 liquidableETH,
+                    uint256 postDiscountETHPrice
+                )
+                = calculate_liquidation_parameters (cv, currentRate, discountRate);
 
-                uint256 currentCollateralValue = (currentRate /ETH_WEI) * (cv.depositAmount / ETH_WEI);
-                uint256 currentValueToBorrow = (currentCollateralValue * HUNDRED) / (cv.totalUSDCBorrowed / USDC_WEI);
-                uint256 requiredCollateralForMeetingThreshold = ((cv.totalUSDCBorrowed / USDC_WEI) * lqTh) / HUNDRED;
-                int256 shortFallUSDInt = int256 (requiredCollateralForMeetingThreshold) - int256 (currentCollateralValue);
-                uint256 shortFallUSD = shortFallUSDInt < 0 ? 0 : uint256 (shortFallUSDInt);
-        
 
-                uint256 liquidableETH = shortFallUSD / currentRate;
-                uint256 postDiscountETHPrice = (currentRate * (HUNDRED - discountRate)) / HUNDRED;
+                
                 LiquidationReadyCollateral memory col = LiquidationReadyCollateral({
                     discountRate: discountRate,
                     currentValueToBorrow: currentValueToBorrow,
@@ -220,5 +289,12 @@ contract Monitor is KeeperCompatibleInterface {
     function get_dummy_current_price () internal view returns (uint256){
         assert (sTesting == true);
         return (iPriceFeed.get_price() * DUMMY_CURRENT_PRICE_PERCENTAGE) / HUNDRED;
+    }
+
+    function has_time_threshold_reached () public view returns (bool) {
+        if (sTesting == true)
+            return true;
+        else 
+            return block.timestamp - sLastCheckTimestamp >= TIME_THRESHOLD;
     }
 }
