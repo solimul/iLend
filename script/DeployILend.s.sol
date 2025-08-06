@@ -189,7 +189,7 @@ contract DeployILend is Script {
         params.register_caller_contracts(address(lendProtocol));
         treasury.register_caller_contracts(address(lendProtocol), address(payback));
         borrow.register_caller_contracts(address(lendProtocol));
-        collateral.register_caller_contracts(address(lendProtocol));
+        collateral.register_caller_contracts(address(lendProtocol), address (borrow));
         deposit.register_caller_contracts(address(lendProtocol), address(payback), address(borrow));
         payback.register_caller_contracts(address(lendProtocol));
         liquidationRegistry.register_caller_contracts(address(lendProtocol), address(monitor));

@@ -372,9 +372,9 @@ contract iLend {
      *
      * @return An array of `CollateralView` structures describing the caller's collateral positions.
      */
-    function get_my_collateral_info() external returns (CollateralView[] memory) {
+    function get_my_collateral_info() external view returns (CollateralView[] memory) {
         // Call the view function in the Collateral contract
-        iCollateral.set_borrower_contract(address(iBorrow));
+        //iCollateral.set_borrower_contract(address(iBorrow));
         return iCollateral.get_collateral_depositor_info(msg.sender);
     }
 
@@ -507,5 +507,9 @@ contract iLend {
 
         emit LiquidationUSDCReceived(msg.sender, _usdcAmount, currentBalance + _usdcAmount, block.timestamp);
         emit SentETHToLiquidator(msg.sender, ethAmount, newBalance, block.timestamp);
+    }
+
+    function is_testing () public view returns (bool) {
+        return sTesting;
     }
 }

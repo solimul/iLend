@@ -56,7 +56,9 @@ contract Monitor is KeeperCompatibleInterface {
     uint256 private constant BASIS_POINT = 10000;
     uint256 private constant HUNDRED = 100;
     uint256 private constant DUMMY_INIT_PRICE = 2200e18;
+    uint256 private constant DUMMY_CURRENT_PRICE_PERCENTAGE = 90;
     uint256 private constant ETH_WEI = 1e18;
+    uint256 private constant USDC_WEI = 1e6;
 
     uint256 private sLastETHPrice;
     AggregatorV3Interface private immutable iPriceFeed;
@@ -66,6 +68,8 @@ contract Monitor is KeeperCompatibleInterface {
 
     address private facadeContractAddress;
     address private immutable iOwnerAddress;
+
+    bool private sTesting;
 
     modifier only_owner_contract(address _sender) {
         if (_sender != iOwnerAddress) {
@@ -147,19 +151,29 @@ contract Monitor is KeeperCompatibleInterface {
         iLiquidationRegistry.reset_liquidation_ready_collaterals();
         for (uint256 i = 0; i < addresses.length; i++) {
             address dAddress = addresses[i];
-            uint256 currentRate = iPriceFeed.get_price();
-            uint256 currentRateUSDC = currentRate / ETH_WEI;
+            uint256 currentRate = sTesting == true ? get_dummy_current_price () :iPriceFeed.get_price();            
             uint256 lqTh = iParams.getLiquidationThreshold();
             uint256 discountRate = iParams.getLiquidationDiscountRate();
 
+            // console.log (sTesting);
+            // console.log (currentRate, iPriceFeed.get_price());
+            // console.log (lqTh);
+            // console.log (discountRate);
+
             CollateralView[] memory depletedCollaterals = iCollateral.get_depeleted_collaterals(dAddress, currentRate);
+            console.log (depletedCollaterals[0].depositAmount);
             for (uint256 j = 0; j < depletedCollaterals.length; j++) {
                 CollateralView memory cv = depletedCollaterals[j];
-                uint256 currentCollateralValue = currentRate * cv.depositAmount;
-                uint256 currentValueToBorrow = currentCollateralValue / cv.totalUSDCBorrowed;
-                uint256 requiredCollateralForMeetingThreshold = cv.totalUSDCBorrowed * lqTh;
-                uint256 shortFallUSD = currentCollateralValue - requiredCollateralForMeetingThreshold;
-                shortFallUSD = shortFallUSD < 0 ? 0 : shortFallUSD;
+                uint256 currentCollateralValue = (currentRate /ETH_WEI) * (cv.depositAmount / ETH_WEI);
+                uint256 currentValueToBorrow = (currentCollateralValue * HUNDRED) / (cv.totalUSDCBorrowed / USDC_WEI);
+                uint256 requiredCollateralForMeetingThreshold = ((cv.totalUSDCBorrowed / USDC_WEI) * lqTh) / HUNDRED;
+                int256 shortFallUSDInt = int256 (requiredCollateralForMeetingThreshold) - int256 (currentCollateralValue);
+                uint256 shortFallUSD = shortFallUSDInt < 0 ? 0 : uint256 (shortFallUSDInt);
+                // console.log (currentCollateralValue);
+                // console.log (cv.totalUSDCBorrowed/USDC_WEI);
+                // console.log (currentValueToBorrow);
+                // console.log (requiredCollateralForMeetingThreshold);
+                // console.log (shortFallUSD);
 
                 uint256 liquidableETH = shortFallUSD / currentRate;
                 uint256 postDiscountETHPrice = (currentRate * (HUNDRED - discountRate)) / HUNDRED;
@@ -196,12 +210,18 @@ contract Monitor is KeeperCompatibleInterface {
 
     function register_caller_contracts(address _iLendAddress) external only_owner_contract(msg.sender) {
         facadeContractAddress = _iLendAddress;
+        sTesting = (iLend (facadeContractAddress)).is_testing ();
     }
 
     function set_dummy_init_price_eth() public {
-        if (msg.sender != iOwnerAddress) {
+        if (msg.sender != iOwnerAddress && sTesting == true) {
             revert InvalidAccessRequest();
         }
         sLastETHPrice = DUMMY_INIT_PRICE;
+    }
+
+    function get_dummy_current_price () internal view returns (uint256){
+        assert (sTesting == true);
+        return (iPriceFeed.get_price() * DUMMY_CURRENT_PRICE_PERCENTAGE) / HUNDRED;
     }
 }

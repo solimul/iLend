@@ -42,14 +42,16 @@ contract Collateral {
     error OnlyILendContractCanAccessThisFunction(address sender, address ilend);
     error OnlyOwnerCanAccessThisFunction(address sender, address owner);
 
+    error BorrowContractNotSet ();
+
     Params private params;
-    Borrow private borrow;
     LiquidationEngine private liquidationEngine;
     AggregatorV3Interface private pricefeed;
 
     mapping(address => CollateralDepositor) private collateralDepositors;
     address[] private collateralDeposotorAddresses;
     address private facadeContractAddress;
+    address private borrowContractAddress;
     address private immutable iOwnerAddress;
 
     IERC20 public immutable ethContract;
@@ -199,8 +201,11 @@ contract Collateral {
     }
 
     function get_collateral_depositor_info(address _depositor) public view returns (CollateralView[] memory) {
+        if (borrowContractAddress == address (0)) 
+            revert BorrowContractNotSet ();
         CollateralDepositor storage collateralDepositor = collateralDepositors[_depositor];
         CollateralView[] memory collateralViews = new CollateralView[](collateralDepositor.depositCounts);
+        Borrow borrow = Borrow (borrowContractAddress);
         for (uint256 i = 0; i < collateralDepositor.depositCounts; i++) {
             CollateralDepositRecord storage record = collateralDepositor.collateralDepositRecords[i];
             if (
@@ -261,12 +266,12 @@ contract Collateral {
         return depletedCollaterals;
     }
 
-    function set_borrower_contract(address _borrowerContractAddress) external {
-        if (_borrowerContractAddress == address(0)) {
-            revert InvalidBorrowerContractAddress();
-        }
-        borrow = Borrow(_borrowerContractAddress);
-    }
+    // function set_borrower_contract(address _borrowerContractAddress) external {
+    //     if (_borrowerContractAddress == address(0)) {
+    //         revert InvalidBorrowerContractAddress();
+    //     }
+    //     borrow = Borrow(_borrowerContractAddress);
+    // }
 
     function delete_collateral_record(address _depositor, uint256 _collateralID) internal {
         CollateralDepositor storage collateralDepositor = collateralDepositors[_depositor];
@@ -324,9 +329,10 @@ contract Collateral {
         liquidationEngine = LiquidationEngine(_liqEngineAddress);
     }
 
-    function register_caller_contracts(address _iLendAddress) external only_owner_contract(msg.sender) {
+    function register_caller_contracts(address _iLendAddress, address _borrowContractAddress) external only_owner_contract(msg.sender) {
         console.log("register_caller_contracts", _iLendAddress);
         facadeContractAddress = _iLendAddress;
+        borrowContractAddress = _borrowContractAddress;
     }
 
     function test_get_collateral_depositor_state(address _depositor)

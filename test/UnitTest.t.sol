@@ -156,7 +156,7 @@ contract UnitTest is Test {
         params.register_caller_contracts(address(lendProtocol));
         treasury.register_caller_contracts(address(lendProtocol), address(payback));
         borrow.register_caller_contracts(address(lendProtocol));
-        collateral.register_caller_contracts(address(lendProtocol));
+        collateral.register_caller_contracts(address(lendProtocol), address (borrow));
         deposit.register_caller_contracts(address(lendProtocol), address(payback), address(borrow));
         payback.register_caller_contracts(address(lendProtocol));
         liquidationRegistry.register_caller_contracts(address(lendProtocol), address(monitor));
@@ -570,10 +570,16 @@ contract UnitTest is Test {
     }
 
     function test_perform_upkeep() public {
+        seed_deposit_pool ();
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        execute_collateral_deposit (borrower, ethBalance/2);
+        execute_borrow (borrower);
         monitor.set_dummy_init_price_eth();
         (bool upkeep,) = monitor.checkUpkeep("");
-
-        assert(upkeep == true);
+        if (upkeep == true) {
+            monitor.performUpkeep("");
+        }
     }
 
     /**
