@@ -149,12 +149,11 @@ contract Monitor is KeeperCompatibleInterface {
     function performUpkeep(bytes calldata /**/ ) external override {
         address[] memory addresses = iCollateral.get_collateral_depositor_addresses();
         iLiquidationRegistry.reset_liquidation_ready_collaterals();
+        uint256 currentRate = sTesting == true ? get_dummy_current_price () :iPriceFeed.get_price();            
+        uint256 lqTh = iParams.getLiquidationThreshold();
+        uint256 discountRate = iParams.getLiquidationDiscountRate();
         for (uint256 i = 0; i < addresses.length; i++) {
             address dAddress = addresses[i];
-            uint256 currentRate = sTesting == true ? get_dummy_current_price () :iPriceFeed.get_price();            
-            uint256 lqTh = iParams.getLiquidationThreshold();
-            uint256 discountRate = iParams.getLiquidationDiscountRate();
-
             // console.log (sTesting);
             // console.log (currentRate, iPriceFeed.get_price());
             // console.log (lqTh);
@@ -164,16 +163,14 @@ contract Monitor is KeeperCompatibleInterface {
             console.log (depletedCollaterals[0].depositAmount);
             for (uint256 j = 0; j < depletedCollaterals.length; j++) {
                 CollateralView memory cv = depletedCollaterals[j];
+
+
                 uint256 currentCollateralValue = (currentRate /ETH_WEI) * (cv.depositAmount / ETH_WEI);
                 uint256 currentValueToBorrow = (currentCollateralValue * HUNDRED) / (cv.totalUSDCBorrowed / USDC_WEI);
                 uint256 requiredCollateralForMeetingThreshold = ((cv.totalUSDCBorrowed / USDC_WEI) * lqTh) / HUNDRED;
                 int256 shortFallUSDInt = int256 (requiredCollateralForMeetingThreshold) - int256 (currentCollateralValue);
                 uint256 shortFallUSD = shortFallUSDInt < 0 ? 0 : uint256 (shortFallUSDInt);
-                // console.log (currentCollateralValue);
-                // console.log (cv.totalUSDCBorrowed/USDC_WEI);
-                // console.log (currentValueToBorrow);
-                // console.log (requiredCollateralForMeetingThreshold);
-                // console.log (shortFallUSD);
+        
 
                 uint256 liquidableETH = shortFallUSD / currentRate;
                 uint256 postDiscountETHPrice = (currentRate * (HUNDRED - discountRate)) / HUNDRED;

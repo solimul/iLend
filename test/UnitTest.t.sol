@@ -8,6 +8,7 @@ import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface
 import {PricefeedManagerLib} from "../src/lib/PricefeedManagerLib.sol";
 import {NetworkConfigLib} from "../src/lib/NetworkConfigLib.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {LiquidationReadyCollateral, CollateralView} from "../src/shared/SharedStructures.sol";
 
 // Borrow module
 import "../src/borrow/Borrow.sol";
@@ -580,6 +581,15 @@ contract UnitTest is Test {
         if (upkeep == true) {
             monitor.performUpkeep("");
         }
+
+        LiquidationReadyCollateral [] memory cols = liquidationRegistry.get_liquidation_ready_collaterals_by_borrower (borrower);
+        assert (cols.length == 1);
+        LiquidationReadyCollateral memory col = cols [0];
+        CollateralView memory cv = col.cv;
+        assert (col.yetToBeLiquidated==true);
+        assert (cv.depositAmount == ethBalance/2);
+        assert (cv.totalCollateralDepost == ethBalance/2);
+        assert (cv.hasBorrowedAgainst == true);
     }
 
     /**
