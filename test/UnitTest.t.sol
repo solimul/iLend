@@ -609,7 +609,51 @@ contract UnitTest is Test {
              = liquidationEngine.quote_liquidation2 (borrower, 0);
         assert (usdcToPay > 0);
         assert (ethToReceive > 0);
+    }
 
+    function test_liquidation () public {
+        seed_deposit_pool ();
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        execute_collateral_deposit (borrower, ethBalance/2);
+        execute_borrow (borrower);
+        monitor.set_dummy_init_price_eth();
+        (bool upkeep,) = monitor.checkUpkeep("");
+        if (upkeep == true) {
+            monitor.performUpkeep("");
+        }
+
+
+        address liquidator = liquidators [0].actor;
+        uint256 usdcToPay;
+        uint256 ethToReceive;
+        uint256 liquidatorETHBalance0 = IERC20 (wrappedETHAddress).balanceOf (liquidator);
+        uint256 liquidatorUSDCBalance0 = IERC20 (usdcAddress).balanceOf (liquidator);
+        uint256 collateralPoolETHBalance0 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 depositPoolUSDCBalance0 = IERC20 (usdcAddress).balanceOf (address (deposit));
+
+        vm.startPrank(liquidator);
+            (usdcToPay, ethToReceive)
+             = liquidationEngine.quote_liquidation (borrower, 0);
+            
+            lendProtocol.liquidate_position_for_ETH (borrower, 0, usdcToPay);
+        vm.stopPrank ();
+        uint256 liquidatorETHBalance1 = IERC20 (wrappedETHAddress).balanceOf (liquidator);
+        uint256 liquidatorUSDCBalance1 = IERC20 (usdcAddress).balanceOf (liquidator);
+        uint256 collateralPoolETHBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 depositPoolUSDCBalance1 = IERC20 (usdcAddress).balanceOf (address (deposit));
+
+        console.log("liquidatorETHBalance0/liquidatorETHBalance1:", liquidatorETHBalance0, liquidatorETHBalance1);
+        console.log("liquidatorUSDCBalance0/liquidatorUSDCBalance1:", liquidatorUSDCBalance0, liquidatorUSDCBalance1);
+        console.log("collateralPoolETHBalance0/collateralPoolETHBalance1:", collateralPoolETHBalance0, collateralPoolETHBalance1);
+        console.log("depositPoolUSDCBalance0/depositPoolUSDCBalance1:", depositPoolUSDCBalance0, depositPoolUSDCBalance1);
+
+
+
+        assert (liquidatorETHBalance1 >= liquidatorETHBalance0 +  ethToReceive);
+        assert (liquidatorUSDCBalance1 >= liquidatorUSDCBalance0 - usdcToPay);
+        assert (collateralPoolETHBalance1 >= collateralPoolETHBalance0 - ethToReceive);
+        assert (depositPoolUSDCBalance1 >= depositPoolUSDCBalance0 + usdcToPay);
     }
 
 

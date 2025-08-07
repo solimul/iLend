@@ -114,9 +114,9 @@ contract LiquidationEngine {
      
 
         shortFallUSDC = col.shortFallUSDC;
-        console.log ("currentRate: ",col.currentRate);
-        console.log ("shortFallUSDC: ",shortFallUSDC);
-        console.log ("discountRate: ",col.discountRate);
+        // console.log ("currentRate: ",col.currentRate);
+        // console.log ("shortFallUSDC: ",shortFallUSDC);
+        // console.log ("discountRate: ",col.discountRate);
 
         uint256 currentRateInUSDC = col.currentRate / TRILLION_WEI;
         uint256 discount = THOUSAND - col.discountRate; // default discountRate is 50 set in Params contract
@@ -209,10 +209,6 @@ contract LiquidationEngine {
             revert BorrowerDoesNotHaveEnoughUSDCForLiquidation(
                 _borrower, _loanID, _liquidator, _usdcAmount, shortFallUSDC
             );
-        }
-        uint256 lBalance = usdcToken.balanceOf(address(_liquidator));
-        if (_usdcAmount < lBalance) {
-            revert LiquidatorDoesNotHaveEnoughUSDC(_liquidator, _usdcAmount, lBalance);
         }
         uint256 collateralETH = iCollateral.get_collateral_ETH_by_record(_borrower, _loanID);
         if (ethToTransfer > collateralETH) {

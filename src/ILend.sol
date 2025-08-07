@@ -77,7 +77,7 @@ contract iLend {
     );
 
     error OnlyOwnerCanCallThisFunction(address caller, address iOwner);
-    error TransferAmountMismatchInDepositPoolAfterIncomingTransfer_Liquidation(
+    error BalanceMismatchAfterLiquidation(
         uint256 amountSent, uint256 beforeTransferBalance, uint256 newBalance
     );
 
@@ -462,35 +462,23 @@ contract iLend {
      * @param _usdcAmount The amount of USDC the liquidator is using to repay the borrower's debt.
      */
     function liquidate_position_for_ETH(address _borrower, uint256 _loanID, uint256 _usdcAmount) external {
-        IERC20 token = IERC20(iUSDCContractAddress);
-        uint256 lequidatorUSDCBalance = token.balanceOf(msg.sender);
-        if (lequidatorUSDCBalance < _usdcAmount) {
-            revert LiquidatorDoesNotHaveEnoughUSDC(msg.sender, _usdcAmount, lequidatorUSDCBalance);
-        }
-
-        if (token.allowance(msg.sender, address(this)) < _usdcAmount) {
-            revert LiquidatorUSDCAllowanceTooLowForILend(msg.sender, address(this));
-        }
-
-        uint256 currentBalance = token.balanceOf(address(iDeposit));
-
-        if (token.transferFrom(msg.sender, address(iDeposit), _usdcAmount) == false) {
-            revert LiquidatorUSDCTransferFromFailed(msg.sender, address(iDeposit), _usdcAmount);
-        }
-
-        uint256 newBalance = token.balanceOf(address(iDeposit));
-
-        if (newBalance < currentBalance + _usdcAmount) {
-            revert TransferAmountMismatchInDepositPoolAfterIncomingTransfer_Liquidation(
-                _usdcAmount, currentBalance, newBalance
-            );
-        }
-
         uint256 ethAmount =
             iLiquidationEngine.update_on_liquidation_deposit(msg.sender, _borrower, _loanID, _usdcAmount);
 
-        token = IERC20(iETHContractAddress);
-        currentBalance = token.balanceOf(address(iCollateral));
+        transfer_funds_from_external(
+            IERC20(iUSDCContractAddress),
+            msg.sender,
+            address(iDeposit),
+            _usdcAmount,
+            LiquidatorDoesNotHaveEnoughUSDC.selector,
+            LiquidatorUSDCAllowanceTooLowForILend.selector,
+            LiquidatorUSDCTransferFromFailed.selector,
+            BalanceMismatchAfterLiquidation.selector
+        );
+
+        IERC20 token = IERC20(iETHContractAddress);
+
+        uint256 currentBalance = token.balanceOf(address(iCollateral));
 
         if (token.balanceOf(address(iCollateral)) < ethAmount) {
             revert CollateralPoolDoesNotHaveEnoughETHForLiquidation(
@@ -498,7 +486,7 @@ contract iLend {
             );
         }
         iCollateral.withdraw_to_liquidator(token, msg.sender, ethAmount, _borrower, _loanID);
-        newBalance = token.balanceOf(address(iCollateral));
+        uint256 newBalance = token.balanceOf(address(iCollateral));
         if (newBalance > currentBalance - ethAmount) {
             revert BalanceMismatchAfterOutgoingETHTransferToLiquidator();
         }
