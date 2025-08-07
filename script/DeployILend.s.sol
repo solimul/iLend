@@ -180,7 +180,7 @@ contract DeployILend is Script {
         //params.set_deposit_pool_params (500e6);
         params.set_deposit_params(100e6, 100_000_0e6, 1, 1 days, 365 days);
         params.set_borrow_params(1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
-        params.set_liquidation_params(150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
+        params.set_liquidation_params(150, 10, 1000, 50000, 1000, 50000, 50, "percentage");
         params.set_oracle_params(address(this), 60 seconds, 18);
         params.set_collateral_params(address(this), 1e18, 1000e18, 75, true);
     }

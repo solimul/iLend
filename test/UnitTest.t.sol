@@ -148,7 +148,7 @@ contract UnitTest is Test {
     function set_params() internal {
         params.set_deposit_params(100e6, 100_000_0e6, 0, 1 days, 365 days);
         params.set_borrow_params(1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
-        params.set_liquidation_params(150, 10, 1000, 50000, 1000, 50000, 5, "percentage");
+        params.set_liquidation_params(150, 10, 1000, 50000, 1000, 50000, 50, "percentage");
         params.set_oracle_params(address(this), 60 seconds, 18);
         params.set_collateral_params(address(this), 1e18, 1000e18, 75, true);
     }
@@ -557,7 +557,7 @@ contract UnitTest is Test {
 
     /**
      *
-     * Testing Monitor Contract
+     * Testing Monitor, Liquidation Engine, Liquidation Quote Contract
      */
     function test_check_upkeep_returns_false() public view {
         (bool upkeep,) = monitor.checkUpkeep("");
@@ -591,6 +591,28 @@ contract UnitTest is Test {
         assert (cv.totalCollateralDepost == ethBalance/2);
         assert (cv.hasBorrowedAgainst == true);
     }
+
+    function test_get_liquidation_quote () public {
+        seed_deposit_pool ();
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        execute_collateral_deposit (borrower, ethBalance/2);
+        execute_borrow (borrower);
+        monitor.set_dummy_init_price_eth();
+        (bool upkeep,) = monitor.checkUpkeep("");
+        if (upkeep == true) {
+            monitor.performUpkeep("");
+        }
+
+
+        (uint256 usdcToPay, uint256 currentPrice, uint256 postDiscountETHPrice, uint256 ethToReceive, uint256 immidiateProfit)
+             = liquidationEngine.quote_liquidation2 (borrower, 0);
+        assert (usdcToPay > 0);
+        assert (ethToReceive > 0);
+
+    }
+
+
 
     /**
      *

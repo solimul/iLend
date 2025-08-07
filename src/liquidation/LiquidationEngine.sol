@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.30;
+import "@forge-std/console.sol";
 
 import {LiquidationReadyCollateral} from "../shared/SharedStructures.sol";
 import {LiquidationRegistry} from "../liquidation/LiquidationRegistry.sol";
@@ -42,6 +43,12 @@ contract LiquidationEngine {
     Collateral private immutable iCollateral;
     Deposit private immutable iDeposit;
     uint256 private constant HUNDRED = 100;
+    uint256 private constant THOUSAND = 1000;
+    uint256 private constant ETH_WEI = 1e18;
+    uint256 private constant TRILLION_WEI = 1e12;
+    
+
+
 
     address[] iLiquidatorsList;
     mapping(address => Liquidator) iLiquidatorsMap;
@@ -104,14 +111,36 @@ contract LiquidationEngine {
         returns (uint256 shortFallUSDC, uint256 ethToReceive)
     {
         LiquidationReadyCollateral memory col = iLiqReg.get_liquidation_collateral(_borrower, _loanID);
+     
+
         shortFallUSDC = col.shortFallUSDC;
-        uint256 bonus = HUNDRED + col.discountRate;
-        uint256 usdcWithBonus = col.shortFallUSDC * bonus;
-        ethToReceive = usdcWithBonus / (col.currentRate * HUNDRED);
-        if (col.liquidableETH < ethToReceive) {
-            revert NotEnoughLiquidableETH(_borrower, _loanID, col.liquidableETH, ethToReceive);
-        }
+        console.log ("currentRate: ",col.currentRate);
+        console.log ("shortFallUSDC: ",shortFallUSDC);
+        console.log ("discountRate: ",col.discountRate);
+
+        uint256 currentRateInUSDC = col.currentRate / TRILLION_WEI;
+        uint256 discount = THOUSAND - col.discountRate; // default discountRate is 50 set in Params contract
+
+        uint256 dicountedETHPrice = (currentRateInUSDC * discount ) / THOUSAND;
+        ethToReceive = (shortFallUSDC * ETH_WEI) / dicountedETHPrice;
+        // assert is tweaked by subtracting 1 from THOUSAND to handle Integer Division Precision Loss
+        assert ((ethToReceive * discount)/(THOUSAND-1) >= col.liquidableETH); 
+    } 
+
+  
+    function quote_liquidation2(address _borrower, uint256 _loanID)
+        public
+        view
+        returns (uint256 usdcToPay, uint256 currentETHPrice, uint256 discountedETHPrice, uint256 ethToReceive, uint256 immidiateProfit)
+    {
+        LiquidationReadyCollateral memory col = iLiqReg.get_liquidation_collateral(_borrower, _loanID);
+        usdcToPay = col.shortFallUSDC;
+        currentETHPrice = (col.currentRate) / 1e12; 
+        discountedETHPrice = col.postDiscountETHPrice;
+        ethToReceive = col.liquidableETH;
+        immidiateProfit = ((currentETHPrice - discountedETHPrice) * ethToReceive) / 1e18;
     }
+    
 
     /**
      * @notice Updates internal records after a successful liquidation.
