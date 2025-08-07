@@ -367,4 +367,8 @@ contract Collateral {
         CollateralDepositor storage collateralDepositor = collateralDepositors[_colDepositor];
         return collateralDepositor.depositCounts;
     }
+
+    function get_current_eth_price () external view returns (uint256) {
+        return pricefeed.get_price (); 
+    }
 }

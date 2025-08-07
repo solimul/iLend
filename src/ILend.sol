@@ -82,6 +82,7 @@ contract iLend {
     );
 
     error ExternalAccessNotAllowed();
+    error ProtocolStateIsUnhealthy ();
 
     Params private immutable iParams;
     address private immutable iOwner;
@@ -99,6 +100,8 @@ contract iLend {
     address public iETHContractAddress;
 
     uint256 private constant HUNDRED = 100;
+    uint256 private constant TRILLION_WEI = 1e12;
+
 
     bool private sTesting = true;
 
@@ -226,6 +229,9 @@ contract iLend {
         if (newBalance < _amount + balanceOfReceiverBeforeReceive) {
             abi.encodeWithSelector(_blananceMismatchSelector).dynamic_revert();
         }
+        // if (protocol_health_check() == false) {
+        //     revert ProtocolStateIsUnhealthy ();
+        // }
     }
 
     /**
@@ -500,4 +506,32 @@ contract iLend {
     function is_testing () public view returns (bool) {
         return sTesting;
     }
+
+     /**
+     * @notice Checks the global health of the protocol by verifying the overcollateralization invariant.
+     * @dev Ensures the value of ETH in the collateral pool (factored by required overcollateralization)
+     *      is less than or equal to the total USDC deposited. This helps detect solvency risks.
+     *
+     * Example:
+     *   - Suppose the ETH pool holds $1,000,000 worth of ETH.
+     *   - If the overcollateralization multiplier (`mult`) is 125,
+     *     then only $800,000 (= 1,000,000 * 100 / 125) is counted as "safe value".
+     *   - The protocol is considered healthy if this safe value is less than or equal to
+     *     the total USDC in the deposit pool.
+     *   - This enforces a 25% safety margin to guard against volatility and liquidation delays.
+     *
+     * @return goodHealth Returns true if the protocol is healthy (i.e., solvency invariant holds), false otherwise.
+     */
+    function protocol_health_check() public view returns (bool goodHealth) {
+        IERC20 token = IERC20(iETHContractAddress);
+        uint256 ethPoolBalance = token.balanceOf(address(iCollateral));
+        token = IERC20(iUSDCContractAddress);
+        uint256 usdcPoolBalance = token.balanceOf(address(iDeposit));
+        uint256 currentETHPrice = iCollateral.get_current_eth_price ()/ TRILLION_WEI;
+        uint256 mult = iParams.get_overcol_multiplier();
+
+        uint256 colFactoredETH = (ethPoolBalance * currentETHPrice * HUNDRED) / mult;
+        goodHealth = colFactoredETH <= usdcPoolBalance;
+    }
+
 }

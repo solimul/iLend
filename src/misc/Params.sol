@@ -102,15 +102,20 @@ contract Params {
         bool isSupported;
     }
 
+    struct ProtocolHealthParams {
+        uint256 overColMultiplier;
+    }
+
     bool public depositsPaused;
     bool public borrowingPaused;
     bool public liquidationPaused;
 
-    DepositParams public depositParams;
-    BorrowParams public borrowParams;
-    LiquidationParams public liquidationParams;
-    OracleParams public oracleParams;
-    CollateralParams public collateralParams;
+    DepositParams private depositParams;
+    BorrowParams private borrowParams;
+    LiquidationParams private liquidationParams;
+    OracleParams private oracleParams;
+    CollateralParams private collateralParams;
+    ProtocolHealthParams private protocolHealthParams;
 
     address private facadeContractAddress;
     address private immutable iOwnerAddress;
@@ -211,6 +216,10 @@ contract Params {
 
     function get_deposit_fee_parcentage() public view returns (uint256) {
         return depositParams.depositFeePercentage;
+    }
+
+    function get_overcol_multiplier () external view returns (uint256){
+        return protocolHealthParams.overColMultiplier;
     }
 
     function set_deposit_params(
@@ -332,6 +341,12 @@ contract Params {
         emit CollateralParamsSetup(
             iOwner, _asset, _minCollateralAmount, _maxCollateralAmount, _collateralFactor, _isSupported
         );
+    }
+
+    function set_protocol_invariant_params(
+        uint256 _overColMultiplier
+    ) public only_owner_contract(msg.sender) { 
+        protocolHealthParams = ProtocolHealthParams ({overColMultiplier:_overColMultiplier});
     }
 
     function register_caller_contracts(address _iLendAddress) external only_owner_contract(msg.sender) {
