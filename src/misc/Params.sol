@@ -5,7 +5,7 @@ import {iLend} from "../ILend.sol";
 
 contract Params {
     error OnlyOwnerCanAccessThisFunction(address sender, address owner);
-
+    error DenominatorCannotBeZero ();
     event DepositParamsSetup(
         address indexed user,
         uint256 _minDepositAmount,
@@ -103,7 +103,8 @@ contract Params {
     }
 
     struct ProtocolHealthParams {
-        uint256 overColMultiplier;
+        uint256 resTh;
+        uint256 remTh;
     }
 
     bool public depositsPaused;
@@ -218,8 +219,9 @@ contract Params {
         return depositParams.depositFeePercentage;
     }
 
-    function get_overcol_multiplier () external view returns (uint256){
-        return protocolHealthParams.overColMultiplier;
+    function get_protocol_health_threshold () external view returns (uint256 resTh, uint256 remTh){
+        resTh = protocolHealthParams.resTh;
+        remTh = protocolHealthParams.remTh;
     }
 
     function set_deposit_params(
@@ -343,10 +345,14 @@ contract Params {
         );
     }
 
-    function set_protocol_invariant_params(
-        uint256 _overColMultiplier
-    ) public only_owner_contract(msg.sender) { 
-        protocolHealthParams = ProtocolHealthParams ({overColMultiplier:_overColMultiplier});
+    function set_protocol_health_params(
+        uint256 _resTh,
+        uint256 _remTh
+    ) public only_owner_contract(msg.sender) {
+        protocolHealthParams = ProtocolHealthParams({
+            resTh: _resTh,
+            remTh: _remTh
+        });
     }
 
     function register_caller_contracts(address _iLendAddress) external only_owner_contract(msg.sender) {

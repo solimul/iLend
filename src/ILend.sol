@@ -15,6 +15,8 @@ import {Payback} from "./repayment/Payback.sol";
 import {Monitor} from "./liquidation/Monitor.sol";
 import {LiquidationRegistry} from "./liquidation/LiquidationRegistry.sol";
 import {LiquidationEngine} from "./liquidation/LiquidationEngine.sol";
+import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+
 
 import {RevertLib} from "./lib/RevertLib.sol";
 
@@ -95,12 +97,14 @@ contract iLend {
     AggregatorV3Interface private immutable iPriceFeed;
     LiquidationRegistry private iLiquidationRegistry;
     LiquidationEngine private iLiquidationEngine;
+    Helper private helper;
 
     address public iUSDCContractAddress;
     address public iETHContractAddress;
 
     uint256 private constant HUNDRED = 100;
     uint256 private constant TRILLION_WEI = 1e12;
+    uint256 private constant ETH_WEI = 1e18;
 
 
     bool private sTesting = true;
@@ -186,6 +190,7 @@ contract iLend {
 
         iCollateral.set_liquidation_engine(_liquidationEngine);
         sTesting = testing;
+        helper = new Helper ();
     }
 
     /**
@@ -229,9 +234,9 @@ contract iLend {
         if (newBalance < _amount + balanceOfReceiverBeforeReceive) {
             abi.encodeWithSelector(_blananceMismatchSelector).dynamic_revert();
         }
-        // if (protocol_health_check() == false) {
-        //     revert ProtocolStateIsUnhealthy ();
-        // }
+        if (protocol_health_check() == false) {
+            revert ProtocolStateIsUnhealthy ();
+        }
     }
 
     /**
@@ -430,6 +435,7 @@ contract iLend {
         );
 
         iCollateral.unlock_collateral(IERC20(iETHContractAddress), msg.sender, _loanID);
+        iBorrow.update_loan_closing (rep.pAmount);
     }
 
     /**
@@ -524,14 +530,32 @@ contract iLend {
      */
     function protocol_health_check() public view returns (bool goodHealth) {
         IERC20 token = IERC20(iETHContractAddress);
-        uint256 ethPoolBalance = token.balanceOf(address(iCollateral));
+        uint256 ethPoolBalance = (token.balanceOf(address(iCollateral)));
         token = IERC20(iUSDCContractAddress);
-        uint256 usdcPoolBalance = token.balanceOf(address(iDeposit));
-        uint256 currentETHPrice = iCollateral.get_current_eth_price ()/ TRILLION_WEI;
-        uint256 mult = iParams.get_overcol_multiplier();
+        uint256 currentETHPrice = iCollateral.get_current_eth_price () / TRILLION_WEI;
+        uint256 currentBorrowedOut = iBorrow.get_current_borrowed_out_usdc (); 
 
-        uint256 colFactoredETH = (ethPoolBalance * currentETHPrice * HUNDRED) / mult;
-        goodHealth = colFactoredETH <= usdcPoolBalance;
+        uint256 currentETHPoolUSDCValue = (ethPoolBalance * currentETHPrice);
+        if (currentBorrowedOut > 0) {
+            uint256 res = currentETHPoolUSDCValue / currentBorrowedOut;
+            uint256 rem = currentETHPoolUSDCValue % currentBorrowedOut;
+            (uint256 resTh, uint256 remTh) = iParams.get_protocol_health_threshold ();
+            goodHealth = res >= resTh
+                        && (res == resTh && rem>0 ? helper.remove_trailing_zeros(rem) >= remTh : true);
+        }
+        else 
+            goodHealth = true;
     }
+}
 
+contract Helper {
+     function remove_trailing_zeros (uint256 num) external pure returns (uint256 numZeroRemoved) {
+        console.log ("num ", num);
+        assert (num > 0);
+        while ( num%10 == 0) {
+            num = num / 10;
+        }
+        numZeroRemoved = num;
+        console.log ("numZeroRemoved ",numZeroRemoved);
+     }   
 }

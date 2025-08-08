@@ -146,7 +146,7 @@ contract UnitTest is Test {
     }
 
     function set_params() internal {
-        params.set_protocol_invariant_params (110);
+        params.set_protocol_health_params (ETHER_IN_WEI, 10);
         params.set_deposit_params(100e6, 100_000_0e6, 0, 1 days, 365 days);
         params.set_borrow_params(1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
         params.set_liquidation_params(150, 10, 1000, 50000, 1000, 50000, 50, "percentage");

@@ -54,6 +54,8 @@ contract Borrow {
     mapping(address => BorrowerRecord) private borrowers;
     address[] sBorrowersList;
 
+    uint256 private sTotalBorrowedOutUSDC; 
+
     Params private params;
     AggregatorV3Interface private priceFeed;
     Deposit private depositPool;
@@ -143,7 +145,7 @@ contract Borrow {
         priceFeed = AggregatorV3Interface(_priceFeedAddress);
         usdcContract = IERC20(_usdcContractAddress);
         iOwnerAddress = msg.sender;
-
+        sTotalBorrowedOutUSDC = 0;
         //payable, because Treasury implements fallback
     }
 
@@ -192,6 +194,10 @@ contract Borrow {
         uint256 timeElapsed = block.timestamp - borrowRecord.borrowTime;
         uint256 protocolReward = (borrowRecord.amount * params.get_reserve_factor() * timeElapsed) / (365 days * 100);
         return protocolReward;
+    }
+
+    function get_current_borrowed_out_usdc () external view returns (uint256) {
+        return sTotalBorrowedOutUSDC;
     }
 
     function calculate_interest_amount(BorrowerRecord storage _bRecord, BorrowRecord storage r)
@@ -323,10 +329,18 @@ contract Borrow {
             record.lenders.push(_lenders[i]);
         }
 
+        sTotalBorrowedOutUSDC += _liquidityToBorrow;
+
         emit LendingDone(
             _borrowerAddress, _correspondingColletaralID, _liquidityToBorrow, borrower.totalBorrowed, block.timestamp
         );
         return _liquidityToBorrow;
+    }
+
+    function update_loan_closing (uint256 _usdcAmount) 
+    public
+    only_facade_contract (msg.sender)   {
+        sTotalBorrowedOutUSDC -= _usdcAmount;
     }
 
     function yet_to_be_borrowed(address _borrowerAddress, uint256 _correspondingColletaralID)
@@ -342,6 +356,8 @@ contract Borrow {
     function register_caller_contracts(address _iLendAddress) external only_owner_contract(msg.sender) {
         facadeContractAddress = _iLendAddress;
     }
+
+
 
     function test_get_borrower_record_attributes(address _borrower)
         public
