@@ -694,29 +694,30 @@ contract UnitTest is Test {
 
         uint256 depositBalance1 = IERC20 (usdcAddress).balanceOf (address (deposit));
         uint256 collateralBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
-        uint256 borrowerUSDCBalance1 = IERC20 (usdcAddress).balanceOf (address (deposit));
-        uint256 borrowerETHBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 borrowerUSDCBalance1 = IERC20 (usdcAddress).balanceOf (address (borrower));
+        uint256 borrowerETHBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (borrower));
         uint256 treasuryUSDCBalance1 = IERC20 (usdcAddress).balanceOf (address (treasury));
 
         
         vm.warp(block.timestamp + 180 days);
         RepaymentComponent memory rep = borrow.calculate_repayment_components (borrower, 0);
      
-        deal(usdcAddress, borrower, borrowerUSDCBalance1 + rep.pAmount + rep.iAmount + rep.rAmount + 500e6);
+        deal(usdcAddress, borrower, borrowerUSDCBalance1 + borrowAmount + rep.iAmount + rep.rAmount);
+        borrowerUSDCBalance1 = IERC20 (usdcAddress).balanceOf (address (borrower));
         vm.startPrank (borrower);
             lendProtocol.close_loan (0, borrowAmount + rep.iAmount + rep.rAmount);
         vm.stopPrank ();
 
         uint256 depositBalance2 = IERC20 (usdcAddress).balanceOf (address (deposit));
         uint256 collateralBalance2 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
-        uint256 borrowerUSDCBalance2 = IERC20 (usdcAddress).balanceOf (address (deposit));
-        uint256 borrowerETHBalance2 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 borrowerUSDCBalance2 = IERC20 (usdcAddress).balanceOf (address (borrower));
+        uint256 borrowerETHBalance2 = IERC20 (wrappedETHAddress).balanceOf (address (borrower));
         uint256 treasuryUSDCBalance2 = IERC20 (usdcAddress).balanceOf (address (treasury));
 
 
         assert (depositBalance2 == depositBalance1 + rep.pAmount + rep.iAmount);
         assert (collateralBalance2 == collateralBalance1 - ethBalance/2);
-        assert (borrowerUSDCBalance2 == borrowerUSDCBalance1 - rep.pAmount - rep.iAmount - rep.rAmount);
+        assert (borrowerUSDCBalance2 + borrowAmount + rep.iAmount + rep.rAmount== borrowerUSDCBalance1);
         assert (borrowerETHBalance2 == borrowerETHBalance1 + ethBalance/2);
         assert (treasuryUSDCBalance2 == treasuryUSDCBalance1 + rep.rAmount);
     }

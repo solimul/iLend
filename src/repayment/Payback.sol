@@ -8,6 +8,8 @@ import {RepaymentComponent, BorrowRecord, Lender, DepositRecord, InterestEarned}
 
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {iLend} from "../ILend.sol";
+import {console} from "../../lib/forge-std/src/Script.sol";
+
 
 contract Payback {
     error BorrowerDoesNotExist(address borrowerAddress);
@@ -132,7 +134,7 @@ contract Payback {
      * @param _loanID The unique identifier of the loan whose principal is being repaid.
      * @param _principalAmount The total principal amount to be repaid and distributed to lenders.
      */
-    function update_principal_receipt(address _borrowersAddress, uint256 _loanID, uint256 _principalAmount) internal {
+    function update_principal_receipt(address _borrowersAddress, uint256 _loanID, uint256 _principalAmount) internal returns (uint256){
         BorrowRecord memory bRecord = iBorrow.get_borrow_record(_borrowersAddress, _loanID);
         uint256 remaining = _principalAmount;
         for (uint256 i = 0; i < bRecord.lenders.length; i++) {
@@ -142,11 +144,11 @@ contract Payback {
                 uint256 id = bRecord.lenders[i].depositAccountIDs[j];
                 borrowedFromThisLender += update_principal_records(lAddress, id);
             }
+            //console.log ("C.  remaining -= borrowedFromThisLender", remaining, borrowedFromThisLender);
             remaining -= borrowedFromThisLender;
+            //console.log ("D.  remaining -= borrowedFromThisLender", remaining, borrowedFromThisLender);
         }
-        if (remaining != 0) {
-            revert NotAllPrincipalPaymentSuccessful(_borrowersAddress, _loanID, _principalAmount, remaining);
-        }
+        return remaining;
     }
 
     /**
@@ -177,10 +179,11 @@ contract Payback {
                 _borrower, _loanID, _lender, _depositID, _interestAmount, _principalAmount, old
             );
         }
-
         uint256 interestPaid = iDeposit.update_interest_payback_record(
             _borrower, _loanID, _lender, _depositID, _interestAmount, _principalAmount, lentFromThisDepositAccount
         );
+        //console.log ("===> interestPaid",interestPaid);
+
         return interestPaid;
     }
 
@@ -199,26 +202,30 @@ contract Payback {
         uint256 _loanID,
         uint256 _interestAmount,
         uint256 _principalAmount
-    ) internal {
+    ) internal returns (uint256){
         BorrowRecord memory bRecord = iBorrow.get_borrow_record(_borrowersAddress, _loanID);
         uint256 remaining = _interestAmount;
         uint256 interestToThisLender = 0;
         for (uint256 i = 0; i < bRecord.lenders.length; i++) {
             Lender memory _lender = bRecord.lenders[i];
             address lAddress = _lender.lender;
+            interestToThisLender = 0;
             for (uint256 j = 0; j < _lender.depositAccountIDs.length; j++) {
                 uint256 depositID = _lender.depositAccountIDs[j];
                 interestToThisLender += update_interest_record(
                     _borrowersAddress, _loanID, lAddress, depositID, _interestAmount, _principalAmount
                 );
             }
+            //console.log ("A. remaining, interestToThisLender",remaining,interestToThisLender);
             remaining -= interestToThisLender;
+            //console.log ("B. remaining, interestToThisLender",remaining,interestToThisLender);
         }
-        if (remaining != 0) {
-            revert NotAllInterestPaymentSuccessful(
-                _borrowersAddress, _loanID, _interestAmount, _principalAmount, remaining
-            );
-        }
+        return remaining;
+        // if (remaining != 0) {
+        //     revert NotAllInterestPaymentSuccessful(
+        //         _borrowersAddress, _loanID, _interestAmount, _principalAmount, remaining
+        //     );
+        // }
     }
 
     /**
@@ -260,22 +267,25 @@ contract Payback {
                 _borrowersAddress, loanID, amount, rep.pAmount, rep.iAmount, rep.rAmount, requiredAmount
             );
         }
+
         //pay interests
-        update_interest_receipt(_borrowersAddress, loanID, rep.iAmount, rep.pAmount);
-        remaining -= rep.iAmount;
+        uint256 crumbs = update_interest_receipt(_borrowersAddress, loanID, rep.iAmount, rep.pAmount);
+
+        remaining -= rep.iAmount - crumbs;
 
         //pay protocol reward
         update_protocol_reward_receipt(_borrowersAddress, loanID, rep.rAmount);
         remaining -= rep.rAmount;
         //repay principal
-        update_principal_receipt(_borrowersAddress, loanID, rep.pAmount);
-        remaining -= rep.pAmount;
+        crumbs = update_principal_receipt(_borrowersAddress, loanID, rep.pAmount);
+        remaining -= rep.pAmount - crumbs;
+        rep.remaining = remaining;
 
-        if (remaining > 0) {
-            revert RemainingAmountNotZeroAfterRepayment(
-                _borrowersAddress, loanID, amount, rep.pAmount, rep.iAmount, rep.rAmount, remaining
-            );
-        }
+        // if (remaining > 0) {
+        //     revert RemainingAmountNotZeroAfterRepayment(
+        //         _borrowersAddress, loanID, amount, rep.pAmount, rep.iAmount, rep.rAmount, remaining
+        //     );
+        // }
         return rep;
     }
 

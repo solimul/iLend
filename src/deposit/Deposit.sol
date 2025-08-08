@@ -5,6 +5,7 @@ import "../../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {iLend} from "../ILend.sol";
 import {console} from "../../lib/forge-std/src/Script.sol";
 
+
 import {Params} from "../misc/Params.sol";
 import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {
@@ -279,6 +280,8 @@ contract Deposit {
                 dateReceived: block.timestamp
             })
         );
+        // console.log ("lentFromThisDepositAccount, _totalInterest, _totalLent",lentFromThisDepositAccount, _totalInterest, _totalLent);
+        // console.log ("interestShare",interestShare);
         return interestShare;
     }
 

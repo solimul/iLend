@@ -41,6 +41,7 @@ struct RepaymentComponent {
     uint256 pAmount;
     uint256 iAmount;
     uint256 rAmount;
+    uint256 remaining;
 }
 
 struct BorrowRecord {
