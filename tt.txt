@@ -1,5 +1,5 @@
 Compiling 11 files with Solc 0.8.30
-Solc 0.8.30 finished in 10.32s
+Solc 0.8.30 finished in 9.65s
 Compiler run successful with warnings:
 Warning (6321): Unnamed return variable can remain unassigned. Add an explicit return with value to all non-reverting code paths or name the variable.
    --> src/liquidation/Monitor.sol:124:37:
@@ -38,30 +38,11 @@ Warning (2018): Function state mutability can be restricted to view
     |     ^ (Relevant source part starts here and spans across multiple lines).
 
 
-Ran 23 tests for test/UnitTest.t.sol:UnitTest
-[PASS] test_borrow_balance_change() (gas: 2429981)
-[PASS] test_borrow_state_update_multiple() (gas: 5852001)
-[PASS] test_borrow_state_update_single() (gas: 2420721)
-[PASS] test_check_upkeep_returns_false() (gas: 27125)
-[PASS] test_check_upkeep_returns_true() (gas: 30409)
-[PASS] test_collateral_balance_change() (gas: 1953557)
-[PASS] test_collateral_counts_consistency() (gas: 1298031)
-[PASS] test_collateral_record_state_change_multiple() (gas: 1292214)
-[PASS] test_collateral_state_change_on_deposit() (gas: 1953978)
-[PASS] test_deposit_balance_change() (gas: 473352)
-[PASS] test_deposit_balance_change_all_funders() (gas: 1675027)
-[PASS] test_deposit_collateral_no_balance_expect_revert() (gas: 113183)
-[PASS] test_deposit_collateral_too_much_balance_expect_revert() (gas: 159709)
-[PASS] test_deposit_record_multiple() (gas: 2290177)
-[PASS] test_deposit_record_single() (gas: 474814)
-[PASS] test_deposit_state_multi_funders() (gas: 1583335)
-[PASS] test_deposit_state_multiple() (gas: 2335855)
-[PASS] test_deposit_state_single() (gas: 478179)
-[PASS] test_get_liquidation_quote() (gas: 3314603)
-[PASS] test_init_borrower_balances() (gas: 76289)
-[PASS] test_init_funder_balances() (gas: 75768)
-[PASS] test_liquidation() (gas: 3994834)
-[PASS] test_perform_upkeep() (gas: 3312282)
-Suite result: ok. 23 passed; 0 failed; 0 skipped; finished in 14.53ms (34.08ms CPU time)
+Ran 1 test for test/UnitTest.t.sol:UnitTest
+[PASS] test_borrow_state_update_multiple() (gas: 5852150)
+Logs:
+  register_caller_contracts 0x2a07706473244BC757E10F2a9E86fB532828afe3
 
-Ran 1 test suite in 15.71ms (14.53ms CPU time): 23 tests passed, 0 failed, 0 skipped (23 total tests)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 23.43ms (4.47ms CPU time)
+
+Ran 1 test suite in 26.46ms (23.43ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

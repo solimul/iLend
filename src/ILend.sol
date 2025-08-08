@@ -85,7 +85,12 @@ contract iLend {
 
     error ExternalAccessNotAllowed();
     error ProtocolStateIsUnhealthy ();
-
+    error UnhealthyProtocol_CollateralUndervaluedBelowThreshold(
+        uint256 res,
+        uint256 resTh,
+        uint256 rem,
+        uint256 remTh
+    );
     Params private immutable iParams;
     address private immutable iOwner;
     Deposit private immutable iDeposit;
@@ -540,8 +545,14 @@ contract iLend {
             uint256 res = currentETHPoolUSDCValue / currentBorrowedOut;
             uint256 rem = currentETHPoolUSDCValue % currentBorrowedOut;
             (uint256 resTh, uint256 remTh) = iParams.get_protocol_health_threshold ();
-            goodHealth = res >= resTh
-                        && (res == resTh && rem>0 ? helper.remove_trailing_zeros(rem) >= remTh : true);
+            goodHealth = res >= resTh;
+            uint256 remS = rem;
+            if (goodHealth && res == resTh && rem >0) {
+                remS = helper.remove_trailing_zeros(rem);
+                goodHealth = remS>= remTh;
+            }
+            if (!goodHealth)
+                revert UnhealthyProtocol_CollateralUndervaluedBelowThreshold (res, resTh, rem, remTh);
         }
         else 
             goodHealth = true;
@@ -549,11 +560,12 @@ contract iLend {
 }
 
 contract Helper {
+    uint256 constant TEN = 10;
      function remove_trailing_zeros (uint256 num) external pure returns (uint256 numZeroRemoved) {
         console.log ("num ", num);
         assert (num > 0);
-        while ( num%10 == 0) {
-            num = num / 10;
+        while ( num%TEN == 0) {
+            num = num / TEN;
         }
         numZeroRemoved = num;
         console.log ("numZeroRemoved ",numZeroRemoved);
