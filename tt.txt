@@ -1,48 +1,469 @@
-Compiling 11 files with Solc 0.8.30
-Solc 0.8.30 finished in 9.65s
-Compiler run successful with warnings:
-Warning (6321): Unnamed return variable can remain unassigned. Add an explicit return with value to all non-reverting code paths or name the variable.
-   --> src/liquidation/Monitor.sol:124:37:
-    |
-124 |         returns (bool upkeepNeeded, bytes memory /*performData*/ )
-    |                                     ^^^^^^^^^^^^
-
-Warning (2072): Unused local variable.
-   --> test/UnitTest.t.sol:609:29:
-    |
-609 |         (uint256 usdcToPay, uint256 currentPrice, uint256 postDiscountETHPrice, uint256 ethToReceive, uint256 immidiateProfit)
-    |                             ^^^^^^^^^^^^^^^^^^^^
-
-Warning (2072): Unused local variable.
-   --> test/UnitTest.t.sol:609:51:
-    |
-609 |         (uint256 usdcToPay, uint256 currentPrice, uint256 postDiscountETHPrice, uint256 ethToReceive, uint256 immidiateProfit)
-    |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Warning (2072): Unused local variable.
-   --> test/UnitTest.t.sol:609:103:
-    |
-609 |         (uint256 usdcToPay, uint256 currentPrice, uint256 postDiscountETHPrice, uint256 ethToReceive, uint256 immidiateProfit)
-    |                                                                                                       ^^^^^^^^^^^^^^^^^^^^^^^
-
-Warning (2018): Function state mutability can be restricted to view
-   --> src/borrow/Borrow.sol:362:5:
-    |
-362 |     function test_get_borrower_record_attributes(address _borrower)
-    |     ^ (Relevant source part starts here and spans across multiple lines).
-
-Warning (2018): Function state mutability can be restricted to view
-   --> src/collateral/Collateral.sol:316:5:
-    |
-316 |     function is_collateral_deposted(address _borrower, uint256 _collateralID) public returns (bool) {
-    |     ^ (Relevant source part starts here and spans across multiple lines).
-
+No files changed, compilation skipped
 
 Ran 1 test for test/UnitTest.t.sol:UnitTest
-[PASS] test_borrow_state_update_multiple() (gas: 5852150)
+[FAIL: panic: arithmetic underflow or overflow (0x11)] test_close_loan() (gas: 2792132)
 Logs:
   register_caller_contracts 0x2a07706473244BC757E10F2a9E86fB532828afe3
 
-Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 23.43ms (4.47ms CPU time)
+Traces:
+  [2792132] UnitTest::test_close_loan()
+    ├─ [0] VM::startPrank(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC])
+    │   └─ ← [Return]
+    ├─ [2537] MockERC20::balanceOf(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC]) [staticcall]
+    │   └─ ← [Return] 10000000000 [1e10]
+    ├─ [443034] iLend::deposit_my_funds(5000000000 [5e9], 31536000 [3.153e7])
+    │   ├─ [2476] Params::get_deposit_fee_parcentage() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC]) [staticcall]
+    │   │   └─ ← [Return] 10000000000 [1e10]
+    │   ├─ [2768] MockERC20::allowance(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [2537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [25892] MockERC20::transferFrom(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], 5000000000 [5e9])
+    │   │   ├─ emit Transfer(from: Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], to: Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], value: 5000000000 [5e9])
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 5000000000 [5e9]
+    │   ├─ [2537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [18008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [12533] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [9091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [2578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC]) [staticcall]
+    │   │   └─ ← [Return] 5000000000 [5e9]
+    │   ├─ [768] MockERC20::allowance(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [2537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3192] MockERC20::transferFrom(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], 0)
+    │   │   ├─ emit Transfer(from: Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], to: Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], value: 0)
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [268890] Deposit::update_post_deposit(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], 5000000000 [5e9], 31536000 [3.153e7])
+    │   │   └─ ← [Stop]
+    │   ├─ [73002] Treasury::update_fees_for_deposit(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], 0)
+    │   │   ├─ emit FeesDeposited(depositor: Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], fees: 0, dateReceived: 1)
+    │   │   └─ ← [Stop]
+    │   ├─ emit FundDepoistDone(depositor: Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], amount: 5000000000 [5e9], timestamp: 1)
+    │   └─ ← [Stop]
+    ├─ [5251] Deposit::test_get_depositor_deposit_attributes(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC]) [staticcall]
+    │   └─ ← [Return] 5000000000 [5e9], 0, 0, true, 1
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [0] VM::startPrank(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36])
+    │   └─ ← [Return]
+    ├─ [2537] MockERC20::balanceOf(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36]) [staticcall]
+    │   └─ ← [Return] 20000000000 [2e10]
+    ├─ [287534] iLend::deposit_my_funds(10000000000 [1e10], 31536000 [3.153e7])
+    │   ├─ [476] Params::get_deposit_fee_parcentage() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36]) [staticcall]
+    │   │   └─ ← [Return] 20000000000 [2e10]
+    │   ├─ [2768] MockERC20::allowance(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 5000000000 [5e9]
+    │   ├─ [5992] MockERC20::transferFrom(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], 10000000000 [1e10])
+    │   │   ├─ emit Transfer(from: Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], to: Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], value: 10000000000 [1e10])
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 15000000000 [1.5e10]
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36]) [staticcall]
+    │   │   └─ ← [Return] 10000000000 [1e10]
+    │   ├─ [768] MockERC20::allowance(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3192] MockERC20::transferFrom(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], 0)
+    │   │   ├─ emit Transfer(from: Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], to: Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], value: 0)
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [201190] Deposit::update_post_deposit(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], 10000000000 [1e10], 31536000 [3.153e7])
+    │   │   └─ ← [Stop]
+    │   ├─ [49102] Treasury::update_fees_for_deposit(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], 0)
+    │   │   ├─ emit FeesDeposited(depositor: Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], fees: 0, dateReceived: 1)
+    │   │   └─ ← [Stop]
+    │   ├─ emit FundDepoistDone(depositor: Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], amount: 10000000000 [1e10], timestamp: 1)
+    │   └─ ← [Stop]
+    ├─ [5251] Deposit::test_get_depositor_deposit_attributes(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36]) [staticcall]
+    │   └─ ← [Return] 10000000000 [1e10], 0, 0, true, 1
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [0] VM::startPrank(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f])
+    │   └─ ← [Return]
+    ├─ [2537] MockERC20::balanceOf(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f]) [staticcall]
+    │   └─ ← [Return] 30000000000 [3e10]
+    ├─ [287534] iLend::deposit_my_funds(15000000000 [1.5e10], 31536000 [3.153e7])
+    │   ├─ [476] Params::get_deposit_fee_parcentage() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f]) [staticcall]
+    │   │   └─ ← [Return] 30000000000 [3e10]
+    │   ├─ [2768] MockERC20::allowance(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 15000000000 [1.5e10]
+    │   ├─ [5992] MockERC20::transferFrom(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], 15000000000 [1.5e10])
+    │   │   ├─ emit Transfer(from: Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], to: Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], value: 15000000000 [1.5e10])
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 30000000000 [3e10]
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f]) [staticcall]
+    │   │   └─ ← [Return] 15000000000 [1.5e10]
+    │   ├─ [768] MockERC20::allowance(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3192] MockERC20::transferFrom(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], 0)
+    │   │   ├─ emit Transfer(from: Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], to: Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], value: 0)
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [201190] Deposit::update_post_deposit(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], 15000000000 [1.5e10], 31536000 [3.153e7])
+    │   │   └─ ← [Stop]
+    │   ├─ [49102] Treasury::update_fees_for_deposit(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], 0)
+    │   │   ├─ emit FeesDeposited(depositor: Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], fees: 0, dateReceived: 1)
+    │   │   └─ ← [Stop]
+    │   ├─ emit FundDepoistDone(depositor: Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f], amount: 15000000000 [1.5e10], timestamp: 1)
+    │   └─ ← [Stop]
+    ├─ [5251] Deposit::test_get_depositor_deposit_attributes(Funder_2: [0x788d7467B9eb1007F112cF9f61d19aFf533d828f]) [staticcall]
+    │   └─ ← [Return] 15000000000 [1.5e10], 0, 0, true, 1
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [0] VM::startPrank(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9])
+    │   └─ ← [Return]
+    ├─ [2537] MockERC20::balanceOf(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9]) [staticcall]
+    │   └─ ← [Return] 40000000000 [4e10]
+    ├─ [287534] iLend::deposit_my_funds(20000000000 [2e10], 31536000 [3.153e7])
+    │   ├─ [476] Params::get_deposit_fee_parcentage() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9]) [staticcall]
+    │   │   └─ ← [Return] 40000000000 [4e10]
+    │   ├─ [2768] MockERC20::allowance(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 30000000000 [3e10]
+    │   ├─ [5992] MockERC20::transferFrom(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], 20000000000 [2e10])
+    │   │   ├─ emit Transfer(from: Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], to: Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], value: 20000000000 [2e10])
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 50000000000 [5e10]
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9]) [staticcall]
+    │   │   └─ ← [Return] 20000000000 [2e10]
+    │   ├─ [768] MockERC20::allowance(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3192] MockERC20::transferFrom(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], 0)
+    │   │   ├─ emit Transfer(from: Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], to: Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], value: 0)
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [201190] Deposit::update_post_deposit(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], 20000000000 [2e10], 31536000 [3.153e7])
+    │   │   └─ ← [Stop]
+    │   ├─ [49102] Treasury::update_fees_for_deposit(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], 0)
+    │   │   ├─ emit FeesDeposited(depositor: Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], fees: 0, dateReceived: 1)
+    │   │   └─ ← [Stop]
+    │   ├─ emit FundDepoistDone(depositor: Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9], amount: 20000000000 [2e10], timestamp: 1)
+    │   └─ ← [Stop]
+    ├─ [5251] Deposit::test_get_depositor_deposit_attributes(Funder_3: [0x8F0288450252C7270da27f9C42CaB8E2731CBEB9]) [staticcall]
+    │   └─ ← [Return] 20000000000 [2e10], 0, 0, true, 1
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [0] VM::startPrank(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b])
+    │   └─ ← [Return]
+    ├─ [2537] MockERC20::balanceOf(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b]) [staticcall]
+    │   └─ ← [Return] 50000000000 [5e10]
+    ├─ [287534] iLend::deposit_my_funds(25000000000 [2.5e10], 31536000 [3.153e7])
+    │   ├─ [476] Params::get_deposit_fee_parcentage() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b]) [staticcall]
+    │   │   └─ ← [Return] 50000000000 [5e10]
+    │   ├─ [2768] MockERC20::allowance(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 50000000000 [5e10]
+    │   ├─ [5992] MockERC20::transferFrom(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], 25000000000 [2.5e10])
+    │   │   ├─ emit Transfer(from: Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], to: Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], value: 25000000000 [2.5e10])
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 75000000000 [7.5e10]
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b]) [staticcall]
+    │   │   └─ ← [Return] 25000000000 [2.5e10]
+    │   ├─ [768] MockERC20::allowance(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3192] MockERC20::transferFrom(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], 0)
+    │   │   ├─ emit Transfer(from: Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], to: Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], value: 0)
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [201190] Deposit::update_post_deposit(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], 25000000000 [2.5e10], 31536000 [3.153e7])
+    │   │   └─ ← [Stop]
+    │   ├─ [49102] Treasury::update_fees_for_deposit(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], 0)
+    │   │   ├─ emit FeesDeposited(depositor: Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], fees: 0, dateReceived: 1)
+    │   │   └─ ← [Stop]
+    │   ├─ emit FundDepoistDone(depositor: Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b], amount: 25000000000 [2.5e10], timestamp: 1)
+    │   └─ ← [Stop]
+    ├─ [5251] Deposit::test_get_depositor_deposit_attributes(Funder_4: [0xDbb2D2cF5E49F2B563773c35AAa964EFAaafEa4b]) [staticcall]
+    │   └─ ← [Return] 25000000000 [2.5e10], 0, 0, true, 1
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [2537] MockERC20::balanceOf(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff]) [staticcall]
+    │   └─ ← [Return] 10000000000000000000 [1e19]
+    ├─ [0] VM::startPrank(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff])
+    │   └─ ← [Return]
+    ├─ [237735] iLend::deposit_collateral(5000000000000000000 [5e18])
+    │   ├─ [537] MockERC20::balanceOf(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff]) [staticcall]
+    │   │   └─ ← [Return] 10000000000000000000 [1e19]
+    │   ├─ [2768] MockERC20::allowance(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], iLend: [0x2a07706473244BC757E10F2a9E86fB532828afe3]) [staticcall]
+    │   │   └─ ← [Return] 115792089237316195423570985008687907853269984665640564039457584007913129639935 [1.157e77]
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [25892] MockERC20::transferFrom(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598], 5000000000000000000 [5e18])
+    │   │   ├─ emit Transfer(from: Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], to: Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598], value: 5000000000000000000 [5e18])
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 5000000000000000000 [5e18]
+    │   ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   │   └─ ← [Return] 5000000000000000000 [5e18]
+    │   ├─ [3008] Collateral::get_current_eth_price() [staticcall]
+    │   │   ├─ [2033] PriceConverterLib::get_price() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   │   └─ ← [Return] 2000000000000000000000 [2e21]
+    │   ├─ [578] Borrow::get_current_borrowed_out_usdc() [staticcall]
+    │   │   └─ ← [Return] 0
+    │   ├─ [195740] Collateral::update_collateral_records(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 5000000000000000000 [5e18])
+    │   │   ├─ [2784] Params::get_min_collateral_amount() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000000 [1e18]
+    │   │   ├─ [2388] Params::get_max_collateral_amount() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000000000 [1e21]
+    │   │   ├─ [2498] Params::get_l2b() [staticcall]
+    │   │   │   └─ ← [Return] 75
+    │   │   ├─ emit CollateralDeposited(depositor: Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], amount: 5000000000000000000 [5e18], depositTime: 1, totalCollateral: 5000000000000000000 [5e18], depositCounts: 1)
+    │   │   └─ ← [Return] true
+    │   ├─ emit CollateralDepositDone(depositor: Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], depositedTo: Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598], amount: 5000000000000000000 [5e18], timestamp: 1)
+    │   └─ ← [Stop]
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [0] VM::startPrank(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff])
+    │   └─ ← [Return]
+    ├─ [490868] iLend::borrow_usdc()
+    │   ├─ [2470] Borrow::borrower_exists(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff]) [staticcall]
+    │   │   └─ ← [Return] false
+    │   ├─ [73849] Borrow::add_new_borrower(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0, 0, 0, 0)
+    │   │   ├─ emit NewBorrowerAdded(borrowerAddress: Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], totalCollateral: 0, totalBorrowed: 0, interestRate: 0, l2b: 0)
+    │   │   └─ ← [Return]
+    │   ├─ [996] Collateral::get_collateral_deposit_count(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff]) [staticcall]
+    │   │   └─ ← [Return] 1
+    │   ├─ [353946] Borrow::update_borrow_records(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0)
+    │   │   ├─ [979] Collateral::get_collateralL2B_by_record(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0) [staticcall]
+    │   │   │   └─ ← [Return] 75
+    │   │   ├─ [1142] Collateral::get_collateral_ETH_by_record(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0) [staticcall]
+    │   │   │   └─ ← [Return] 5000000000000000000 [5e18]
+    │   │   ├─ [164] PriceConverterLib::convert_WEI_to_ETH(5000000000000000000 [5e18]) [delegatecall]
+    │   │   │   └─ ← [Return] 5
+    │   │   ├─ [2210] PriceConverterLib::eth_to_USD_WEI() [delegatecall]
+    │   │   │   ├─ [1091] MockV3Aggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 1, 200000000000 [2e11], 1, 1, 1
+    │   │   │   └─ ← [Return] 10000000000 [1e10]
+    │   │   ├─ [1329] Deposit::get_deposit_balance() [staticcall]
+    │   │   │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   │   │   └─ ← [Return] 75000000000 [7.5e10]
+    │   │   │   └─ ← [Return] 75000000000 [7.5e10]
+    │   │   ├─ [878] Collateral::is_collateral_available(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0) [staticcall]
+    │   │   │   └─ ← [Return] true
+    │   │   ├─ [12560] Deposit::match_update_lenders(7500000000 [7.5e9])
+    │   │   │   └─ ← [Return] [Lender({ lender: 0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC, depositAccountIDs: [0], totalLent: 5000000000 [5e9] }), Lender({ lender: 0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36, depositAccountIDs: [0], totalLent: 2500000000 [2.5e9] })]
+    │   │   ├─ [757] Deposit::update_lentout_amount(7500000000 [7.5e9])
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ [2696] Params::get_base_interest_rate() [staticcall]
+    │   │   │   └─ ← [Return] 5
+    │   │   ├─ [979] Collateral::get_collateralL2B_by_record(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0) [staticcall]
+    │   │   │   └─ ← [Return] 75
+    │   │   ├─ emit LendingDone(borrowerAddress: Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], correspondingCollateralID: 0, amountLent: 7500000000 [7.5e9], totalBorrowed: 7500000000 [7.5e9], timestamp: 1)
+    │   │   └─ ← [Return] 7500000000 [7.5e9]
+    │   ├─ [21350] Collateral::update_borrowed_against_collateral(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0, true)
+    │   │   └─ ← [Stop]
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 75000000000 [7.5e10]
+    │   ├─ [30385] Deposit::withdraw_to_borrower(MockERC20: [0xF62849F9A0B5Bf2913b396098F7c7019b51A820a], Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 7500000000 [7.5e9], Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0)
+    │   │   ├─ [504] Collateral::is_existing_collateral_depositor(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff]) [staticcall]
+    │   │   │   └─ ← [Return] true
+    │   │   ├─ [870] Collateral::is_collateral_deposted(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0)
+    │   │   │   └─ ← [Return] true
+    │   │   ├─ [24830] MockERC20::transfer(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 7500000000 [7.5e9])
+    │   │   │   ├─ emit Transfer(from: Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211], to: Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], value: 7500000000 [7.5e9])
+    │   │   │   └─ ← [Return] true
+    │   │   └─ ← [Return] true
+    │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   └─ ← [Return] 67500000000 [6.75e10]
+    │   ├─ emit LendingDone(borrower: Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], amount: 7500000000 [7.5e9], timestamp: 1)
+    │   └─ ← [Return] 7500000000 [7.5e9]
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   └─ ← [Return] 67500000000 [6.75e10]
+    ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   └─ ← [Return] 5000000000000000000 [5e18]
+    ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   └─ ← [Return] 67500000000 [6.75e10]
+    ├─ [537] MockERC20::balanceOf(Collateral: [0xa0Cb889707d426A7A386870A03bc70d1b0697598]) [staticcall]
+    │   └─ ← [Return] 5000000000000000000 [5e18]
+    ├─ [537] MockERC20::balanceOf(Treasury: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]) [staticcall]
+    │   └─ ← [Return] 0
+    ├─ [0] VM::warp(15552001 [1.555e7])
+    │   └─ ← [Return]
+    ├─ [5064] Borrow::calculate_repayment_components(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0) [staticcall]
+    │   ├─ [2542] Params::get_reserve_factor() [staticcall]
+    │   │   └─ ← [Return] 2
+    │   └─ ← [Return] RepaymentComponent({ pAmount: 7500000000 [7.5e9], iAmount: 184931506 [1.849e8], rAmount: 73972602 [7.397e7] })
+    ├─ [537] MockERC20::balanceOf(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff]) [staticcall]
+    │   └─ ← [Return] 7500000000 [7.5e9]
+    ├─ [0] VM::load(MockERC20: [0xF62849F9A0B5Bf2913b396098F7c7019b51A820a], 0xa25d5064f6953e59e5ad17a8db3ca5d94af9d94addcd130415d0256f2158efb9) [staticcall]
+    │   └─ ← [Return] 0x00000000000000000000000000000000000000000000000000000001bf08eb00
+    ├─ [0] VM::store(MockERC20: [0xF62849F9A0B5Bf2913b396098F7c7019b51A820a], 0xa25d5064f6953e59e5ad17a8db3ca5d94af9d94addcd130415d0256f2158efb9, 0x00000000000000000000000000000000000000000000000000000011a395232c)
+    │   └─ ← [Return]
+    ├─ [537] MockERC20::balanceOf(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff]) [staticcall]
+    │   └─ ← [Return] 75758904108 [7.575e10]
+    ├─ [0] VM::startPrank(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff])
+    │   └─ ← [Return]
+    ├─ [213223] iLend::close_loan(0, 7758904108 [7.758e9])
+    │   ├─ [210113] Payback::update_loan_repayment(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0, 7758904108 [7.758e9])
+    │   │   ├─ [470] Borrow::borrower_exists(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff]) [staticcall]
+    │   │   │   └─ ← [Return] true
+    │   │   ├─ [3064] Borrow::calculate_repayment_components(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0) [staticcall]
+    │   │   │   ├─ [542] Params::get_reserve_factor() [staticcall]
+    │   │   │   │   └─ ← [Return] 2
+    │   │   │   └─ ← [Return] RepaymentComponent({ pAmount: 7500000000 [7.5e9], iAmount: 184931506 [1.849e8], rAmount: 73972602 [7.397e7] })
+    │   │   ├─ [4898] Borrow::get_borrow_record(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0) [staticcall]
+    │   │   │   └─ ← [Return] BorrowRecord({ loanID: 0, amount: 7500000000 [7.5e9], borrowTime: 1, interestRate: 5, l2b: 75, lenders: [Lender({ lender: 0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC, depositAccountIDs: [0], totalLent: 5000000000 [5e9] }), Lender({ lender: 0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36, depositAccountIDs: [0], totalLent: 2500000000 [2.5e9] })] })
+    │   │   ├─ [1068] Deposit::get_lentout_amount(Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], 0) [staticcall]
+    │   │   │   └─ ← [Return] 5000000000 [5e9]
+    │   │   ├─ [1414] Deposit::get_usdc_balance() [staticcall]
+    │   │   │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   │   │   └─ ← [Return] 67500000000 [6.75e10]
+    │   │   │   └─ ← [Return] 67500000000 [6.75e10]
+    │   │   ├─ [94168] Deposit::update_interest_payback_record(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0, Funder_0: [0xB6A57FE6214e35B0a9BC09dFaa95165aDB052CEC], 0, 184931506 [1.849e8], 7500000000 [7.5e9], 5000000000 [5e9])
+    │   │   │   └─ ← [Return] 123287670 [1.232e8]
+    │   │   ├─ [1068] Deposit::get_lentout_amount(Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], 0) [staticcall]
+    │   │   │   └─ ← [Return] 2500000000 [2.5e9]
+    │   │   ├─ [1414] Deposit::get_usdc_balance() [staticcall]
+    │   │   │   ├─ [537] MockERC20::balanceOf(Deposit: [0x1d1499e622D69689cdf9004d05Ec547d650Ff211]) [staticcall]
+    │   │   │   │   └─ ← [Return] 67500000000 [6.75e10]
+    │   │   │   └─ ← [Return] 67500000000 [6.75e10]
+    │   │   ├─ [92168] Deposit::update_interest_payback_record(Borrower_0: [0x71c4ce51AF535f11d7E5982c793c7240715d6Fff], 0, Funder_1: [0x6E417Dff6d4Db4B0d37C642ca41CB4e77f0f7E36], 0, 184931506 [1.849e8], 7500000000 [7.5e9], 2500000000 [2.5e9])
+    │   │   │   └─ ← [Return] 61643835 [6.164e7]
+    │   │   └─ ← [Revert] panic: arithmetic underflow or overflow (0x11)
+    │   └─ ← [Revert] panic: arithmetic underflow or overflow (0x11)
+    └─ ← [Revert] panic: arithmetic underflow or overflow (0x11)
 
-Ran 1 test suite in 26.46ms (23.43ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
+Suite result: FAILED. 0 passed; 1 failed; 0 skipped; finished in 13.02ms (1.39ms CPU time)
+
+Ran 1 test suite in 194.66ms (13.02ms CPU time): 0 tests passed, 1 failed, 0 skipped (1 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/UnitTest.t.sol:UnitTest
+[FAIL: panic: arithmetic underflow or overflow (0x11)] test_close_loan() (gas: 2792132)
+
+Encountered a total of 1 failing tests, 0 tests succeeded

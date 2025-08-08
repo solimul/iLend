@@ -8,7 +8,7 @@ import {AggregatorV3Interface} from "@chainlink-interfaces/AggregatorV3Interface
 import {PricefeedManagerLib} from "../src/lib/PricefeedManagerLib.sol";
 import {NetworkConfigLib} from "../src/lib/NetworkConfigLib.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {LiquidationReadyCollateral, CollateralView} from "../src/shared/SharedStructures.sol";
+import {LiquidationReadyCollateral, CollateralView, RepaymentComponent} from "../src/shared/SharedStructures.sol";
 
 // Borrow module
 import "../src/borrow/Borrow.sol";
@@ -54,6 +54,7 @@ contract UnitTest is Test {
     AggregatorV3Interface private priceFeed;
     address private usdcAddress;
     address private wrappedETHAddress;
+    
 
     uint256 private constant NFUNDERS = 5;
     uint256 private constant NBORROWERS = 5;
@@ -148,7 +149,7 @@ contract UnitTest is Test {
     function set_params() internal {
         params.set_protocol_health_params (ETHER_IN_WEI, 25);
         params.set_deposit_params(100e6, 100_000_0e6, 0, 1 days, 365 days);
-        params.set_borrow_params(1000, 1000000, 50, 1 days, 365 days, 5, 20, 200, 50);
+        params.set_borrow_params(1000, 1000000, 50, 1 days, 365 days, 5, 2, 1, 30);
         params.set_liquidation_params(150, 10, 1000, 50000, 1000, 50000, 50, "percentage");
         params.set_oracle_params(address(this), 60 seconds, 18);
         params.set_collateral_params(address(this), 1e18, 1000e18, 75, true);
@@ -655,6 +656,69 @@ contract UnitTest is Test {
         assert (liquidatorUSDCBalance1 >= liquidatorUSDCBalance0 - usdcToPay);
         assert (collateralPoolETHBalance1 >= collateralPoolETHBalance0 - ethToReceive);
         assert (depositPoolUSDCBalance1 >= depositPoolUSDCBalance0 + usdcToPay);
+    }
+
+    function test_calculate_repayment_components () public {
+        seed_deposit_pool ();
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        execute_collateral_deposit (borrower, ethBalance/2);
+        uint256 borrowAmount = execute_borrow (borrower);
+        
+        vm.warp(block.timestamp + 180 days);
+        
+        RepaymentComponent memory rep = borrow.calculate_repayment_components (borrower, 0);
+        
+        uint256 interest = ((180 days * 5*  borrowAmount) / (HUNDRED * 365 days));
+        uint256 reward = ((180 days * 2 *  borrowAmount) / (HUNDRED * 365 days));
+        
+        assert (rep.pAmount == borrowAmount);
+        assert (rep.iAmount == interest);
+        assert (rep.rAmount == reward);
+
+
+        // deal(usdcAddress, borrower, borrowerUSDCBalance1 + rep.pAmount + rep.iAmount + rep.rAmount + 500e6);
+        // vm.startPrank (borrower);
+        //     lendProtocol.close_loan (0, borrowAmount + rep.iAmount + rep.rAmount);
+        // vm.stopPrank ();
+        
+    }
+
+    function test_close_loan () public {
+        seed_deposit_pool ();
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+
+        execute_collateral_deposit (borrower, ethBalance/2);
+        uint256 borrowAmount = execute_borrow (borrower);
+
+        uint256 depositBalance1 = IERC20 (usdcAddress).balanceOf (address (deposit));
+        uint256 collateralBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 borrowerUSDCBalance1 = IERC20 (usdcAddress).balanceOf (address (deposit));
+        uint256 borrowerETHBalance1 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 treasuryUSDCBalance1 = IERC20 (usdcAddress).balanceOf (address (treasury));
+
+        
+        vm.warp(block.timestamp + 180 days);
+        RepaymentComponent memory rep = borrow.calculate_repayment_components (borrower, 0);
+     
+        deal(usdcAddress, borrower, borrowerUSDCBalance1 + rep.pAmount + rep.iAmount + rep.rAmount + 500e6);
+        vm.startPrank (borrower);
+            lendProtocol.close_loan (0, borrowAmount + rep.iAmount + rep.rAmount);
+        vm.stopPrank ();
+
+        uint256 depositBalance2 = IERC20 (usdcAddress).balanceOf (address (deposit));
+        uint256 collateralBalance2 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 borrowerUSDCBalance2 = IERC20 (usdcAddress).balanceOf (address (deposit));
+        uint256 borrowerETHBalance2 = IERC20 (wrappedETHAddress).balanceOf (address (collateral));
+        uint256 treasuryUSDCBalance2 = IERC20 (usdcAddress).balanceOf (address (treasury));
+
+
+        assert (depositBalance2 == depositBalance1 + rep.pAmount + rep.iAmount);
+        assert (collateralBalance2 == collateralBalance1 - ethBalance/2);
+        assert (borrowerUSDCBalance2 == borrowerUSDCBalance1 - rep.pAmount - rep.iAmount - rep.rAmount);
+        assert (borrowerETHBalance2 == borrowerETHBalance1 + ethBalance/2);
+        assert (treasuryUSDCBalance2 == treasuryUSDCBalance1 + rep.rAmount);
     }
 
 
