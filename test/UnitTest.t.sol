@@ -686,9 +686,13 @@ contract UnitTest is Test {
 
     function test_close_loan_single () public {
         seed_deposit_pool ();
+        address borrower = borrowers [0].actor;
+        helper_perform_close_loan_single (borrower);
+    }
+
+    function helper_perform_close_loan_single (address borrower) internal {
         uint256[5] memory balances1;
         uint256[5] memory balances2;
-        address borrower = borrowers [0].actor;
         uint256 borrowAmount;
         uint256 ethDeposited;
         
