@@ -1,5 +1,5 @@
 Compiling 1 files with Solc 0.8.30
-Solc 0.8.30 finished in 10.88s
+Solc 0.8.30 finished in 10.70s
 Compiler run successful with warnings:
 Warning (6321): Unnamed return variable can remain unassigned. Add an explicit return with value to all non-reverting code paths or name the variable.
    --> src/liquidation/Monitor.sol:124:37:
@@ -25,6 +25,12 @@ Warning (2072): Unused local variable.
 610 |         (uint256 usdcToPay, uint256 currentPrice, uint256 postDiscountETHPrice, uint256 ethToReceive, uint256 immidiateProfit)
     |                                                                                                       ^^^^^^^^^^^^^^^^^^^^^^^
 
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> test/UnitTest.t.sol:750:65:
+    |
+750 |  ... ddress _borrower, uint256 _loanID, uint256 _currentBalance, uint256 _borrowAmount, RepaymentC ...
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^
+
 Warning (2018): Function state mutability can be restricted to view
    --> src/borrow/Borrow.sol:362:5:
     |
@@ -39,10 +45,10 @@ Warning (2018): Function state mutability can be restricted to view
 
 
 Ran 1 test for test/UnitTest.t.sol:UnitTest
-[PASS] test_close_loan() (gas: 2793943)
+[PASS] test_close_loan_single() (gas: 2795868)
 Logs:
   register_caller_contracts 0x2a07706473244BC757E10F2a9E86fB532828afe3
 
-Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 17.07ms (1.59ms CPU time)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 16.48ms (1.69ms CPU time)
 
-Ran 1 test suite in 20.37ms (17.07ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
+Ran 1 test suite in 19.87ms (16.48ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
