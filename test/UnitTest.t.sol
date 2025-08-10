@@ -780,6 +780,40 @@ contract UnitTest is Test {
         vm.stopPrank ();
     }
 
+    function test_withdraw_interest () public {
+        seed_deposit_pool ();
+        address funder = funders[4].actor;
+        uint256 amount = (IERC20(usdcAddress)).balanceOf(funder) / 2;
+
+        vm.startPrank(funder);
+            lendProtocol.deposit_my_funds(amount, 190 days);
+        vm.stopPrank ();
+
+
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        execute_collateral_deposit (borrower, ethBalance/2);
+        uint256 borrowAmount = execute_borrow (borrower);
+
+        helper_simulate_time_flow (180 days);
+
+        RepaymentComponent memory rep = borrow.calculate_repayment_components (borrower, 0);
+        helper_simulate_profit (borrower, rep);
+        helper_repay (borrower, 0, borrowAmount, rep);
+        
+        helper_simulate_time_flow (12 days);
+        uint256 bal1 = helper_balance (usdcAddress, funder);
+        vm.startPrank(funder);
+            lendProtocol.withdraw_my_deposit (amount);
+            uint256 bal2 = helper_balance (usdcAddress, funder);
+            lendProtocol.withdraw_deposited_interest(rep.iAmount);
+        vm.stopPrank ();
+        uint256 bal3 = helper_balance (usdcAddress, funder);
+        
+        assert (bal2 == bal1 + amount);
+        assert (bal3 == bal2 + rep.iAmount);
+    }
+
     function helper_perform_close_loan_single (address borrower) internal {
         uint256[5] memory balances1;
         uint256[5] memory balances2;

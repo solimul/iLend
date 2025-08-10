@@ -205,7 +205,8 @@ contract Borrow {
         view
         returns (uint256)
     {
-        return (r.interestRate * (_bRecord.totalBorrowed * (block.timestamp - r.borrowTime)) / (365 days * 100));
+        uint256 timeDelta = block.timestamp - r.borrowTime;
+        return (r.interestRate * (_bRecord.totalBorrowed * (timeDelta)) / (365 days * 100));
     }
 
     function calculate_protocol_reward(BorrowerRecord storage _bRecord, BorrowRecord storage r)

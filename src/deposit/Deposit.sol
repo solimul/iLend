@@ -384,7 +384,23 @@ contract Deposit {
         );
     }
 
-    function calculate_depositor_interest(address _depositorAddress) internal returns (uint256 totalInterestIncome) {
+    /**
+    * @dev Calculates interest for a fixed-term deposit.
+    * 
+    * Concept:
+    * - Each deposit accrues interest only within its fixed accrual window: [depositTime, maturity = depositTime + lockupPeriod].
+    * - A claim should pay only for the overlap between:
+    *   (a) the unpaid portion of that window, and
+    *   (b) [lastPaid, now] (time since the depositor last claimed).
+    * - After paying, advance `lastPaid` to the end of the overlap 
+    *   (up to `maturity` if the term is fully paid), preventing interest beyond the lockup period.
+    * 
+    * Why:
+    * - Avoids **underpayment** on late first claims by ensuring the full unpaid window is covered.
+    * - Avoids **overpayment** on multiple claims by paying only the remaining unpaid slice each time.
+    */
+
+    function settle_accrued_interest(address _depositorAddress) internal returns (uint256 totalInterestIncome) {
         uint256 currentTime = block.timestamp;
         Depositor storage depositor = depositors[_depositorAddress];
         if (!depositor.isActive) {
@@ -393,12 +409,13 @@ contract Deposit {
 
         for (uint256 i = 0; i < depositor.depositCounts; i++) {
             DepositRecord storage record = depositor.deposits[i];
-            if (block.timestamp >= record.depositTime + record.lockupPeriod) {
+            //if (block.timestamp >= record.depositTime + record.lockupPeriod) {
                 uint256 timeDelta = currentTime - record.lastInterestWithdrawTimeForRecord; // interest is calculated since last withdrawal
+                timeDelta = timeDelta < record.lockupPeriod ? timeDelta : record.lockupPeriod;
                 uint256 interest = (record.amount * params.get_base_interest_rate() * timeDelta) / (365 days * 100);
                 totalInterestIncome += interest;
                 record.lastInterestWithdrawTimeForRecord = currentTime;
-            }
+            //}
         }
         return totalInterestIncome;
     }
@@ -426,7 +443,7 @@ contract Deposit {
         only_facade_contract(msg.sender)
         existing_depositor(_depositorAddress)
     {
-        uint256 totalInterestIncome = calculate_depositor_interest(_depositorAddress);
+        uint256 totalInterestIncome = settle_accrued_interest(_depositorAddress);
 
         uint256 old = iUSDCContract.balanceOf(address(this));
 

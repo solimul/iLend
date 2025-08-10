@@ -1,5 +1,5 @@
 Compiling 1 files with Solc 0.8.30
-Solc 0.8.30 finished in 10.17s
+Solc 0.8.30 finished in 11.02s
 Compiler run successful with warnings:
 Warning (6321): Unnamed return variable can remain unassigned. Add an explicit return with value to all non-reverting code paths or name the variable.
    --> src/liquidation/Monitor.sol:124:37:
@@ -39,12 +39,10 @@ Warning (2018): Function state mutability can be restricted to view
 
 
 Ran 1 test for test/UnitTest.t.sol:UnitTest
-[PASS] test_withdraw_deposit_more_than_deposited_expect_revert() (gas: 1406716)
+[PASS] test_withdraw_interest() (gas: 3180318)
 Logs:
   register_caller_contracts 0x2a07706473244BC757E10F2a9E86fB532828afe3
-  -----> 25000000000
-  =====> 25000000000 25500000000
 
-Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 15.49ms (1.02ms CPU time)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 22.56ms (2.51ms CPU time)
 
-Ran 1 test suite in 19.05ms (15.49ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
+Ran 1 test suite in 36.05ms (22.56ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
