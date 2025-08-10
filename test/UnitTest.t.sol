@@ -781,7 +781,7 @@ contract UnitTest is Test {
     }
 
     function test_withdraw_interest () public {
-        seed_deposit_pool ();
+        //seed_deposit_pool ();
         address funder = funders[4].actor;
         uint256 amount = (IERC20(usdcAddress)).balanceOf(funder) / 2;
 
@@ -812,6 +812,119 @@ contract UnitTest is Test {
         
         assert (bal2 == bal1 + amount);
         assert (bal3 == bal2 + rep.iAmount);
+    }
+
+    function test_withdraw_interest_before_maturity () public {
+        //seed_deposit_pool ();
+        address funder = funders[4].actor;
+        uint256 amount = (IERC20(usdcAddress)).balanceOf(funder) / 2;
+
+        vm.startPrank(funder);
+            lendProtocol.deposit_my_funds(amount, 190 days);
+        vm.stopPrank ();
+
+
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        execute_collateral_deposit (borrower, ethBalance/2);
+        uint256 borrowAmount = execute_borrow (borrower);
+
+        helper_simulate_time_flow (160 days);
+
+        RepaymentComponent memory rep = borrow.calculate_repayment_components (borrower, 0);
+        helper_simulate_profit (borrower, rep);
+        helper_repay (borrower, 0, borrowAmount, rep);
+        
+        helper_simulate_time_flow (12 days);
+        vm.startPrank(funder);
+            vm.expectRevert ();
+            lendProtocol.withdraw_my_deposit (amount);
+
+            uint256 bal1 = helper_balance (usdcAddress, funder);
+            lendProtocol.withdraw_deposited_interest(rep.iAmount);
+        vm.stopPrank ();
+        uint256 bal2 = helper_balance (usdcAddress, funder);
+        assert (bal2 == bal1 + rep.iAmount);
+    }
+
+    function test_withdraw_interest_multiple_withdraw () public {
+        //seed_deposit_pool ();
+        address funder = funders[4].actor;
+        uint256 amount = (IERC20(usdcAddress)).balanceOf(funder) / 2;
+
+        vm.startPrank(funder);
+            lendProtocol.deposit_my_funds(amount, 190 days);
+        vm.stopPrank ();
+
+
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        execute_collateral_deposit (borrower, ethBalance/2);
+        uint256 borrowAmount = execute_borrow (borrower);
+
+        helper_simulate_time_flow (160 days);
+
+        RepaymentComponent memory rep = borrow.calculate_repayment_components (borrower, 0);
+        helper_simulate_profit (borrower, rep);
+        helper_repay (borrower, 0, borrowAmount, rep);
+        
+        helper_simulate_time_flow (5 days);
+        vm.startPrank(funder);
+            vm.expectRevert ();
+            lendProtocol.withdraw_my_deposit (amount);
+
+            uint256 bal1 = helper_balance (usdcAddress, funder);
+            uint256 iAmnt1 = rep.iAmount;
+            lendProtocol.withdraw_deposited_interest(iAmnt1);
+            uint256 bal2 = helper_balance (usdcAddress, funder);
+            helper_simulate_time_flow (5 days);
+            rep = borrow.calculate_repayment_components (borrower, 0);
+            uint256 iAmnt2 = rep.iAmount - iAmnt1;
+            lendProtocol.withdraw_deposited_interest(iAmnt2);
+            uint256 bal3 = helper_balance (usdcAddress, funder);
+        vm.stopPrank ();
+        console.log (iAmnt1/1e6, iAmnt2/1e6);
+        assert (bal2 == bal1 + iAmnt1);
+        assert (bal3 == bal2 + iAmnt2);
+    }
+
+    function test_withdraw_interest_multiple_over_withdrawal () public {
+        //seed_deposit_pool ();
+        address funder = funders[4].actor;
+        uint256 amount = (IERC20(usdcAddress)).balanceOf(funder) / 2;
+
+        vm.startPrank(funder);
+            lendProtocol.deposit_my_funds(amount, 190 days);
+        vm.stopPrank ();
+
+
+        address borrower = borrowers [0].actor;
+        uint256 ethBalance = IERC20 (wrappedETHAddress).balanceOf (borrower);
+        execute_collateral_deposit (borrower, ethBalance/2);
+        uint256 borrowAmount = execute_borrow (borrower);
+
+        helper_simulate_time_flow (160 days);
+
+        RepaymentComponent memory rep = borrow.calculate_repayment_components (borrower, 0);
+        helper_simulate_profit (borrower, rep);
+        helper_repay (borrower, 0, borrowAmount, rep);
+        
+        helper_simulate_time_flow (5 days);
+        vm.startPrank(funder);
+            vm.expectRevert ();
+            lendProtocol.withdraw_my_deposit (amount);
+
+            uint256 bal1 = helper_balance (usdcAddress, funder);
+            uint256 iAmnt1 = rep.iAmount;
+            lendProtocol.withdraw_deposited_interest(iAmnt1);
+            uint256 bal2 = helper_balance (usdcAddress, funder);
+            helper_simulate_time_flow (5 days);
+            rep = borrow.calculate_repayment_components (borrower, 0);
+            vm.expectRevert (); 
+            // The following over- withdrawal should revert, as withdrable interest is (rep.iAmount - amnt1)
+            lendProtocol.withdraw_deposited_interest(rep.iAmount);
+        vm.stopPrank ();
+        assert (bal2 == bal1 + iAmnt1);
     }
 
     function helper_perform_close_loan_single (address borrower) internal {

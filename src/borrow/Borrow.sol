@@ -55,6 +55,7 @@ contract Borrow {
     address[] sBorrowersList;
 
     uint256 private sTotalBorrowedOutUSDC; 
+    address private depositContractAddress;
 
     Params private params;
     AggregatorV3Interface private priceFeed;
@@ -205,7 +206,8 @@ contract Borrow {
         view
         returns (uint256)
     {
-        uint256 timeDelta = block.timestamp - r.borrowTime;
+        uint256 startTime = r.borrowTime;
+        uint256 timeDelta = block.timestamp - startTime;
         return (r.interestRate * (_bRecord.totalBorrowed * (timeDelta)) / (365 days * 100));
     }
 
@@ -317,11 +319,14 @@ contract Borrow {
         BorrowerRecord storage borrower = borrowers[_borrowerAddress];
         borrower.totalBorrowed += _liquidityToBorrow;
         borrower.borrowCount += 1;
+
+
         // Create the borrow record without assigning `lenders` yet
         BorrowRecord storage record = borrower.borrows[_correspondingColletaralID];
         record.loanID = _correspondingColletaralID;
         record.amount = _liquidityToBorrow;
         record.borrowTime = block.timestamp;
+        record.lastTimeInterestWithdrawn = block.timestamp; 
         record.interestRate = params.get_base_interest_rate();
         record.l2b = collateralPool.get_collateralL2B_by_record(_borrowerAddress, _correspondingColletaralID);
 
@@ -329,6 +334,7 @@ contract Borrow {
         for (uint256 i = 0; i < _lenders.length; i++) {
             record.lenders.push(_lenders[i]);
         }
+        
 
         sTotalBorrowedOutUSDC += _liquidityToBorrow;
 
@@ -375,4 +381,6 @@ contract Borrow {
             borrowerAddress = borrower.borrowerAddress;
         }
     }
+
+
 }

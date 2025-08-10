@@ -52,6 +52,7 @@ struct BorrowRecord {
     uint256 interestRate;
     uint256 l2b;
     Lender[] lenders;
+    uint256 lastTimeInterestWithdrawn; // Last time interest was withdrawn
 }
 
 struct BorrowerRecord {
