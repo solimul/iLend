@@ -280,12 +280,6 @@ contract Payback {
         crumbs = update_principal_receipt(_borrowersAddress, loanID, rep.pAmount);
         remaining -= rep.pAmount - crumbs;
         rep.remaining = remaining;
-
-        // if (remaining > 0) {
-        //     revert RemainingAmountNotZeroAfterRepayment(
-        //         _borrowersAddress, loanID, amount, rep.pAmount, rep.iAmount, rep.rAmount, remaining
-        //     );
-        // }
         return rep;
     }
 

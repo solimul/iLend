@@ -232,6 +232,7 @@ contract Deposit {
     {
         Depositor storage depositor = depositors[_depositorAddress];
         depositor.totalAmount += _amount;
+        depositor.totalInterestEarned = 0;
         uint256 currentTime = block.timestamp;
 
         DepositRecord storage record = depositor.deposits[depositor.depositCounts];
@@ -270,6 +271,8 @@ contract Deposit {
         uint256 _totalLent,
         uint256 lentFromThisDepositAccount
     ) external only_payback_contract(msg.sender) returns (uint256) {
+        Depositor storage depositor = depositors [_borrowerAddress];
+        depositor.totalInterestEarned += _totalInterest;
         DepositRecord storage record = get_deposit_record(_depositorAddress, _depositID);
         uint256 interestShare = (lentFromThisDepositAccount * _totalInterest) / _totalLent;
         record.interestEarned.push(
@@ -334,7 +337,7 @@ contract Deposit {
         existing_depositor(_depositorAddress)
         only_facade_contract(msg.sender)
     {
-        Depositor storage depositor = depositors[msg.sender];
+        Depositor storage depositor = depositors[_depositorAddress];
         if (depositor.totalAmount < amount) {
             revert DepositorBalanceTooLow(msg.sender, depositor.totalAmount, amount);
         }
@@ -606,4 +609,6 @@ contract Deposit {
             depositRecord.interestEarned.length
         );
     }
+
+
 }

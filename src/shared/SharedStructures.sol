@@ -26,6 +26,7 @@ struct DepositRecord {
 
 struct Depositor {
     uint256 totalAmount;
+    uint256 totalInterestEarned;
     mapping(uint256 => DepositRecord) deposits; // Maps deposit index to DepositRecord
     InterestWithdrawalRecord[] interestWithdrawalRecords;
     PrincipalWithdrawalRecord[] principalWithdrawalRecords;
